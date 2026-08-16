@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAppStore } from '../store/app'
+import CategoryNode from './CategoryNode.vue'
 const store = useAppStore()
 function setView(kind: any, id?: string) { store.view = { kind, id } }
 </script>
@@ -8,14 +9,7 @@ function setView(kind: any, id?: string) { store.view = { kind, id } }
   <aside class="sidebar">
     <div class="group-label">分类</div>
     <div class="row" :class="{ active: store.view.kind === 'all' }" @click="setView('all')">全部 <span class="cnt">{{ store.data.sites.length }}</span></div>
-    <div v-for="c in store.data.categories" :key="c.id">
-      <div class="row" :class="{ active: store.view.kind === 'category' && store.view.id === c.id }" @click="setView('category', c.id)">
-        ▾ {{ c.name }} <span class="cnt">{{ c.children.length }}</span>
-      </div>
-      <div v-for="cc in c.children" :key="cc.id" class="row sub" :class="{ active: store.view.kind === 'category' && store.view.id === cc.id }" @click="setView('category', cc.id)">
-        {{ cc.name }}
-      </div>
-    </div>
+    <CategoryNode v-for="c in store.data.categories" :key="c.id" :cat="c" :depth="0" />
     <div class="group-label">视图</div>
     <div class="row dead" :class="{ active: store.view.kind === 'dead' }" @click="setView('dead')">⚠ 失效 <span class="cnt">{{ store.deadCount }}</span></div>
     <div class="group-label">标签</div>

@@ -47,10 +47,19 @@ export const useAppStore = defineStore('app', {
     },
     deadCount(state) { return state.data.sites.filter(s => s.status === 'dead').length },
     trashedSites(state): TrashedSite[] { return state.data.recycleBin },
+    flatCategories(): { id: string; name: string; depth: number }[] {
+      const out: { id: string; name: string; depth: number }[] = []
+      const walk = (list: any[], depth: number) => {
+        for (const c of list) { out.push({ id: c.id, name: c.name, depth }); walk(c.children, depth + 1) }
+      }
+      walk(this.data.categories, 0)
+      return out
+    },
   },
   actions: {
     async init() { this.data = await api.loadData() },
     async persist() { await api.saveData(this.data) },
+    setData(d: AppData) { this.data = d; this.persist() },
     async refreshTags() {
       const set = new Set<string>()
       this.data.sites.forEach(s => s.tags.forEach(t => set.add(t)))
