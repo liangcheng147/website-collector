@@ -1,13 +1,17 @@
 import { setActivePinia, createPinia } from 'pinia'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useAppStore } from './app'
+vi.mock('../api', () => ({
+  saveData: vi.fn().mockResolvedValue(undefined),
+  loadData: vi.fn().mockResolvedValue(undefined),
+}))
 import type { AppData, Site } from '../types'
 
 function makeSite(id: string, status: Site['status'], tags: string[]): Site {
   return { id, name: 'Site' + id, url: 'https://' + id + '.dev', categoryId: 'c1', tags, status, lastCheck: null }
 }
 
-const baseData: AppData = {
+const makeData = (): AppData => ({
   version: 1,
   categories: [{ id: 'c1', name: '开发', children: [{ id: 'c2', name: '前端', children: [] }] }],
   sites: [
@@ -17,10 +21,15 @@ const baseData: AppData = {
   ],
   recycleBin: [],
   tags: ['框架', '工具'],
-}
+})
+
+let baseData: AppData = makeData()
 
 describe('app store', () => {
-  beforeEach(() => setActivePinia(createPinia()))
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    baseData = makeData()
+  })
 
   it('all view returns all sites', () => {
     const s = useAppStore()
@@ -60,5 +69,58 @@ describe('app store', () => {
     expect(s.filteredSites).toHaveLength(2)
     s.search = '.dev'
     expect(s.filteredSites).toHaveLength(3)
+  })
+
+  it('addSite persists and dedups tags', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.addSite({ name: 'Vite', url: 'https://vite.dev', categoryId: 'c2', tags: ['工具', '框架'] })
+    expect(s.data.sites).toHaveLength(4)
+    expect(s.data.tags).toContain('框架')
+    expect(s.data.tags).toContain('工具')
+  })
+
+  it('deleteSites moves to recycle bin', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.deleteSites(['a'])
+    expect(s.data.sites.map(x => x.id)).toEqual(['b', 'c'])
+    expect(s.trashedSites).toHaveLength(1)
+    expect(s.trashedSites[0].site.id).toBe('a')
+  })
+
+  it('restoreSite returns to sites', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.deleteSites(['a'])
+    s.restoreSite('a')
+    expect(s.data.sites).toHaveLength(3)
+    expect(s.trashedSites).toHaveLength(0)
+  })
+
+  it('deleteCategory move-to-uncategorized clears categoryId', () => {
+    const s = useAppStore()
+    s.data = baseData
+    // baseData 站点都挂在 c1 下，删除 c1 应清空其站点 categoryId
+    s.deleteCategory('c1', 'move-to-uncategorized')
+    expect(s.data.sites[0].categoryId).toBeNull()
+  })
+
+  it('deleteCategory delete-sites sends sites to recycle', () => {
+    const s = useAppStore()
+    s.data = baseData
+    // 把站点挂在 c2 下
+    s.data.sites.forEach(x => x.categoryId = 'c2')
+    s.deleteCategory('c2', 'delete-sites')
+    expect(s.data.sites).toHaveLength(0)
+    expect(s.trashedSites).toHaveLength(3)
+  })
+
+  it('addTagsToSites appends and dedups', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.addTagsToSites(['a', 'b'], ['新标签'])
+    expect(s.data.sites[0].tags).toContain('新标签')
+    expect(s.data.sites[1].tags).toContain('新标签')
   })
 })

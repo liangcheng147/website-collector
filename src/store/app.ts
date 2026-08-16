@@ -57,5 +57,127 @@ export const useAppStore = defineStore('app', {
       this.data.tags = [...set]
       await this.persist()
     },
+
+    id_gen() {
+      return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7)
+    },
+
+    isDuplicateUrl(url: string) {
+      return this.data.sites.some(s => s.url === url)
+    },
+
+    addSite(input: { name: string; url: string; categoryId: string | null; tags: string[] }) {
+      if (this.isDuplicateUrl(input.url)) return
+      this.data.sites.push({
+        id: this.id_gen(), name: input.name, url: input.url,
+        categoryId: input.categoryId, tags: [...input.tags],
+        status: 'unknown', lastCheck: null,
+      })
+      this.refreshTags()
+    },
+
+    updateSite(id: string, patch: Partial<Site>) {
+      const idx = this.data.sites.findIndex(s => s.id === id)
+      if (idx >= 0) { Object.assign(this.data.sites[idx], patch); this.refreshTags() }
+    },
+
+    deleteSites(ids: string[]) {
+      const set = new Set(ids)
+      const now = new Date().toISOString()
+      this.data.sites = this.data.sites.filter(s => {
+        if (set.has(s.id)) { this.data.recycleBin.push({ site: s, deletedAt: now }); return false }
+        return true
+      })
+      this.persist()
+    },
+
+    restoreSite(siteId: string) {
+      const idx = this.data.recycleBin.findIndex(t => t.site.id === siteId)
+      if (idx >= 0) {
+        this.data.sites.push(this.data.recycleBin[idx].site)
+        this.data.recycleBin.splice(idx, 1)
+        this.persist()
+      }
+    },
+
+    permanentlyDelete(siteId: string) {
+      const idx = this.data.recycleBin.findIndex(t => t.site.id === siteId)
+      if (idx >= 0) { this.data.recycleBin.splice(idx, 1); this.persist() }
+    },
+
+    emptyRecycle() {
+      this.data.recycleBin = []
+      this.persist()
+    },
+
+    addCategory(name: string, parentId: string | null) {
+      const node = { id: this.id_gen(), name, children: [] as any[] }
+      if (parentId == null) this.data.categories.push(node)
+      else {
+        const walk = (list: any[]): boolean => {
+          for (const c of list) {
+            if (c.id === parentId) { c.children.push(node); return true }
+            if (walk(c.children)) return true
+          }
+          return false
+        }
+        walk(this.data.categories)
+      }
+      this.persist()
+    },
+
+    renameCategory(id: string, name: string) {
+      const walk = (list: any[]): boolean => {
+        for (const c of list) {
+          if (c.id === id) { c.name = name; return true }
+          if (walk(c.children)) return true
+        }
+        return false
+      }
+      walk(this.data.categories)
+      this.persist()
+    },
+
+    deleteCategory(id: string, mode: 'move-to-uncategorized' | 'delete-sites') {
+      const ids = new Set<string>()
+      const collect = (c: any) => { ids.add(c.id); c.children.forEach(collect) }
+      const find = (list: any[]): boolean => {
+        for (const c of list) {
+          if (c.id === id) { collect(c); removeNode(list, c); return true }
+          if (find(c.children)) return true
+        }
+        return false
+      }
+      const removeNode = (list: any[], target: any) => { const i = list.indexOf(target); if (i >= 0) list.splice(i, 1) }
+      find(this.data.categories)
+      if (mode === 'move-to-uncategorized') {
+        this.data.sites.forEach(s => { if (s.categoryId && ids.has(s.categoryId)) s.categoryId = null })
+      } else {
+        const toDelete = this.data.sites.filter(s => s.categoryId && ids.has(s.categoryId)).map(s => s.id)
+        this.deleteSites(toDelete)
+      }
+      this.persist()
+    },
+
+    moveSites(ids: string[], categoryId: string | null) {
+      const set = new Set(ids)
+      this.data.sites.forEach(s => { if (set.has(s.id)) s.categoryId = categoryId })
+      this.persist()
+    },
+
+    addTagsToSites(ids: string[], tags: string[]) {
+      const set = new Set(ids)
+      this.data.sites.forEach(s => {
+        if (set.has(s.id)) { tags.forEach(t => { if (!s.tags.includes(t)) s.tags.push(t) }) }
+      })
+      this.refreshTags()
+    },
+
+    toggleSelect(id: string) {
+      const i = this.selectedIds.indexOf(id)
+      if (i >= 0) this.selectedIds.splice(i, 1)
+      else this.selectedIds.push(id)
+    },
+    clearSelection() { this.selectedIds = [] },
   },
 })
