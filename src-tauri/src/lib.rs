@@ -1,6 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod check;
 mod data;
+mod md;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
