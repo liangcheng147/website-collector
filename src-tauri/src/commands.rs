@@ -81,78 +81,23 @@ pub async fn check_connectivity_cmd() -> bool {
 }
 
 #[tauri::command]
-pub fn export_md_cmd(app: tauri::AppHandle) -> Result<String, String> {
+pub fn export_md_to_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
     let data = data::load_data(&active_data_dir(&app));
-    Ok(md::export_to_md(&data))
+    md::export_md_to_path(&data, std::path::Path::new(&path))
 }
 
 #[tauri::command]
-pub fn import_md_cmd(app: tauri::AppHandle, text: String, mode: String) -> Result<data::AppData, String> {
-    let incoming = md::import_from_md(&text);
-    let mut current = data::load_data(&active_data_dir(&app));
-    match mode.as_str() {
-        "overwrite" => {
-            let p = data::data_file_path(&active_data_dir(&app));
-            if p.exists() {
-                std::fs::copy(&p, p.with_extension("json.bak")).map_err(|e| e.to_string())?;
-            }
-            let _ = data::save_data(&active_data_dir(&app), &incoming);
-            Ok(incoming)
-        }
-        "merge" => {
-            merge_into(&mut current, &incoming);
-            let _ = data::save_data(&active_data_dir(&app), &current);
-            Ok(current)
-        }
-        _ => Err("mode must be overwrite or merge".into()),
-    }
+pub fn export_json_to_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let data = data::load_data(&active_data_dir(&app));
+    data::export_json_to_path(&data, std::path::Path::new(&path))
 }
 
-fn merge_into(current: &mut data::AppData, incoming: &data::AppData) {
-    let mut cat_id_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    let mut next = current.categories.len();
-    fn find_or_create(
-        list: &mut Vec<data::Category>,
-        incoming_cat: &data::Category,
-        map: &mut std::collections::HashMap<String, String>,
-        next: &mut usize,
-    ) {
-        let matched = list.iter().position(|c| c.name == incoming_cat.name);
-        let id = if let Some(i) = matched {
-            let id = list[i].id.clone();
-            for child in &incoming_cat.children {
-                find_or_create(&mut list[i].children, child, map, next);
-            }
-            id
-        } else {
-            let id = format!("auto{}", *next); *next += 1;
-            let mut node = data::Category { id: id.clone(), name: incoming_cat.name.clone(), children: vec![] };
-            for child in &incoming_cat.children {
-                find_or_create(&mut node.children, child, map, next);
-            }
-            list.push(node);
-            id
-        };
-        map.insert(incoming_cat.id.clone(), id);
-    }
-    for c in &incoming.categories {
-        find_or_create(&mut current.categories, c, &mut cat_id_map, &mut next);
-    }
-    for s in &incoming.sites {
-        let target_cat = s.category_id.as_ref().and_then(|id| cat_id_map.get(id)).cloned();
-        if let Some(existing) = current.sites.iter_mut().find(|x| x.url == s.url) {
-            existing.name = s.name.clone();
-            if target_cat.is_some() { existing.category_id = target_cat.clone(); }
-        } else {
-            current.sites.push(data::Site {
-                id: s.id.clone(), name: s.name.clone(), url: s.url.clone(),
-                category_id: target_cat, tags: s.tags.clone(),
-                status: "unknown".into(), last_check: None,
-            });
-        }
-    }
-    let mut seen = std::collections::HashSet::new();
-    let mut tags = Vec::new();
-    for s in &current.sites { for t in &s.tags { if seen.insert(t.clone()) { tags.push(t.clone()); } } }
-    current.tags = tags;
+#[tauri::command]
+pub fn import_md_from_file(app: tauri::AppHandle, path: String, mode: String) -> Result<data::AppData, String> {
+    md::import_md_from_path(&active_data_dir(&app), std::path::Path::new(&path), &mode)
+}
+
+#[tauri::command]
+pub fn import_json_from_file(app: tauri::AppHandle, path: String) -> Result<data::AppData, String> {
+    data::import_json_from_path(&active_data_dir(&app), std::path::Path::new(&path))
 }

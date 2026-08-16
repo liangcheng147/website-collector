@@ -51,6 +51,74 @@ pub fn save_data(app_data_dir: &Path, data: &AppData) -> Result<(), String> {
     fs::write(&path, json).map_err(|e| e.to_string())
 }
 
+pub fn backup_data_file(app_data_dir: &Path) -> Result<(), String> {
+    let p = data_file_path(app_data_dir);
+    if p.exists() { fs::copy(&p, p.with_extension("json.bak")).map_err(|e| e.to_string())?; }
+    Ok(())
+}
+
+pub fn export_json_to_path(data: &AppData, path: &Path) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(data).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())
+}
+
+pub fn import_json_from_path(app_data_dir: &Path, path: &Path) -> Result<AppData, String> {
+    let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let incoming: AppData = serde_json::from_str(&text).map_err(|e| format!("JSON 解析失败：{}", e))?;
+    backup_data_file(app_data_dir)?;
+    save_data(app_data_dir, &incoming)?;
+    Ok(incoming)
+}
+
+pub fn merge_into(current: &mut AppData, incoming: &AppData) {
+    let mut cat_id_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut next = current.categories.len();
+    fn find_or_create(
+        list: &mut Vec<Category>,
+        incoming_cat: &Category,
+        map: &mut std::collections::HashMap<String, String>,
+        next: &mut usize,
+    ) {
+        let matched = list.iter().position(|c| c.name == incoming_cat.name);
+        let id = if let Some(i) = matched {
+            let id = list[i].id.clone();
+            for child in &incoming_cat.children {
+                find_or_create(&mut list[i].children, child, map, next);
+            }
+            id
+        } else {
+            let id = format!("auto{}", *next); *next += 1;
+            let mut node = Category { id: id.clone(), name: incoming_cat.name.clone(), children: vec![] };
+            for child in &incoming_cat.children {
+                find_or_create(&mut node.children, child, map, next);
+            }
+            list.push(node);
+            id
+        };
+        map.insert(incoming_cat.id.clone(), id);
+    }
+    for c in &incoming.categories {
+        find_or_create(&mut current.categories, c, &mut cat_id_map, &mut next);
+    }
+    for s in &incoming.sites {
+        let target_cat = s.category_id.as_ref().and_then(|id| cat_id_map.get(id)).cloned();
+        if let Some(existing) = current.sites.iter_mut().find(|x| x.url == s.url) {
+            existing.name = s.name.clone();
+            if target_cat.is_some() { existing.category_id = target_cat.clone(); }
+        } else {
+            current.sites.push(Site {
+                id: s.id.clone(), name: s.name.clone(), url: s.url.clone(),
+                category_id: target_cat, tags: s.tags.clone(),
+                status: "unknown".into(), last_check: None,
+            });
+        }
+    }
+    let mut seen = std::collections::HashSet::new();
+    let mut tags = Vec::new();
+    for s in &current.sites { for t in &s.tags { if seen.insert(t.clone()) { tags.push(t.clone()); } } }
+    current.tags = tags;
+}
+
 /// 目标目录必须存在且为空；不存在则创建。非空拒绝。
 pub fn ensure_empty_or_create(dir: &Path) -> Result<(), String> {
     if dir.exists() {
@@ -164,5 +232,34 @@ assert_eq!(loaded.sites[0].name, "React");
         move_data_file(&src, &dst).unwrap();
         assert!(!src.exists() && dst.exists());
         let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn export_import_json_roundtrip() {
+        let d = tmp_dir("json_rt");
+        let data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        let out = d.join("backup.json");
+        export_json_to_path(&data, &out).unwrap();
+        assert!(out.exists());
+        let back = import_json_from_path(&d, &out).unwrap();
+        assert_eq!(back.version, 1);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn import_json_backs_up_and_replaces() {
+        let d = tmp_dir("json_bak");
+        let mut data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None });
+        save_data(&d, &data).unwrap();
+        let mut fresh = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        fresh.sites.push(Site { id: "s2".into(), name: "B".into(), url: "https://b.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None });
+        let in_path = d.join("in.json");
+        export_json_to_path(&fresh, &in_path).unwrap();
+        let back = import_json_from_path(&d, &in_path).unwrap();
+        assert_eq!(back.sites.len(), 1);
+        assert_eq!(back.sites[0].id, "s2");
+        assert!(data_file_path(&d).with_extension("json.bak").exists(), "覆盖导入应自动备份 .bak");
+        let _ = std::fs::remove_dir_all(&d);
     }
 }

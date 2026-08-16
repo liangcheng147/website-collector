@@ -1,4 +1,4 @@
-use crate::data::{AppData, Category, Site};
+use crate::data::{self, AppData, Category, Site};
 
 pub fn export_to_md(data: &AppData) -> String {
     let mut out = String::new();
@@ -79,10 +79,25 @@ pub fn import_from_md(text: &str) -> AppData {
     AppData { version: 1, categories, sites, recycle_bin: vec![], tags: vec![] }
 }
 
+pub fn export_md_to_path(data: &AppData, path: &std::path::Path) -> Result<(), String> {
+    std::fs::write(path, export_to_md(data)).map_err(|e| e.to_string())
+}
+
+pub fn import_md_from_path(app_data_dir: &std::path::Path, path: &std::path::Path, mode: &str) -> Result<AppData, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let incoming = import_from_md(&text);
+    let mut current = data::load_data(app_data_dir);
+    match mode {
+        "overwrite" => { data::backup_data_file(app_data_dir)?; data::save_data(app_data_dir, &incoming)?; Ok(incoming) }
+        "merge" => { data::merge_into(&mut current, &incoming); data::save_data(app_data_dir, &current)?; Ok(current) }
+        _ => Err("mode must be overwrite or merge".into()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::{AppData, Category, Site};
+use crate::data::{self, AppData, Category, Site};
 
     #[test]
     fn export_roundtrip_preserves_structure() {
@@ -115,5 +130,34 @@ mod tests {
         assert_eq!(data.sites.len(), 2);
         assert_eq!(data.sites[0].status, "unknown");
         assert_eq!(data.sites[0].tags.len(), 0);
+    }
+
+    #[test]
+    fn export_md_to_file_writes() {
+        let d = std::env::temp_dir().join(format!("md_export_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        let out = d.join("out.md");
+        export_md_to_path(&data, &out).unwrap();
+        assert!(out.exists());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn import_md_from_file_overwrite_backs_up() {
+        let d = std::env::temp_dir().join(format!("md_import_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let mut data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None });
+        data::save_data(&d, &data).unwrap();
+        let in_path = d.join("in.md");
+        std::fs::write(&in_path, "# 新分类\n- [X](https://x.dev)\n").unwrap();
+        let back = import_md_from_path(&d, &in_path, "overwrite").unwrap();
+        assert_eq!(back.sites.len(), 1);
+        assert_eq!(back.sites[0].name, "X");
+        assert!(data::data_file_path(&d).with_extension("json.bak").exists());
+        let _ = std::fs::remove_dir_all(&d);
     }
 }

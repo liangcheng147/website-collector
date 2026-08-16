@@ -26,8 +26,10 @@ pub fn run() {
             commands::get_data_file_path,
             commands::check_site_cmd,
             commands::check_connectivity_cmd,
-            commands::export_md_cmd,
-            commands::import_md_cmd,
+            commands::export_md_to_file,
+            commands::export_json_to_file,
+            commands::import_md_from_file,
+            commands::import_json_from_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
