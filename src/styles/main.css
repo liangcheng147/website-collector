@@ -33,6 +33,8 @@ input:focus, select:focus, textarea:focus { outline:none; border-color:var(--pri
 .site-table { width:100%; border-collapse:collapse; }
 .site-table th { text-align:left; padding:4px 8px; color:var(--text-2); border-bottom:2px solid var(--primary); font-size:11px; }
 .site-table td { padding:4px 8px; border-bottom:1px solid var(--panel); }
+.dots { cursor:pointer; color:var(--text-2); font-weight:700; letter-spacing:1px; user-select:none; }
+.dots:hover { color:var(--primary); }
 .site-table tr:hover { background:#FFF2F7; }
 .site-table .row-selected { background:#E6DBFF; }
 .site-table .muted { color:var(--text-2); }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useAppStore } from './store/app'
 import TopBar from './components/TopBar.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -20,7 +20,15 @@ const pickIds = ref<string[]>([])
 const tagIds = ref<string[]>([])
 function openAdd() { editing.value = undefined; modal.value = 'add' }
 function openEdit(site?: Site) { if (!site) return; editing.value = site; modal.value = 'add' }
-onMounted(() => { store.init() })
+function onKey(e: KeyboardEvent) {
+  if (e.key !== 'Escape') return
+  modal.value = ''
+  pickIds.value = []
+  tagIds.value = []
+  store.clearSelection()
+}
+onMounted(() => { document.addEventListener('keydown', onKey); store.init() })
+onUnmounted(() => document.removeEventListener('keydown', onKey))
 </script>
 
 <template>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useAppStore } from '../store/app'
 import ContextMenu from './ContextMenu.vue'
 
 const store = useAppStore()
 const menu = ref<{ x: number; y: number } | null>(null)
+const hoverId = ref<string | null>(null)
 const emit = defineEmits(['edit', 'check-site', 'move', 'tag'])
 
 function heart(s: string) { return s === 'ok' ? '♥♥♥' : s === 'dead' ? '♥' : '♥?' }
@@ -13,6 +14,10 @@ function onRight(e: MouseEvent, siteId: string) {
   if (!store.selectedIds.includes(siteId)) { store.clearSelection(); store.toggleSelect(siteId) }
   menu.value = { x: e.clientX, y: e.clientY }
 }
+function onRowDots(e: MouseEvent, siteId: string) { onRight(e, siteId) }
+function onKey(e: KeyboardEvent) { if (e.key === 'Escape') menu.value = null }
+onMounted(() => document.addEventListener('keydown', onKey))
+onUnmounted(() => document.removeEventListener('keydown', onKey))
 function onRowDblClick(site: any) { emit('edit', site) }
 function onAction(kind: string) {
   const ids = [...store.selectedIds]
@@ -43,11 +48,13 @@ function onAction(kind: string) {
         <tr
           v-for="s in store.filteredSites" :key="s.id"
           :class="{ 'row-selected': store.selectedIds.includes(s.id) }"
+          @mouseenter="hoverId = s.id"
+          @mouseleave="hoverId = null"
           @dblclick="onRowDblClick(s)"
           @contextmenu.prevent="onRight($event, s.id)"
         >
           <td><span class="cb" :class="{ checked: store.selectedIds.includes(s.id) }" @click.stop="store.toggleSelect(s.id)"></span></td>
-          <td :class="{ 'name-dead': s.status === 'dead' }">{{ s.name }}</td>
+          <td :class="{ 'name-dead': s.status === 'dead' }"><span v-if="hoverId === s.id" class="dots" @click.stop="onRowDots($event, s.id)">⋯</span> {{ s.name }}</td>
           <td class="muted">{{ s.url }}</td>
           <td class="muted">{{ s.categoryId }}</td>
           <td><span v-for="t in s.tags" :key="t" class="chip">{{ t }}</span></td>
