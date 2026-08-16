@@ -11,10 +11,13 @@ import ImportExportModal from './components/ImportExportModal.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import PickCategoryModal from './components/PickCategoryModal.vue'
 import AddTagsModal from './components/AddTagsModal.vue'
+import FirstLaunchModal from './components/FirstLaunchModal.vue'
 import type { Site } from './types'
+import * as api from './api'
 
 const store = useAppStore()
 const modal = ref<'' | 'add' | 'import' | 'settings'>('')
+const firstLaunch = ref(false)
 const editing = ref<Site | undefined>()
 const pickIds = ref<string[]>([])
 const tagIds = ref<string[]>([])
@@ -27,7 +30,11 @@ function onKey(e: KeyboardEvent) {
   tagIds.value = []
   store.clearSelection()
 }
-onMounted(() => { document.addEventListener('keydown', onKey); store.init() })
+onMounted(async () => {
+  document.addEventListener('keydown', onKey)
+  await store.init()
+  firstLaunch.value = !(await api.hasConfig())
+})
 onUnmounted(() => document.removeEventListener('keydown', onKey))
 </script>
 
@@ -47,6 +54,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
     <SettingsModal v-if="modal === 'settings'" @close="modal = ''" />
     <PickCategoryModal v-if="pickIds.length" :site-ids="pickIds" @close="pickIds = []" />
     <AddTagsModal v-if="tagIds.length" :site-ids="tagIds" @close="tagIds = []" />
+    <FirstLaunchModal v-if="firstLaunch" @close="firstLaunch = false" />
   </div>
 </template>
 
