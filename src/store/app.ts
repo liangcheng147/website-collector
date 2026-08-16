@@ -179,5 +179,6 @@ export const useAppStore = defineStore('app', {
       else this.selectedIds.push(id)
     },
     clearSelection() { this.selectedIds = [] },
+    deleteSelected() { this.deleteSites([...this.selectedIds]) },
   },
 })

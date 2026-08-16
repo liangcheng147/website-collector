@@ -11,3 +11,28 @@ html, body, #app { height: 100%; }
 body { font-family: var(--font); font-size: 12px; line-height: 1.6; color: var(--text); background: var(--bg); }
 button { font-family: var(--font); cursor: pointer; }
 .app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+.site-table { width: 100%; border-collapse: collapse; background: var(--panel); border: 2px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+.site-table th { text-align: left; padding: 6px 10px; border-bottom: 2px solid var(--border); color: var(--text-2); font-size: 11px; }
+.site-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); }
+.site-table tr:last-child td { border-bottom: none; }
+.site-table tr:hover td { background: rgba(122, 92, 255, 0.06); }
+.row-selected td { background: rgba(122, 92, 255, 0.14); }
+.cb { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); background: var(--bg); cursor: pointer; }
+.cb.checked { background: var(--primary); box-shadow: inset 0 0 0 3px var(--bg); }
+.name-dead { color: var(--danger); text-decoration: line-through; }
+.muted { color: var(--text-2); font-size: 11px; }
+.chip { display: inline-block; background: var(--primary); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: var(--radius-pill); margin-right: 4px; }
+.ok { color: var(--ok); } .dead { color: var(--danger); } .pending { color: var(--pending); }
+.table-wrap { position: relative; }
+.batchbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel); border: 2px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 8px; }
+.batchbar b { color: var(--primary); }
+.btn { background: var(--primary); color: #fff; border: none; padding: 3px 10px; border-radius: var(--radius); box-shadow: 2px 2px 0 var(--border); }
+.btn:hover { filter: brightness(1.1); }
+.btn.danger { background: var(--danger); }
+.ctx { position: fixed; z-index: 100; background: var(--panel); border: 2px solid var(--border); border-radius: var(--radius-lg); box-shadow: 3px 3px 0 var(--border); min-width: 130px; }
+.ctx-item { display: block; width: 100%; text-align: left; background: none; border: none; padding: 6px 12px; color: var(--text); }
+.ctx-item:hover { background: var(--primary); color: #fff; }
+.ctx-item.danger { color: var(--danger); }
+.ctx-item.danger:hover { background: var(--danger); color: #fff; }
+.menu-mask { position: fixed; inset: 0; z-index: 99; }
+.empty { padding: 30px; text-align: center; color: var(--text-2); }
