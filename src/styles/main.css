@@ -29,6 +29,7 @@ input:focus, select:focus, textarea:focus { outline:none; border-color:var(--pri
 .sidebar .row.dead, .sidebar .row.trash { color:var(--danger); }
 .statusbar { display:flex; gap:14px; padding:5px 12px; background:var(--panel); border-top:3px solid var(--primary); font-size:10px; color:var(--primary); }
 .statusbar .bad { color:var(--danger); font-weight:700; }
+.statusbar .pending-hint { color:#A36A00; font-weight:700; }
 .site-table { width:100%; border-collapse:collapse; }
 .site-table th { text-align:left; padding:4px 8px; color:var(--text-2); border-bottom:2px solid var(--primary); font-size:11px; }
 .site-table td { padding:4px 8px; border-bottom:1px solid var(--panel); }

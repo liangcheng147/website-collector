@@ -24,6 +24,7 @@ export const useAppStore = defineStore('app', {
     selectedIds: [] as string[],
     checking: false,
     progress: { done: 0, total: 0 },
+    connectivityError: false,
   }),
   getters: {
     filteredSites(state): Site[] {
@@ -46,6 +47,10 @@ export const useAppStore = defineStore('app', {
       return list
     },
     deadCount(state) { return state.data.sites.filter(s => s.status === 'dead').length },
+    lastCheckTime(state) {
+      const times = state.data.sites.map(s => s.lastCheck).filter(Boolean) as string[]
+      return times.length ? new Date(Math.max(...times.map(t => +new Date(t)))).toLocaleString() : '—'
+    },
     trashedSites(state): TrashedSite[] { return state.data.recycleBin },
     flatCategories(): { id: string; name: string; depth: number }[] {
       const out: { id: string; name: string; depth: number }[] = []
@@ -192,17 +197,21 @@ export const useAppStore = defineStore('app', {
 
     async checkAll() {
       if (this.checking) return
-      if (!(await api.checkConnectivity())) { this.view = { kind: 'dead' }; return }
+      if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
+      this.connectivityError = false
       this.checking = true
       this.progress = { done: 0, total: this.data.sites.length }
-      for (const s of [...this.data.sites]) {
-        const r = await api.checkSite(s.url)
-        s.status = r.status
-        s.lastCheck = new Date().toISOString()
-        this.progress.done++
-        this.persist()
+      try {
+        for (const s of [...this.data.sites]) {
+          const r = await api.checkSite(s.url)
+          s.status = r.status
+          s.lastCheck = new Date().toISOString()
+          this.progress.done++
+          this.persist()
+        }
+      } finally {
+        this.checking = false
       }
-      this.checking = false
     },
 
     async checkOne(id: string) {
@@ -216,18 +225,22 @@ export const useAppStore = defineStore('app', {
 
     async checkSelected() {
       if (this.checking) return
-      if (!(await api.checkConnectivity())) { this.view = { kind: 'dead' }; return }
+      if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
+      this.connectivityError = false
       this.checking = true
       const ids = [...this.selectedIds]
       this.progress = { done: 0, total: ids.length }
-      for (const id of ids) {
-        const s = this.data.sites.find(x => x.id === id)
-        if (s) { const r = await api.checkSite(s.url); s.status = r.status; s.lastCheck = new Date().toISOString() }
-        this.progress.done++
-        this.persist()
+      try {
+        for (const id of ids) {
+          const s = this.data.sites.find(x => x.id === id)
+          if (s) { const r = await api.checkSite(s.url); s.status = r.status; s.lastCheck = new Date().toISOString() }
+          this.progress.done++
+          this.persist()
+        }
+      } finally {
+        this.checking = false
+        this.clearSelection()
       }
-      this.checking = false
-      this.clearSelection()
     },
   },
 })

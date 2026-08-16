@@ -146,4 +146,15 @@ describe('app store', () => {
     await s.checkAll()
     expect(api.checkConnectivity).not.toHaveBeenCalled()
   })
+
+  it('checkAll aborts when offline', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.sites.forEach(x => x.status = 'unknown') // baseData 状态不全是 unknown，先归位再验证未误标
+    vi.mocked(api.checkConnectivity).mockResolvedValue(false)
+    await s.checkAll()
+    expect(s.checking).toBe(false)
+    expect(s.data.sites.every(x => x.status === 'unknown')).toBe(true) // 未误标
+    expect(s.connectivityError).toBe(true)
+  })
 })
