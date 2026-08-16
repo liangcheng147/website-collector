@@ -248,7 +248,7 @@ git commit -m "feat: Rust 数据模型与 JSON 持久化（含损坏备份）"
   - `pub fn normalize_url(raw: &str) -> String`（无协议自动补 `https://`）
   - `pub fn root_url(raw: &str) -> String`（取协议+域名，去路径）
   - `pub async fn check_connectivity() -> bool`（GET https://example.com 超时 5s，成功 true）
-  - `pub async fn check_site(url: &str) -> CheckResult`（先测原链接，失败降级测根域名；最终 2xx/3xx=ok）
+  - `pub async fn check_site(url: &str) -> CheckResult`（先测原链接；原链接 2xx/3xx=ok，否则（含 404/403/5xx、超时、网络错误）降级测根域名；根域名也非 ok 才标 dead）
 
 - [ ] **Step 1: 写失败测试**
 
@@ -342,7 +342,10 @@ pub async fn check_connectivity() -> bool {
 pub async fn check_site(url: &str) -> CheckResult {
     let c = client();
     let full = normalize_url(url);
-    if let Some(r) = probe(&c, &full).await { return r; }
+    if let Some(r) = probe(&c, &full).await {
+        if r.status == "ok" { return r; }
+    }
+    // 原链接 404/403/5xx、超时或网络错误 → 降级测根域名（PRD: 避免子页面 404 误标）
     let root = root_url(url);
     if root != full {
         if let Some(r) = probe(&c, &root).await { return r; }
