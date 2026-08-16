@@ -4,7 +4,10 @@ import { useAppStore } from './app'
 vi.mock('../api', () => ({
   saveData: vi.fn().mockResolvedValue(undefined),
   loadData: vi.fn().mockResolvedValue(undefined),
+  checkConnectivity: vi.fn().mockResolvedValue(true),
+  checkSite: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
 }))
+import * as api from '../api'
 import type { AppData, Site } from '../types'
 
 function makeSite(id: string, status: Site['status'], tags: string[]): Site {
@@ -29,6 +32,7 @@ describe('app store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     baseData = makeData()
+    vi.clearAllMocks()
   })
 
   it('all view returns all sites', () => {
@@ -122,5 +126,24 @@ describe('app store', () => {
     s.addTagsToSites(['a', 'b'], ['新标签'])
     expect(s.data.sites[0].tags).toContain('新标签')
     expect(s.data.sites[1].tags).toContain('新标签')
+  })
+
+  it('checkAll updates statuses and progress', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    vi.mocked(api.checkSite).mockResolvedValue({ status: 'dead', usedUrl: 'https://x.dev' })
+    await s.checkAll()
+    expect(s.data.sites.every(x => x.status === 'dead')).toBe(true)
+    expect(s.progress.done).toBe(s.progress.total)
+    expect(s.checking).toBe(false)
+  })
+
+  it('checkAll skips when already checking', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.checking = true
+    await s.checkAll()
+    expect(api.checkConnectivity).not.toHaveBeenCalled()
   })
 })

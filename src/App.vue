@@ -5,6 +5,7 @@ import TopBar from './components/TopBar.vue'
 import Sidebar from './components/Sidebar.vue'
 import SiteTable from './components/SiteTable.vue'
 import StatusBar from './components/StatusBar.vue'
+import RecycleView from './components/RecycleView.vue'
 import AddEditModal from './components/AddEditModal.vue'
 import ImportExportModal from './components/ImportExportModal.vue'
 import SettingsModal from './components/SettingsModal.vue'
@@ -20,10 +21,13 @@ onMounted(() => { store.init() })
 
 <template>
   <div class="app">
-    <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" />
+    <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" />
     <div class="body">
       <Sidebar />
-      <main class="content"><SiteTable @edit="openEdit" /></main>
+      <main class="content">
+        <RecycleView v-if="store.view.kind === 'recycle'" />
+        <SiteTable v-else @edit="openEdit" @check-site="(ids: string[]) => ids.length === 1 ? store.checkOne(ids[0]) : store.checkSelected()" />
+      </main>
     </div>
     <StatusBar />
     <AddEditModal v-if="modal === 'add'" :editing="editing" @close="modal = ''" />

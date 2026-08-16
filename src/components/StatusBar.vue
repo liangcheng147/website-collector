@@ -8,5 +8,6 @@ const store = useAppStore()
     <span>共 {{ store.data.sites.length }} 个网站</span>
     <span class="bad">失效 {{ store.deadCount }}</span>
     <span>未检测 {{ store.data.sites.filter(s => s.status === 'unknown').length }}</span>
+    <span v-if="store.checking">检测中 {{ store.progress.done }}/{{ store.progress.total }}</span>
   </footer>
 </template>

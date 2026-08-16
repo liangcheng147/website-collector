@@ -189,5 +189,45 @@ export const useAppStore = defineStore('app', {
     },
     clearSelection() { this.selectedIds = [] },
     deleteSelected() { this.deleteSites([...this.selectedIds]) },
+
+    async checkAll() {
+      if (this.checking) return
+      if (!(await api.checkConnectivity())) { this.view = { kind: 'dead' }; return }
+      this.checking = true
+      this.progress = { done: 0, total: this.data.sites.length }
+      for (const s of [...this.data.sites]) {
+        const r = await api.checkSite(s.url)
+        s.status = r.status
+        s.lastCheck = new Date().toISOString()
+        this.progress.done++
+        this.persist()
+      }
+      this.checking = false
+    },
+
+    async checkOne(id: string) {
+      const s = this.data.sites.find(x => x.id === id)
+      if (!s) return
+      const r = await api.checkSite(s.url)
+      s.status = r.status
+      s.lastCheck = new Date().toISOString()
+      this.persist()
+    },
+
+    async checkSelected() {
+      if (this.checking) return
+      if (!(await api.checkConnectivity())) { this.view = { kind: 'dead' }; return }
+      this.checking = true
+      const ids = [...this.selectedIds]
+      this.progress = { done: 0, total: ids.length }
+      for (const id of ids) {
+        const s = this.data.sites.find(x => x.id === id)
+        if (s) { const r = await api.checkSite(s.url); s.status = r.status; s.lastCheck = new Date().toISOString() }
+        this.progress.done++
+        this.persist()
+      }
+      this.checking = false
+      this.clearSelection()
+    },
   },
 })
