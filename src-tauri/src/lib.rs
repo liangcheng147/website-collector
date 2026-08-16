@@ -23,6 +23,7 @@ pub fn run() {
             commands::load_data,
             commands::save_data,
             commands::migrate_data_dir,
+            commands::get_data_file_path,
             commands::check_site_cmd,
             commands::check_connectivity_cmd,
             commands::export_md_cmd,

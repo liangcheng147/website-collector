@@ -51,17 +51,23 @@ pub fn save_data(app: tauri::AppHandle, data: data::AppData) -> Result<(), Strin
 
 #[tauri::command]
 pub fn migrate_data_dir(app: tauri::AppHandle, new_dir: String) -> Result<(), String> {
+    let base = data_dir(&app);
     let from = active_data_dir(&app);
+    let to = std::path::PathBuf::from(&new_dir);
+    data::ensure_empty_or_create(&to)?;
     let src = data::data_file_path(&from);
-    let to_dir = std::path::PathBuf::from(&new_dir);
-    std::fs::create_dir_all(&to_dir).map_err(|e| e.to_string())?;
-    let dst = to_dir.join("websites.json");
-    if src.exists() {
-        std::fs::rename(&src, &dst).map_err(|e| e.to_string())?;
+    let dst = data::data_file_path(&to);
+    data::move_data_file(&src, &dst)?;
+    if let Err(e) = config::write_data_dir(&base, &new_dir) {
+        let _ = data::move_data_file(&dst, &src); // 回滚文件移动
+        return Err(format!("写入配置失败，已回滚：{}", e));
     }
-    let cfg = serde_json::json!({ "dataDir": new_dir });
-    std::fs::write(config::config_path(&data_dir(&app)), serde_json::to_string_pretty(&cfg).unwrap())
-        .map_err(|e| e.to_string())
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_data_file_path(app: tauri::AppHandle) -> String {
+    data::data_file_path(&active_data_dir(&app)).to_string_lossy().to_string()
 }
 
 #[tauri::command]
