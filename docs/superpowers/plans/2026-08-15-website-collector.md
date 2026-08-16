@@ -494,10 +494,11 @@ pub fn import_from_md(text: &str) -> AppData {
                     let url = tail[us + 1..ue].trim().to_string();
                     let category_id = heading_stack.last().map(|&(_, i)| format!("c{}", i));
                     sites.push(Site {
-                        id: format!("s{}", site_seq), site_seq += 1,
+                        id: format!("s{}", site_seq),
                         name, url, category_id,
                         tags: vec![], status: "unknown".into(), last_check: None,
                     });
+                    site_seq += 1;
                 }
             }
         }
