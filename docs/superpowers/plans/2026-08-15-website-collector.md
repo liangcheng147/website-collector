@@ -1075,7 +1075,7 @@ function setView(kind: any, id?: string) { store.view = { kind, id } }
 </template>
 ```
 
-> 说明：分类树最多 3 层，第一版侧栏按固定两级（顶级+二级）展开渲染即可满足 ≤3 层的最常见使用；如需第三层在 Task 8 用递归组件补足。
+> 说明：分类树最多 3 层，第一版侧栏按固定两级（顶级+二级）展开渲染；第三层递归由 Task 9 的 `CategoryNode.vue` 补足（用户裁决全层级支持）。
 
 - [ ] **Step 5: 实现 SiteTable.vue（初版：展示 filteredSites；交互 Task 8）**
 
@@ -1527,13 +1527,15 @@ git commit -m "feat: 表格多选/右键菜单/双击编辑"
 ### Task 9: 添加/编辑弹窗与导入导出/设置弹窗
 
 **Files:**
-- Create: `src/components/AddEditModal.vue`、`src/components/ImportExportModal.vue`、`src/components/SettingsModal.vue`
-- Modify: `src/App.vue`（挂弹窗与事件）
+- Create: `src/components/AddEditModal.vue`、`src/components/ImportExportModal.vue`、`src/components/SettingsModal.vue`、`src/components/CategoryNode.vue`
+- Modify: `src/App.vue`（挂弹窗与事件）、`src/store/app.ts`（补 `flatCategories` getter）、`src/components/Sidebar.vue`（第三层递归）
 - Test: 手动验证
 
 **Interfaces:**
-- Consumes: store `addSite/updateSite/isDuplicateUrl`、`api.exportMd/importMd/getDataDir/migrateDataDir`、`api`（导入调用 `importMd(text, mode)`）
-- Produces: 弹窗组件；App 层 `showModal` 状态
+- Consumes: store `addSite/updateSite/isDuplicateUrl/flatCategories`、`api.exportMd/importMd/getDataDir/migrateDataDir`、`api`（导入调用 `importMd(text, mode)`）
+- Produces: 弹窗组件；App 层 `showModal` 状态；`CategoryNode` 递归组件
+
+> 用户裁决（2026-08-16）：**全层级支持**。分类下拉（添加/编辑/移动）必须能选 1-3 层任意分类；侧栏分类树递归渲染第三层。实现方式：store 加 `flatCategories` getter（扁平化带 depth），下拉用全角空格按 depth 缩进；侧栏用 `CategoryNode` 递归组件。
 
 - [ ] **Step 1: 实现 AddEditModal.vue**
 
@@ -1571,7 +1573,7 @@ function save() {
       <label>分类</label>
       <select v-model="categoryId">
         <option :value="null">未分类</option>
-        <option v-for="c in store.data.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+        <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
       </select>
       <label>标签（空格分隔）</label><input v-model="tags" placeholder="框架 工具" />
       <p v-if="dup" class="err">⚠ 链接已存在</p>
@@ -1654,7 +1656,50 @@ async function migrate() {
 </template>
 ```
 
-- [ ] **Step 4: 挂载弹窗到 App.vue**
+- [ ] **Step 4: store 加 `flatCategories` getter（全层级下拉用）**
+
+在 `src/store/app.ts` getters 末尾追加：
+```ts
+flatCategories(): { id: string; name: string; depth: number }[] {
+  const out: { id: string; name: string; depth: number }[] = []
+  const walk = (list: any[], depth: number) => {
+    for (const c of list) { out.push({ id: c.id, name: c.name, depth }); walk(c.children, depth + 1) }
+  }
+  walk(this.data.categories, 0)
+  return out
+},
+```
+
+- [ ] **Step 5: Sidebar 改递归渲染第三层**
+
+Create `src/components/CategoryNode.vue`：
+```vue
+<script setup lang="ts">
+import { useAppStore } from '../store/app'
+const store = useAppStore()
+defineProps<{ cat: any; depth: number }>()
+function setView(kind: any, id?: string) { store.view = { kind, id } }
+</script>
+
+<template>
+  <div>
+    <div class="row sub" :class="{ active: store.view.kind === 'category' && store.view.id === cat.id }"
+         :style="{ paddingLeft: (12 + depth * 14) + 'px' }" @click="setView('category', cat.id)">
+      {{ cat.name }}
+    </div>
+    <CategoryNode v-for="cc in cat.children" :key="cc.id" :cat="cc" :depth="depth + 1" />
+  </div>
+</template>
+```
+
+修改 `src/components/Sidebar.vue`：script 加 `import CategoryNode from './CategoryNode.vue'`；模板中把两层硬编码的分类树替换为：
+```vue
+<div class="group-label">分类</div>
+<div class="row" :class="{ active: store.view.kind === 'all' }" @click="setView('all')">全部 <span class="cnt">{{ store.data.sites.length }}</span></div>
+<CategoryNode v-for="c in store.data.categories" :key="c.id" :cat="c" :depth="0" />
+```
+
+- [ ] **Step 6: 挂载弹窗到 App.vue**
 
 ```vue
 <script setup lang="ts">
@@ -1696,13 +1741,13 @@ function openEdit(site: Site) { editing.value = site; modal.value = 'add' }
 - [ ] **Step 5: 手动验证**
 
 Run: `npm run tauri dev`
-Check: 顶栏"＋添加"弹窗可保存；双击表格行弹编辑；重复链接保存被拦；导入/导出弹窗可用；设置显示路径。
+Check: 顶栏"＋添加"弹窗可保存；双击表格行弹编辑；重复链接保存被拦；导入/导出弹窗可用；设置显示路径；分类下拉出现 1-3 层全部分类（缩进显示）；侧栏显示三层分类树。
 
 - [ ] **Step 6: 提交**
 
 ```bash
-git add src/components/AddEditModal.vue src/components/ImportExportModal.vue src/components/SettingsModal.vue src/App.vue
-git commit -m "feat: 添加/编辑/导入导出/设置弹窗"
+git add src/components/AddEditModal.vue src/components/ImportExportModal.vue src/components/SettingsModal.vue src/components/CategoryNode.vue src/App.vue src/store/app.ts src/components/Sidebar.vue
+git commit -m "feat: 添加/编辑/导入导出/设置弹窗，全层级分类下拉与侧栏三层树"
 ```
 
 ---
@@ -1871,7 +1916,7 @@ function confirm() { store.moveSites(props.siteIds, target.value); emit('close')
       <h3>移动分类（{{ props.siteIds.length }} 项）</h3>
       <select v-model="target">
         <option :value="null">未分类</option>
-        <option v-for="c in store.data.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+        <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
       </select>
       <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="confirm">移动</button></div>
     </div>
