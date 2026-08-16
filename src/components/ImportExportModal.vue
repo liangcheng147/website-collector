@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import ModalMask from './ModalMask.vue'
 import { useAppStore } from '../store/app'
 import * as api from '../api'
 const store = useAppStore()
@@ -58,7 +59,7 @@ async function confirmJsonImport() {
 </script>
 
 <template>
-  <div class="modal-mask" @click.self="emit('close')">
+  <ModalMask @close="emit('close')">
     <div class="modal">
       <h3>导入 / 导出</h3>
       <template v-if="jsonPath">
@@ -86,5 +87,5 @@ async function confirmJsonImport() {
       <p class="muted">{{ msg }}</p>
       <div class="actions"><button class="btn" @click="emit('close')">关闭</button></div>
     </div>
-  </div>
+  </ModalMask>
 </template>

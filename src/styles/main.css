@@ -36,7 +36,7 @@ input:focus, select:focus, textarea:focus { outline:none; border-color:var(--pri
 .dots { cursor:pointer; color:var(--text-2); font-weight:700; letter-spacing:1px; user-select:none; }
 .dots:hover { color:var(--primary); }
 .site-table tr:hover { background:#FFF2F7; }
-.site-table .row-selected { background:#E6DBFF; }
+.site-table tr.row-selected, .site-table tr.row-selected:hover { background:#E6DBFF; }
 .site-table .muted { color:var(--text-2); }
 .site-table .name-dead { color:var(--danger); font-weight:700; }
 .site-table .ok { color:var(--ok); }

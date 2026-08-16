@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import ModalMask from './ModalMask.vue'
 import * as api from '../api'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
@@ -48,7 +49,7 @@ async function useDefault() {
 </script>
 
 <template>
-  <div class="modal-mask" @click.self="emit('close')">
+  <ModalMask @close="emit('close')">
     <div class="modal">
       <h3>选择数据目录</h3>
       <template v-if="step === 'choose'">
@@ -67,5 +68,5 @@ async function useDefault() {
       </template>
       <p class="muted">{{ msg }}</p>
     </div>
-  </div>
+  </ModalMask>
 </template>

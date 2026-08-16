@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import ModalMask from './ModalMask.vue'
 import * as api from '../api'
 const emit = defineEmits(['close'])
 const dir = ref('')
@@ -24,7 +25,7 @@ async function migrate() {
 </script>
 
 <template>
-  <div class="modal-mask" @click.self="emit('close')">
+  <ModalMask @close="emit('close')">
     <div class="modal">
       <h3>设置 · 存储位置</h3>
       <p class="muted">数据文件：{{ filePath }}</p>
@@ -32,5 +33,5 @@ async function migrate() {
       <p class="muted">{{ msg }}</p>
       <div class="actions"><button class="btn" @click="emit('close')">关闭</button></div>
     </div>
-  </div>
+  </ModalMask>
 </template>

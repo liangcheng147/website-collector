@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import ModalMask from './ModalMask.vue'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
 const props = defineProps<{ siteIds: string[] }>()
@@ -9,7 +10,7 @@ function confirm() { store.moveSites(props.siteIds, target.value); emit('close')
 </script>
 
 <template>
-  <div class="modal-mask" @click.self="emit('close')">
+  <ModalMask @close="emit('close')">
     <div class="modal">
       <h3>移动分类（{{ props.siteIds.length }} 项）</h3>
       <select v-model="target">
@@ -18,5 +19,5 @@ function confirm() { store.moveSites(props.siteIds, target.value); emit('close')
       </select>
       <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="confirm">移动</button></div>
     </div>
-  </div>
+  </ModalMask>
 </template>

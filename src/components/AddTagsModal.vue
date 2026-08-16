@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import ModalMask from './ModalMask.vue'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
 const props = defineProps<{ siteIds: string[] }>()
@@ -13,11 +14,11 @@ function confirm() {
 </script>
 
 <template>
-  <div class="modal-mask" @click.self="emit('close')">
+  <ModalMask @close="emit('close')">
     <div class="modal">
       <h3>添加标签（{{ props.siteIds.length }} 项）</h3>
       <input v-model="tags" placeholder="新标签，空格分隔" />
       <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="confirm">添加</button></div>
     </div>
-  </div>
+  </ModalMask>
 </template>

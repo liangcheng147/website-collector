@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import ModalMask from './ModalMask.vue'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
 const props = defineProps<{ editing?: any }>()
@@ -23,7 +24,7 @@ function save() {
 </script>
 
 <template>
-  <div class="modal-mask" @click.self="emit('close')">
+  <ModalMask @close="emit('close')">
     <div class="modal">
       <h3>{{ props.editing ? '编辑网站' : '添加网站' }}</h3>
       <label>名称</label><input v-model="name" placeholder="网站名称" />
@@ -37,5 +38,5 @@ function save() {
       <p v-if="dup" class="err">⚠ 链接已存在</p>
       <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="save">保存</button></div>
     </div>
-  </div>
+  </ModalMask>
 </template>
