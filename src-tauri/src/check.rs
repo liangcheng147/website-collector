@@ -45,7 +45,10 @@ pub async fn check_connectivity() -> bool {
 pub async fn check_site(url: &str) -> CheckResult {
     let c = client();
     let full = normalize_url(url);
-    if let Some(r) = probe(&c, &full).await { return r; }
+    if let Some(r) = probe(&c, &full).await {
+        if r.status == "ok" { return r; }
+    }
+    // 原链接 404/403/5xx、超时或网络错误 → 降级测根域名（PRD: 避免子页面 404 误标）
     let root = root_url(url);
     if root != full {
         if let Some(r) = probe(&c, &root).await { return r; }
@@ -72,6 +75,35 @@ mod tests {
     #[test]
     fn root_on_bare_domain() {
         assert_eq!(root_url("react.dev"), "https://react.dev");
+    }
+
+    #[test]
+    fn falls_back_to_root_on_404() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            use std::io::{BufRead, Write};
+            for _ in 0..2 {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
+                    let mut line = String::new();
+                    let _ = reader.read_line(&mut line);
+                    let not_found = line.contains("/sub");
+                    let (status, body) = if not_found { ("404 Not Found", "not found") } else { ("200 OK", "ok") };
+                    let resp = format!(
+                        "HTTP/1.1 {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        status, body.len(), body
+                    );
+                    let _ = stream.write_all(resp.as_bytes());
+                }
+            }
+        });
+        let url = format!("http://{}/sub", addr);
+        let res = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            check_site(&url).await
+        });
+        assert_eq!(res.status, "ok");
+        assert_eq!(res.used_url, format!("http://{}", addr));
     }
 
     #[test]
