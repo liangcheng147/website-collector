@@ -138,6 +138,14 @@ describe('app store', () => {
     expect(s.data.sites[1].tags).toContain('新标签')
   })
 
+  it('addCategory returns new id and appends under parent', () => {
+    const s = useAppStore()
+    s.data = baseData
+    const id = s.addCategory('子分类', 'c1')
+    expect(id).toMatch(/^id_/)
+    expect(s.data.categories[0].children.some(c => c.id === id)).toBe(true)
+  })
+
   it('checkAll updates statuses and progress', async () => {
     const s = useAppStore()
     s.data = baseData

@@ -129,7 +129,7 @@ export const useAppStore = defineStore('app', {
       this.persist()
     },
 
-    addCategory(name: string, parentId: string | null) {
+    addCategory(name: string, parentId: string | null): string {
       const node = { id: this.id_gen(), name, children: [] as any[] }
       if (parentId == null) this.data.categories.push(node)
       else {
@@ -143,6 +143,7 @@ export const useAppStore = defineStore('app', {
         walk(this.data.categories)
       }
       this.persist()
+      return node.id
     },
 
     renameCategory(id: string, name: string) {
