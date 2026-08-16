@@ -1162,6 +1162,24 @@ git commit -m "feat: 布局骨架（顶栏/侧栏/表格/状态栏）与基础�
 
 - [ ] **Step 1: 追加失败测试**
 
+> 注意：baseData 是共享可变对象，新增测试会互相污染（如 addSite 会永久改 baseData.sites）。因此把 fixture 改为工厂函数并在 beforeEach 重置：
+> ```ts
+> const makeData = (): AppData => ({
+>   version: 1,
+>   categories: [{ id: 'c1', name: '开发', children: [{ id: 'c2', name: '前端', children: [] }] }],
+>   sites: [
+>     makeSite('a', 'ok', ['框架']),
+>     makeSite('b', 'dead', ['框架']),
+>     makeSite('c', 'unknown', ['工具']),
+>   ],
+>   recycleBin: [],
+>   tags: ['框架', '工具'],
+> })
+> let baseData: AppData = makeData()
+> // beforeEach 内：setActivePinia(createPinia()); baseData = makeData()
+> ```
+> 原有 5 个测试用例的 `const baseData: AppData = {...}` 定义需相应替换为上述工厂 + `let baseData`。
+
 ```ts
 it('addSite persists and dedups tags', async () => {
   const s = useAppStore()
@@ -1193,7 +1211,8 @@ it('restoreSite returns to sites', () => {
 it('deleteCategory move-to-uncategorized clears categoryId', () => {
   const s = useAppStore()
   s.data = baseData
-  s.deleteCategory('c2', 'move-to-uncategorized')
+  // baseData 站点都挂在 c1 下，删除 c1 应清空其站点 categoryId
+  s.deleteCategory('c1', 'move-to-uncategorized')
   expect(s.data.sites[0].categoryId).toBeNull()
 })
 
