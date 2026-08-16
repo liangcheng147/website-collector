@@ -14,7 +14,7 @@ async function exportMd() {
   const { save } = await import('@tauri-apps/plugin-dialog')
   const path = await save({ defaultPath: `网站收藏_${dateStr()}.md`, filters: [{ name: 'Markdown', extensions: ['md'] }] })
   if (!path) return
-  try { await api.exportMdToFile(String(path)); msg.value = '已导出 md'; emit('close') }
+  try { await api.exportMdToFile(String(path)); store.flash('已导出 md'); emit('close') }
   catch (e) { msg.value = '导出失败：' + e }
 }
 
@@ -22,7 +22,7 @@ async function exportJson() {
   const { save } = await import('@tauri-apps/plugin-dialog')
   const path = await save({ defaultPath: `网站收藏_${dateStr()}.json`, filters: [{ name: 'JSON', extensions: ['json'] }] })
   if (!path) return
-  try { await api.exportJsonToFile(String(path)); msg.value = '已导出 JSON 备份'; emit('close') }
+  try { await api.exportJsonToFile(String(path)); store.flash('已导出 JSON 备份'); emit('close') }
   catch (e) { msg.value = '导出失败：' + e }
 }
 
@@ -33,7 +33,7 @@ async function importMd() {
   try {
     const data = await api.importMdFromFile(String(path), mode.value)
     store.setData(data)
-    msg.value = mode.value === 'overwrite' ? '已覆盖导入 md' : '已合并导入 md'
+    store.flash(mode.value === 'overwrite' ? '已覆盖导入 md' : '已合并导入 md')
     emit('close')
   } catch (e) { msg.value = '导入失败：' + e }
 }
@@ -51,7 +51,7 @@ async function confirmJsonImport() {
   try {
     const data = await api.importJsonFromFile(p)
     store.setData(data)
-    msg.value = '已从 JSON 备份恢复'
+    store.flash('已从 JSON 备份恢复')
     emit('close')
   } catch (e) { msg.value = '导入失败：' + e }
 }

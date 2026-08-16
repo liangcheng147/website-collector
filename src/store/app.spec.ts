@@ -42,6 +42,16 @@ describe('app store', () => {
     expect(s.filteredSites).toHaveLength(3)
   })
 
+  it('flash sets message and auto-clears', () => {
+    vi.useFakeTimers()
+    const s = useAppStore()
+    s.flash('已导出 md')
+    expect(s.flashMsg).toBe('已导出 md')
+    vi.advanceTimersByTime(2600)
+    expect(s.flashMsg).toBe('')
+    vi.useRealTimers()
+  })
+
   it('dead view returns only dead', () => {
     const s = useAppStore()
     s.data = baseData

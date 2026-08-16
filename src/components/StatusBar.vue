@@ -11,5 +11,6 @@ const store = useAppStore()
     <span>上次检测 {{ store.lastCheckTime }}</span>
     <span v-if="store.checking">检测中 {{ store.progress.done }}/{{ store.progress.total }}</span>
     <span v-if="store.connectivityError" class="pending-hint">⚠ 网络似乎断开，检测已中止</span>
+    <span v-if="store.flashMsg" class="pending-hint">{{ store.flashMsg }}</span>
   </footer>
 </template>
