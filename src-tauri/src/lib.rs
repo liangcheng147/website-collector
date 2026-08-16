@@ -1,5 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod check;
+mod commands;
 mod data;
 mod md;
 
@@ -12,7 +13,17 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            commands::get_data_dir,
+            commands::load_data,
+            commands::save_data,
+            commands::migrate_data_dir,
+            commands::check_site_cmd,
+            commands::check_connectivity_cmd,
+            commands::export_md_cmd,
+            commands::import_md_cmd,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
