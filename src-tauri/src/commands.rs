@@ -1,23 +1,37 @@
-use crate::{check, data, md};
+use crate::{check, config, data, md};
 use tauri::Manager;
 
 fn data_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
     app.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
 }
 
-fn config_path(app: &tauri::AppHandle) -> std::path::PathBuf {
-    data_dir(app).join("config.json")
+fn active_data_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
+    config::read_data_dir(&data_dir(app)).map(std::path::PathBuf::from).unwrap_or_else(|| data_dir(app))
 }
 
-fn active_data_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
-    if let Ok(s) = std::fs::read_to_string(config_path(app)) {
-        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&s) {
-            if let Some(dir) = v.get("dataDir").and_then(|d| d.as_str()) {
-                return std::path::PathBuf::from(dir);
-            }
-        }
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProbeResult { pub exists: bool, pub site_count: u32 }
+
+#[tauri::command]
+pub fn has_config(app: tauri::AppHandle) -> bool {
+    config::exists(&data_dir(&app))
+}
+
+#[tauri::command]
+pub fn set_data_dir(app: tauri::AppHandle, dir: String) -> Result<(), String> {
+    config::write_data_dir(&data_dir(&app), &dir)
+}
+
+#[tauri::command]
+pub fn probe_data_dir(dir: String) -> ProbeResult {
+    let p = data::data_file_path(std::path::Path::new(&dir));
+    if p.exists() {
+        let d = data::load_data(std::path::Path::new(&dir));
+        ProbeResult { exists: true, site_count: d.sites.len() as u32 }
+    } else {
+        ProbeResult { exists: false, site_count: 0 }
     }
-    data_dir(app)
 }
 
 #[tauri::command]
@@ -46,7 +60,7 @@ pub fn migrate_data_dir(app: tauri::AppHandle, new_dir: String) -> Result<(), St
         std::fs::rename(&src, &dst).map_err(|e| e.to_string())?;
     }
     let cfg = serde_json::json!({ "dataDir": new_dir });
-    std::fs::write(config_path(&app), serde_json::to_string_pretty(&cfg).unwrap())
+    std::fs::write(config::config_path(&data_dir(&app)), serde_json::to_string_pretty(&cfg).unwrap())
         .map_err(|e| e.to_string())
 }
 

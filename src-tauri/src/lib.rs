@@ -1,6 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod check;
 mod commands;
+mod config;
 mod data;
 mod md;
 
@@ -16,6 +17,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             commands::get_data_dir,
+            commands::has_config,
+            commands::set_data_dir,
+            commands::probe_data_dir,
             commands::load_data,
             commands::save_data,
             commands::migrate_data_dir,
