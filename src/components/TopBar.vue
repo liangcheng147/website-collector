@@ -5,7 +5,7 @@ const store = useAppStore()
 
 <template>
   <header class="topbar">
-    <span class="logo">◧ 网站收藏管家</span>
+    <span class="logo"><span class="lg-ic">GJ</span>归集</span>
     <input class="search" v-model="store.search" placeholder="搜索名称 / 链接 / 标签…" />
     <select v-model="store.selectedTag" class="btn">
       <option :value="null">标签筛选 ▾</option>

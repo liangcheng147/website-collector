@@ -2,7 +2,9 @@
 import { ref, onMounted } from 'vue'
 import ModalMask from './ModalMask.vue'
 import * as api from '../api'
+import { useAppStore } from '../store/app'
 const emit = defineEmits(['close'])
+const store = useAppStore()
 const filePath = ref('')
 const msg = ref('')
 onMounted(async () => { filePath.value = await api.getDataFilePath() })
@@ -24,6 +26,7 @@ async function openDir() {
         <div class="help">
           <label>存储说明</label>
           <p class="muted">数据固定存储在软件目录下 <code>./data/</code>，与软件一起，便携易备份。若安装目录无写入权限，自动回退到系统用户目录。</p>
+          <p v-if="store.location.isFallback" class="muted" style="color:var(--pending-txt)">⚠ 当前正使用系统目录（安装位置无写入权限）。</p>
         </div>
       </div>
       <p class="muted">{{ msg }}</p>
