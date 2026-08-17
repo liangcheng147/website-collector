@@ -45,17 +45,25 @@ function save() {
   <ModalMask @close="emit('close')">
     <div class="modal">
       <h3>{{ props.editing ? '编辑网站' : '添加网站' }}</h3>
-      <label>名称</label><input v-model="name" placeholder="网站名称" />
-      <label>链接</label><input v-model="url" placeholder="https://..." />
-      <label>分类</label>
-      <select v-model="categoryId" @change="onCatChange">
-        <option :value="null">未分类</option>
-        <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
-        <option :value="'__new_cat__'">＋ 新建分类…</option>
-      </select>
-      <label>标签（空格分隔）</label><input v-model="tags" placeholder="框架 工具" />
-      <p v-if="dup" class="err">⚠ 链接已存在</p>
-      <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="save">保存</button></div>
+      <div class="modal-cols">
+        <div>
+          <label>名称</label><input v-model="name" placeholder="网站名称" />
+          <label>链接</label><input v-model="url" placeholder="https://..." />
+          <label>分类</label>
+          <select v-model="categoryId" @change="onCatChange">
+            <option :value="null">未分类</option>
+            <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
+            <option :value="'__new_cat__'">＋ 新建分类…</option>
+          </select>
+          <label>标签（空格分隔）</label><input v-model="tags" placeholder="框架 工具" />
+          <p v-if="dup" class="err">⚠ 链接已存在</p>
+          <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="save">保存</button></div>
+        </div>
+        <div class="help">
+          <label>快捷操作</label>
+          <p class="muted">下拉选择「＋ 新建分类…」会弹出新建分类弹窗，创建后自动选中新分类，表单内容保留。</p>
+        </div>
+      </div>
     </div>
     <AddCategoryModal v-if="showAddCat" :parent-id="pendingCat" @created="onCatCreated" @close="showAddCat = false" />
   </ModalMask>
