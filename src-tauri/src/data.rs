@@ -14,6 +14,7 @@ pub struct Site {
     #[serde(default)] pub tags: Vec<String>,
     #[serde(default)] pub status: String,
     pub last_check: Option<String>,
+    #[serde(default)] pub note: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -110,6 +111,7 @@ pub fn merge_into(current: &mut AppData, incoming: &AppData) {
                 id: s.id.clone(), name: s.name.clone(), url: s.url.clone(),
                 category_id: target_cat, tags: s.tags.clone(),
                 status: "unknown".into(), last_check: None,
+                note: s.note.clone(),
             });
         }
     }
@@ -145,6 +147,7 @@ mod tests {
         data.sites.push(Site {
             id: "s1".into(), name: "React".into(), url: "https://react.dev".into(),
             category_id: None, tags: vec!["框架".into()], status: "ok".into(), last_check: None,
+            note: "".into(),
         });
         save_data(&d, &data).unwrap();
         let loaded = load_data(&d);
@@ -178,10 +181,10 @@ assert_eq!(loaded.sites[0].name, "React");
     fn import_json_backs_up_and_replaces() {
         let d = tmp_dir("json_bak");
         let mut data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None });
+        data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "".into() });
         save_data(&d, &data).unwrap();
         let mut fresh = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        fresh.sites.push(Site { id: "s2".into(), name: "B".into(), url: "https://b.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None });
+        fresh.sites.push(Site { id: "s2".into(), name: "B".into(), url: "https://b.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "".into() });
         let in_path = d.join("in.json");
         export_json_to_path(&fresh, &in_path).unwrap();
         let back = import_json_from_path(&d, &in_path).unwrap();
@@ -189,5 +192,42 @@ assert_eq!(loaded.sites[0].name, "React");
         assert_eq!(back.sites[0].id, "s2");
         assert!(data_file_path(&d).with_extension("json.bak").exists(), "覆盖导入应自动备份 .bak");
         let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn site_note_roundtrip() {
+        let d = tmp_dir("note_rt");
+        let mut data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        data.sites.push(Site {
+            id: "s1".into(), name: "React".into(), url: "https://react.dev".into(),
+            category_id: None, tags: vec![], status: "ok".into(), last_check: None,
+            note: "官方文档".into(),
+        });
+        save_data(&d, &data).unwrap();
+        let loaded = load_data(&d);
+        assert_eq!(loaded.sites[0].note, "官方文档");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn legacy_json_without_note_loads_empty() {
+        let d = tmp_dir("legacy_note");
+        let p = data_file_path(&d);
+        std::fs::write(&p, r#"{"version":1,"categories":[],"sites":[{"id":"s1","name":"A","url":"https://a.dev","categoryId":null,"tags":[],"status":"ok","lastCheck":null}],"recycleBin":[],"tags":[]}"#).unwrap();
+        let data = load_data(&d);
+        assert_eq!(data.sites[0].note, "");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn merge_keeps_existing_note_and_copies_new() {
+        let mut current = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        current.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "已有备注".into() });
+        let mut incoming = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        incoming.sites.push(Site { id: "x".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "incoming 备注".into() });
+        incoming.sites.push(Site { id: "y".into(), name: "B".into(), url: "https://b.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "新站点备注".into() });
+        merge_into(&mut current, &incoming);
+        assert_eq!(current.sites[0].note, "已有备注", "已存在站点保留原备注");
+        assert_eq!(current.sites[1].note, "新站点备注", "新站点拷贝备注");
     }
 }
