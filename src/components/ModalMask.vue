@@ -3,7 +3,7 @@ import { ref } from 'vue'
 const emit = defineEmits(['close'])
 const downOnMask = ref(false)
 function onMaskDown(e: MouseEvent) { downOnMask.value = (e.target as HTMLElement).classList.contains('modal-mask') }
-function onMaskClick() { if (downOnMask.value) emit('close') }
+function onMaskClick(e: MouseEvent) { if (downOnMask.value && e.target === e.currentTarget) emit('close') }
 </script>
 
 <template>
