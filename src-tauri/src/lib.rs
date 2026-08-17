@@ -18,12 +18,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             commands::get_data_dir,
-            commands::has_config,
-            commands::set_data_dir,
-            commands::probe_data_dir,
+            commands::get_data_location,
+            commands::open_data_dir,
             commands::load_data,
             commands::save_data,
-            commands::migrate_data_dir,
             commands::get_data_file_path,
             commands::check_site_cmd,
             commands::check_connectivity_cmd,
@@ -31,6 +29,10 @@ pub fn run() {
             commands::export_json_to_file,
             commands::import_md_from_file,
             commands::import_json_from_file,
+            commands::minimize_window,
+            commands::toggle_maximize_window,
+            commands::close_window,
+            commands::is_maximized,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

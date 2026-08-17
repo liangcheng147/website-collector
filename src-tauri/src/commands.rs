@@ -1,37 +1,20 @@
 use crate::{check, config, data, md};
 use tauri::Manager;
 
-fn data_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
-    app.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+fn exe_dir() -> std::path::PathBuf {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+}
+
+fn resolve(app: &tauri::AppHandle) -> (std::path::PathBuf, bool) {
+    let app_dir = app.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    config::resolve_data_dir(&exe_dir(), &app_dir, config::exe_dir_writable(&exe_dir()))
 }
 
 fn active_data_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
-    config::read_data_dir(&data_dir(app)).map(std::path::PathBuf::from).unwrap_or_else(|| data_dir(app))
-}
-
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProbeResult { pub exists: bool, pub site_count: u32 }
-
-#[tauri::command]
-pub fn has_config(app: tauri::AppHandle) -> bool {
-    config::exists(&data_dir(&app))
-}
-
-#[tauri::command]
-pub fn set_data_dir(app: tauri::AppHandle, dir: String) -> Result<(), String> {
-    config::write_data_dir(&data_dir(&app), &dir)
-}
-
-#[tauri::command]
-pub fn probe_data_dir(dir: String) -> ProbeResult {
-    let p = data::data_file_path(std::path::Path::new(&dir));
-    if p.exists() {
-        let d = data::load_data(std::path::Path::new(&dir));
-        ProbeResult { exists: true, site_count: d.sites.len() as u32 }
-    } else {
-        ProbeResult { exists: false, site_count: 0 }
-    }
+    resolve(app).0
 }
 
 #[tauri::command]
@@ -47,22 +30,6 @@ pub fn load_data(app: tauri::AppHandle) -> data::AppData {
 #[tauri::command]
 pub fn save_data(app: tauri::AppHandle, data: data::AppData) -> Result<(), String> {
     data::save_data(&active_data_dir(&app), &data)
-}
-
-#[tauri::command]
-pub fn migrate_data_dir(app: tauri::AppHandle, new_dir: String) -> Result<(), String> {
-    let base = data_dir(&app);
-    let from = active_data_dir(&app);
-    let to = std::path::PathBuf::from(&new_dir);
-    data::ensure_empty_or_create(&to)?;
-    let src = data::data_file_path(&from);
-    let dst = data::data_file_path(&to);
-    data::move_data_file(&src, &dst)?;
-    if let Err(e) = config::write_data_dir(&base, &new_dir) {
-        let _ = data::move_data_file(&dst, &src); // 回滚文件移动
-        return Err(format!("写入配置失败，已回滚：{}", e));
-    }
-    Ok(())
 }
 
 #[tauri::command]
@@ -100,4 +67,60 @@ pub fn import_md_from_file(app: tauri::AppHandle, path: String, mode: String) ->
 #[tauri::command]
 pub fn import_json_from_file(app: tauri::AppHandle, path: String) -> Result<data::AppData, String> {
     data::import_json_from_path(&active_data_dir(&app), std::path::Path::new(&path))
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DataLocation { pub dir: String, pub is_fallback: bool }
+
+#[tauri::command]
+pub fn get_data_location(app: tauri::AppHandle) -> DataLocation {
+    let (dir, fallback) = resolve(&app);
+    DataLocation { dir: dir.to_string_lossy().to_string(), is_fallback: fallback }
+}
+
+#[tauri::command]
+pub fn open_data_dir(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = active_data_dir(&app);
+    let _ = std::fs::create_dir_all(&dir);
+    tauri_plugin_opener::open_path(dir, None::<&str>).map_err(|e| e.to_string())
+}
+
+fn main_window(app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, String> {
+    app.get_webview_window("main").ok_or_else(|| "主窗口不存在".to_string())
+}
+
+#[tauri::command]
+pub fn minimize_window(app: tauri::AppHandle) -> Result<(), String> {
+    main_window(&app)?.minimize().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn toggle_maximize_window(app: tauri::AppHandle) -> Result<(), String> {
+    let win = main_window(&app)?;
+    let result = if win.is_maximized().unwrap_or(false) { win.unmaximize() } else { win.maximize() };
+    result.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn close_window(app: tauri::AppHandle) -> Result<(), String> {
+    main_window(&app)?.close().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn is_maximized(app: tauri::AppHandle) -> bool {
+    main_window(&app).map(|w| w.is_maximized().unwrap_or(false)).unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::exe_dir;
+
+    #[test]
+    fn exe_dir_returns_current_dir() {
+        let d = exe_dir();
+        assert!(d.is_absolute() || d.as_os_str().is_empty() || d == std::path::Path::new("."));
+        // 测试二进制自身所在目录必然存在
+        assert!(d.exists() || d == std::path::Path::new("."));
+    }
 }

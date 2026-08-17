@@ -16,42 +16,6 @@ pub fn exe_dir_writable(exe_dir: &Path) -> bool {
     }
 }
 
-pub fn config_path(app_data_dir: &Path) -> PathBuf { app_data_dir.join("config.json") }
-
-/// 读取 config.json 中的 dataDir。缺失/损坏返回 None；
-/// 损坏时先备份为 config.json.bak 再返回 None（首次启动引导页会重新出现）。
-pub fn read_data_dir(app_data_dir: &Path) -> Option<String> {
-    let p = config_path(app_data_dir);
-    if !p.exists() { return None; }
-    match fs::read_to_string(&p) {
-        Ok(s) => match serde_json::from_str::<serde_json::Value>(&s) {
-            Ok(v) => v.get("dataDir").and_then(|d| d.as_str()).map(|s| s.to_string()),
-            Err(_) => { let _ = fs::copy(&p, p.with_extension("bak")); None }
-        },
-        Err(_) => None,
-    }
-}
-
-/// 原子写入：先写 config.json.tmp，再 rename 覆盖，避免写一半损坏。
-pub fn write_data_dir(app_data_dir: &Path, dir: &str) -> Result<(), String> {
-    let p = config_path(app_data_dir);
-    if let Some(parent) = p.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
-    let json = serde_json::to_string_pretty(&serde_json::json!({ "dataDir": dir })).map_err(|e| e.to_string())?;
-    let tmp = p.with_extension("json.tmp");
-    fs::write(&tmp, json).map_err(|e| e.to_string())?;
-    fs::rename(&tmp, &p).map_err(|e| e.to_string())
-}
-
-/// config.json 是否存在且可解析。
-pub fn exists(app_data_dir: &Path) -> bool {
-    let p = config_path(app_data_dir);
-    if !p.exists() { return false; }
-    match fs::read_to_string(&p) {
-        Ok(s) => serde_json::from_str::<serde_json::Value>(&s).is_ok(),
-        Err(_) => false,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
