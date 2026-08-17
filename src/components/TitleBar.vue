@@ -13,19 +13,18 @@ onMounted(async () => {
   unlistenResize = await getCurrentWindow().onResized(() => syncMaximized())
 })
 onUnmounted(() => { unlistenResize?.() })
-async function toggleMax() {
+async function onMaxClick() {
   await api.toggleMaximizeWindow()
   await syncMaximized()
 }
-function onDblClick() { toggleMax() }
 </script>
 
 <template>
-  <header class="titlebar" data-tauri-drag-region @dblclick="onDblClick">
+  <header class="titlebar" data-tauri-drag-region="deep">
     <span class="mark">GJ<span class="tip">归集</span></span>
-    <div class="btns" @dblclick.stop>
+    <div class="btns" data-tauri-drag-region="false">
       <span class="min" @click="api.minimizeWindow">—</span>
-      <span class="max" @click="toggleMax">{{ maximized ? '❐' : '□' }}</span>
+      <span class="max" @click="onMaxClick">{{ maximized ? '❐' : '□' }}</span>
       <span class="close" @click="api.closeWindow">✕</span>
     </div>
   </header>
