@@ -13,7 +13,7 @@ function dateStr() { return new Date().toISOString().slice(0, 10) }
 
 async function exportMd() {
   const { save } = await import('@tauri-apps/plugin-dialog')
-  const path = await save({ defaultPath: `网站收藏_${dateStr()}.md`, filters: [{ name: 'Markdown', extensions: ['md'] }] })
+  const path = await save({ defaultPath: `归集_${dateStr()}.md`, filters: [{ name: 'Markdown', extensions: ['md'] }] })
   if (!path) return
   try { await api.exportMdToFile(String(path)); store.flash('已导出 md'); emit('close') }
   catch (e) { msg.value = '导出失败：' + e }
@@ -21,7 +21,7 @@ async function exportMd() {
 
 async function exportJson() {
   const { save } = await import('@tauri-apps/plugin-dialog')
-  const path = await save({ defaultPath: `网站收藏_${dateStr()}.json`, filters: [{ name: 'JSON', extensions: ['json'] }] })
+  const path = await save({ defaultPath: `归集_${dateStr()}.json`, filters: [{ name: 'JSON', extensions: ['json'] }] })
   if (!path) return
   try { await api.exportJsonToFile(String(path)); store.flash('已导出 JSON 备份'); emit('close') }
   catch (e) { msg.value = '导出失败：' + e }
