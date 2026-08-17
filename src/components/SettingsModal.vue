@@ -28,8 +28,17 @@ async function migrate() {
   <ModalMask @close="emit('close')">
     <div class="modal">
       <h3>设置 · 存储位置</h3>
-      <p class="muted">数据文件：{{ filePath }}</p>
-      <button class="btn" @click="migrate">更改位置…</button>
+      <div class="modal-cols">
+        <div>
+          <label>数据文件</label>
+          <input :value="filePath" readonly />
+          <div class="actions" style="justify-content:flex-start"><button class="btn" @click="migrate">更改位置…</button></div>
+        </div>
+        <div class="help">
+          <label>迁移说明</label>
+          <p class="muted">点击「更改位置…」选择新的数据文件夹。目标目录非空会拒绝迁移，失败自动回滚，原数据不受影响。</p>
+        </div>
+      </div>
       <p class="muted">{{ msg }}</p>
       <div class="actions"><button class="btn" @click="emit('close')">关闭</button></div>
     </div>
