@@ -10,7 +10,8 @@ const parentId = ref(props.parentId)
 
 function create() {
   if (!name.value.trim()) return
-  const id = store.addCategory(name.value.trim(), parentId.value)
+  const validParent = store.flatCategories.find(c => c.id === parentId.value && c.depth < 2)
+  const id = store.addCategory(name.value.trim(), validParent ? validParent.id : null)
   emit('created', id)
 }
 </script>
