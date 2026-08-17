@@ -18,11 +18,15 @@ pub fn export_to_md(data: &AppData) -> String {
 
 fn site_line(s: &Site) -> String {
     let mark = match (s.status.as_str(), &s.last_check) {
-        ("ok", Some(d)) => format!(" ✅ {}", d),
-        ("dead", Some(d)) => format!(" ❌ {}", d),
+        ("ok", Some(d)) => format!("✅ {}", d),
+        ("dead", Some(d)) => format!("❌ {}", d),
         _ => String::new(),
     };
-    format!("- [{}]({}){}\n", s.name, s.url, mark)
+    if mark.is_empty() {
+        format!("{}\t{}\n", s.name, s.url)
+    } else {
+        format!("{}\t{}\t{}\n", s.name, s.url, mark)
+    }
 }
 
 pub fn import_from_md(text: &str) -> AppData {
@@ -44,21 +48,17 @@ pub fn import_from_md(text: &str) -> AppData {
             let idx = flat.len();
             flat.push(FlatCat { name, parent });
             heading_stack.push((depth, idx));
-        } else if let Some(rest) = line.strip_prefix('-') {
-            let rest = rest.trim();
-            if let (Some(ns), Some(ne)) = (rest.find('['), rest.find(']')) {
-                let name = rest[ns + 1..ne].to_string();
-                let tail = &rest[ne + 1..];
-                if let (Some(us), Some(ue)) = (tail.find('('), tail.find(')')) {
-                    let url = tail[us + 1..ue].trim().to_string();
-                    let category_id = heading_stack.last().map(|&(_, i)| format!("c{}", i));
-                    sites.push(Site {
-                        id: format!("s{}", site_seq),
-                        name, url, category_id,
-                        tags: vec![], status: "unknown".into(), last_check: None,
-                    });
-                    site_seq += 1;
-                }
+        } else if let Some((name, rest)) = line.split_once('\t') {
+            let name = name.trim().to_string();
+            let url = rest.split('\t').next().unwrap_or("").trim().to_string();
+            if !url.is_empty() {
+                let category_id = heading_stack.last().map(|&(_, i)| format!("c{}", i));
+                sites.push(Site {
+                    id: format!("s{}", site_seq),
+                    name, url, category_id,
+                    tags: vec![], status: "unknown".into(), last_check: None,
+                });
+                site_seq += 1;
             }
         }
     }
@@ -117,13 +117,13 @@ use crate::data::{self, AppData, Category, Site};
         let md = export_to_md(&data);
         assert!(md.contains("# 开发工具"));
         assert!(md.contains("## 前端"));
-        assert!(md.contains("- [React](https://react.dev) ✅ 2026-08-15"));
+        assert!(md.contains("React\thttps://react.dev\t✅ 2026-08-15"));
         assert!(!md.contains("框架"), "标签不应出现在 md 中");
     }
 
     #[test]
     fn import_ignores_status_and_tags() {
-        let text = "# 开发工具\n## 前端\n- [React](https://react.dev) ✅ 2026-08-15\n- [Vue](https://vuejs.org) ❌ 2026-08-15\n";
+        let text = "# 开发工具\n## 前端\nReact\thttps://react.dev\t✅ 2026-08-15\nVue\thttps://vuejs.org\t❌ 2026-08-15\n";
         let data = import_from_md(text);
         assert_eq!(data.categories.len(), 1);
         assert_eq!(data.categories[0].children.len(), 1);
@@ -153,7 +153,7 @@ use crate::data::{self, AppData, Category, Site};
         data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None });
         data::save_data(&d, &data).unwrap();
         let in_path = d.join("in.md");
-        std::fs::write(&in_path, "# 新分类\n- [X](https://x.dev)\n").unwrap();
+        std::fs::write(&in_path, "# 新分类\nX\thttps://x.dev\n").unwrap();
         let back = import_md_from_path(&d, &in_path, "overwrite").unwrap();
         assert_eq!(back.sites.len(), 1);
         assert_eq!(back.sites[0].name, "X");
