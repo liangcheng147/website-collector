@@ -26,6 +26,7 @@ export const useAppStore = defineStore('app', {
     progress: { done: 0, total: 0 },
     connectivityError: false,
     flashMsg: '',
+    location: { dir: '', isFallback: false },
   }),
   getters: {
     filteredSites(state): Site[] {
@@ -63,7 +64,11 @@ export const useAppStore = defineStore('app', {
     },
   },
   actions: {
-    async init() { this.data = await api.loadData() },
+    async init() {
+      this.data = await api.loadData()
+      const loc = await api.getDataLocation()
+      this.location = loc
+    },
     async persist() { await api.saveData(this.data) },
     setData(d: AppData) { this.data = d; this.persist() },
     flash(msg: string) {

@@ -3,40 +3,27 @@ import { ref, onMounted } from 'vue'
 import ModalMask from './ModalMask.vue'
 import * as api from '../api'
 const emit = defineEmits(['close'])
-const dir = ref('')
 const filePath = ref('')
 const msg = ref('')
-
-onMounted(async () => {
-  dir.value = await api.getDataDir()
-  filePath.value = await api.getDataFilePath()
-})
-async function migrate() {
-  const { open } = await import('@tauri-apps/plugin-dialog')
-  const picked = await open({ directory: true, title: '选择新的数据目录' })
-  if (!picked) return
-  try {
-    await api.migrateDataDir(String(picked))
-    dir.value = await api.getDataDir()
-    filePath.value = await api.getDataFilePath()
-    msg.value = '已迁移到新位置'
-  } catch (e) { msg.value = '迁移失败：' + e }
+onMounted(async () => { filePath.value = await api.getDataFilePath() })
+async function openDir() {
+  try { await api.openDataDir(); msg.value = '已打开数据目录' } catch (e) { msg.value = '打开失败：' + e }
 }
 </script>
 
 <template>
   <ModalMask @close="emit('close')">
     <div class="modal">
-      <h3>设置 · 存储位置</h3>
+      <h3>设置 · 数据存储</h3>
       <div class="modal-cols">
         <div>
           <label>数据文件</label>
           <input :value="filePath" readonly />
-          <div class="actions" style="justify-content:flex-start"><button class="btn" @click="migrate">更改位置…</button></div>
+          <div class="actions" style="justify-content:flex-start"><button class="btn primary" @click="openDir">打开数据目录</button></div>
         </div>
         <div class="help">
-          <label>迁移说明</label>
-          <p class="muted">点击「更改位置…」选择新的数据文件夹。目标目录非空会拒绝迁移，失败自动回滚，原数据不受影响。</p>
+          <label>存储说明</label>
+          <p class="muted">数据固定存储在软件目录下 <code>./data/</code>，与软件一起，便携易备份。若安装目录无写入权限，自动回退到系统用户目录。</p>
         </div>
       </div>
       <p class="muted">{{ msg }}</p>

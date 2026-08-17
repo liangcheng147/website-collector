@@ -6,6 +6,7 @@ vi.mock('../api', () => ({
   loadData: vi.fn().mockResolvedValue(undefined),
   checkConnectivity: vi.fn().mockResolvedValue(true),
   checkSite: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
+  getDataLocation: vi.fn().mockResolvedValue({ dir: 'C:\\data', isFallback: false }),
 }))
 import * as api from '../api'
 import type { AppData, Site } from '../types'
@@ -174,5 +175,11 @@ describe('app store', () => {
     expect(s.checking).toBe(false)
     expect(s.data.sites.every(x => x.status === 'unknown')).toBe(true) // 未误标
     expect(s.connectivityError).toBe(true)
+  })
+
+  it('init loads data and location', async () => {
+    const s = useAppStore()
+    await s.init()
+    expect(s.location).toEqual({ dir: 'C:\\data', isFallback: false })
   })
 })
