@@ -63,25 +63,45 @@ async function confirmJsonImport() {
     <div class="modal">
       <h3>导入 / 导出</h3>
       <template v-if="jsonPath">
-        <p class="muted">将导入：{{ jsonPath }}</p>
-        <p class="muted">JSON 导入会覆盖当前全部数据（自动备份 .bak），确定继续？</p>
-        <div class="actions">
-          <button class="btn" @click="jsonPath = null">取消</button>
-          <button class="btn danger" @click="confirmJsonImport">确定覆盖导入</button>
+        <div class="modal-cols">
+          <div>
+            <p class="muted">将导入：{{ jsonPath }}</p>
+            <p class="muted">JSON 导入会覆盖当前全部数据（自动备份 .bak），确定继续？</p>
+            <div class="actions">
+              <button class="btn" @click="jsonPath = null">取消</button>
+              <button class="btn danger" @click="confirmJsonImport">确定覆盖导入</button>
+            </div>
+          </div>
+          <div class="help">
+            <label>备份说明</label>
+            <p class="muted">导入前自动生成 .bak 备份文件，导入失败可从中恢复。</p>
+          </div>
         </div>
       </template>
       <template v-else>
-        <div class="actions" style="justify-content:flex-start">
-          <button class="btn primary" @click="exportMd">导出 MD</button>
-          <button class="btn primary" @click="exportJson">导出 JSON</button>
-          <button class="btn" @click="importMd">导入 MD</button>
-          <button class="btn" @click="pickJson">导入 JSON</button>
-        </div>
-        <p class="muted">md 导入格式示例：<br /><code># 分类名<br />- [名称](https://链接)</code></p>
-        <p class="muted">JSON 导入：读取「导出 JSON」的 .json 备份文件，覆盖当前全部数据（自动备份 .bak）。</p>
-        <div class="mode-row">
-          <label><input type="radio" v-model="mode" value="merge" /> 合并导入</label>
-          <label><input type="radio" v-model="mode" value="overwrite" /> 覆盖导入（自动备份 .bak）</label>
+        <div class="modal-cols">
+          <div>
+            <label>导出</label>
+            <div class="grid2x2">
+              <button class="btn primary" @click="exportMd">导出 MD</button>
+              <button class="btn primary" @click="exportJson">导出 JSON</button>
+            </div>
+            <label>导入</label>
+            <div class="grid2x2">
+              <button class="btn" @click="importMd">导入 MD</button>
+              <button class="btn" @click="pickJson">导入 JSON</button>
+            </div>
+            <div class="mode-row">
+              <label><input type="radio" v-model="mode" value="merge" /> 合并导入</label>
+              <label style="margin-left:10px"><input type="radio" v-model="mode" value="overwrite" /> 覆盖导入（自动备份 .bak）</label>
+            </div>
+          </div>
+          <div class="help">
+            <label>md 格式示例</label>
+            <code># 分类名<br />- [名称](https://链接)</code>
+            <label>JSON 说明</label>
+            <p class="muted">读取「导出 JSON」的备份文件，覆盖当前全部数据（自动备份 .bak）。导入成功后在状态栏闪现提示。</p>
+          </div>
         </div>
       </template>
       <p class="muted">{{ msg }}</p>
