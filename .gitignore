@@ -26,5 +26,8 @@ dist-ssr
 # Superpowers scratch
 .superpowers/
 
+# Git worktrees
+.worktrees/
+
 # Vitest coverage
 coverage/

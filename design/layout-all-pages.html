@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网站收藏管家 · 全页面布局设计（C 极简 + B 大卡片分栏）</title>
+<style>
+  :root {
+    --bg:#FFF9FB; --panel:#FFE9F3; --primary:#7A5CFF; --accent:#FF5FA8;
+    --text:#4A3B6E; --text-2:#B59FD8; --border:#C9B8E8;
+    --ok:#4FF0A8; --pending:#FFE08A; --danger:#FF2D78; --ok-txt:#12906B;
+    --radius:3px; --radius-lg:8px; --radius-pill:999px;
+    --shadow:2px 2px 0 var(--border); --shadow-primary:2px 2px 0 var(--accent);
+    --font:'Courier New',Courier,monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body { font-family:var(--font); font-size:12px; line-height:1.6; color:var(--text); background:#F2EEFA; }
+
+  .stage { position:fixed; inset:0; display:flex; flex-direction:column; }
+  .stage-head { padding:10px 16px; background:var(--text); color:#fff; display:flex; align-items:center; gap:14px; z-index:10; flex-wrap:wrap; }
+  .stage-head h1 { font-size:14px; letter-spacing:1px; }
+  .stage-head .hint { font-size:11px; color:#C9B8E8; }
+
+  /* 页面导航器 */
+  .nav { display:flex; gap:6px; flex-wrap:wrap; padding:8px 16px; background:#fff; border-bottom:2px solid var(--border); z-index:9; }
+  .nav button { font-family:var(--font); font-size:11px; border:2px solid var(--border); background:#fff; border-radius:var(--radius); padding:3px 10px; cursor:pointer; color:var(--text); }
+  .nav button.on { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:2px 2px 0 var(--accent); }
+  .nav button small { opacity:.7; font-size:10px; }
+
+  .viewport { flex:1; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; position:relative; }
+
+  .frame { border:3px solid var(--border); border-radius:10px; box-shadow:8px 8px 0 rgba(74,59,110,.15); background:var(--bg); overflow:hidden; flex:none; }
+  .frame-caption { position:absolute; bottom:10px; left:0; right:0; text-align:center; font-size:12px; color:var(--text-2); font-weight:700; }
+  .frame-caption b { color:var(--primary); }
+
+  /* ============ C 极简布局 ============ */
+  .app { display:grid; grid-template-rows:auto 1fr auto; height:100%; }
+  .topbar { display:flex; align-items:center; gap:10px; padding:6px 12px; background:var(--panel); border-bottom:3px solid var(--primary); }
+  .topbar .logo { font-weight:700; font-size:14px; }
+  .topbar .search { flex:1; max-width:300px; font-family:var(--font); font-size:12px; border:2px solid var(--border); border-radius:var(--radius); padding:3px 8px; background:#fff; color:var(--text); }
+  .topbar select, .topbar button { font-family:var(--font); font-size:12px; border:2px solid var(--border); background:#fff; border-radius:var(--radius); padding:3px 10px; color:var(--text); cursor:pointer; }
+  .topbar button.primary { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .body { display:grid; min-height:0; }
+  .sidebar { background:var(--panel); border-right:3px solid var(--accent); padding:8px; overflow:auto; }
+  .sidebar .group-label { font-size:10px; color:var(--text-2); font-weight:700; margin-top:8px; letter-spacing:1px; }
+  .sidebar .row { padding:3px 8px; border-radius:var(--radius); cursor:pointer; font-size:12px; }
+  .sidebar .row:hover { background:var(--pending); }
+  .sidebar .row.active { background:var(--primary); color:#fff; }
+  .sidebar .row .cnt { float:right; color:var(--text-2); font-size:10px; }
+  .sidebar .row.active .cnt { color:#e8d9ff; }
+  .sidebar .row.sub { padding-left:16px; }
+  .sidebar .row.dead, .sidebar .row.trash { color:var(--danger); }
+  .content { overflow:auto; padding:12px; background:var(--bg); position:relative; }
+  .statusbar { display:flex; gap:14px; padding:4px 12px; background:var(--panel); border-top:3px solid var(--primary); font-size:10px; color:var(--primary); }
+  .statusbar .bad { color:var(--danger); font-weight:700; }
+  .flash-ok { color:var(--ok-txt); font-weight:700; }
+
+  .site-table { width:100%; border-collapse:collapse; }
+  .site-table th { text-align:left; padding:4px 8px; color:var(--text-2); border-bottom:2px solid var(--primary); font-size:11px; }
+  .site-table td { padding:4px 8px; border-bottom:1px solid var(--panel); }
+  .site-table tr:hover { background:#FFF2F7; }
+  .site-table tr.row-selected, .site-table tr.row-selected:hover { background:#E6DBFF; }
+  .ok { color:var(--ok-txt); font-weight:700; } .dead { color:var(--danger); font-weight:700; } .pending { color:#A36A00; }
+  .name-dead { color:var(--danger); font-weight:700; }
+  .chip { display:inline-block; background:#fff; border:2px solid var(--ok); border-radius:var(--radius-pill); padding:0 6px; font-size:10px; color:var(--ok-txt); margin-right:4px; }
+  .batchbar { display:flex; align-items:center; gap:10px; padding:6px 12px; background:#E6DBFF; border-bottom:1px solid var(--border); }
+  .batchbar button, .empty button { font-family:var(--font); font-size:12px; border:2px solid var(--border); background:#fff; border-radius:var(--radius); padding:3px 10px; cursor:pointer; color:var(--text); }
+  .empty { text-align:center; padding:24px; color:var(--text-2); border:2px dashed var(--border); border-radius:var(--radius-lg); margin-top:12px; }
+
+  /* ============ B 大卡片分栏弹窗 ============ */
+  .modal-mask { position:absolute; inset:0; background:rgba(74,59,110,.35); display:flex; align-items:center; justify-content:center; z-index:200; }
+  .modal { background:#fff; border:2px solid var(--primary); border-radius:var(--radius-lg); box-shadow:4px 4px 0 var(--accent); padding:18px; width:min(560px, 92%); }
+  .modal h3 { margin-bottom:12px; color:var(--primary); font-size:14px; }
+  .modal label { display:block; margin:8px 0 3px; font-size:11px; color:var(--text-2); font-weight:700; letter-spacing:1px; }
+  .modal input, .modal select, .modal textarea { width:100%; font-family:var(--font); font-size:12px; border:2px solid var(--border); border-radius:var(--radius); padding:5px 8px; background:#fff; color:var(--text); }
+  .modal input:focus, .modal select:focus { outline:none; border-color:var(--primary); }
+  .modal .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+  .modal .actions.flex-start { justify-content:flex-start; }
+  .modal button.btn { font-family:var(--font); font-size:12px; border:2px solid var(--border); background:#fff; border-radius:var(--radius); padding:4px 14px; box-shadow:var(--shadow); color:var(--text); cursor:pointer; }
+  .modal button.btn:hover { transform:translateY(-1px); }
+  .modal button.btn.primary { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:var(--shadow-primary); }
+  .modal button.btn.danger { border-color:var(--accent); color:var(--danger); }
+  .modal .muted { color:var(--text-2); font-size:11px; }
+  .modal .err { color:var(--danger); font-size:11px; margin-top:8px; }
+  .modal .help { border-left:2px dashed var(--border); padding-left:16px; }
+  .modal .help code { display:block; background:var(--panel); border-radius:var(--radius); padding:6px 8px; margin:4px 0; font-size:11px; color:var(--text); }
+  .grid2x2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .grid2x2 button.btn { width:100%; justify-content:center; }
+  .mode-row { margin:10px 0; font-size:12px; }
+  .mode-row label { display:inline; margin:0; font-weight:400; color:var(--text); }
+
+  /* ============ 右键菜单 ============ */
+  .menu-mask { position:absolute; inset:0; z-index:99; }
+  .ctx { position:absolute; z-index:100; background:#fff; border:2px solid var(--border); border-radius:var(--radius); box-shadow:4px 4px 0 var(--panel); padding:4px; min-width:150px; }
+  .ctx-item { display:block; width:100%; text-align:left; border:none; box-shadow:none; background:none; padding:5px 12px; border-radius:var(--radius); cursor:pointer; font-family:var(--font); font-size:12px; color:var(--text); }
+  .ctx-item:hover { background:var(--panel); }
+  .ctx-item.danger { color:var(--danger); }
+  .ctx-divider { border-top:1px solid var(--border); margin:3px 0; }
+
+  .page-tag { position:absolute; top:10px; left:12px; font-size:10px; color:var(--text-2); background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:2px 8px; z-index:300; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="stage-head">
+    <h1>网站收藏管家 · 全页面布局设计 v2</h1>
+    <span class="hint">已确认：C 极简布局 · B 大卡片分栏弹窗 · 导入导出 2×2 网格 · 绿色成功提示。点击下方页面逐页预览。</span>
+  </div>
+  <div class="nav" id="nav"></div>
+  <div class="viewport" id="viewport">
+    <div class="frame" style="width:880px;height:470px" id="frame">
+      <div id="scene"></div>
+    </div>
+    <div class="frame-caption" id="caption"></div>
+  </div>
+</div>
+
+<script>
+  const DATA = {
+    cats: [
+      { n:'前端', c:[{ n:'框架', c:[] },{ n:'工具库', c:[] }] },
+      { n:'后端', c:[] },
+      { n:'设计', c:[{ n:'配色', c:[{ n:'色板', c:[] }] }] },
+    ],
+    sites: [
+      { n:'Vue 3 官方文档', u:'vuejs.org', cat:'框架', tag:['框架'], st:'ok' },
+      { n:'Vite 构建工具', u:'vitejs.dev', cat:'工具库', tag:['工具'], st:'ok' },
+      { n:'MDN Web Docs', u:'developer.mozilla.org', cat:'前端', tag:['参考'], st:'ok' },
+      { n:'旧项目站点', u:'legacy.example.com', cat:'设计', tag:[], st:'dead' },
+      { n:'新收藏待检测', u:'new-tool.example.io', cat:'前端', tag:['工具'], st:'unknown' },
+    ],
+  };
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const SW = 170; // C 极简窄侧栏
+
+  function renderCats(list, depth){
+    let h='';
+    for (const c of list){
+      h += `<div class="row ${depth>0?'sub':''}" style="padding-left:${depth>0?16:0}px">${esc(c.n)}<span class="cnt">${c.c.length}</span></div>`;
+      h += renderCats(c.c, depth+1);
+    }
+    return h;
+  }
+  function renderTable(sel){
+    let h='';
+    for (const s of DATA.sites){
+      const st = s.st==='ok'?'<span class="ok">✓</span>':s.st==='dead'?'<span class="dead">✗</span>':'<span class="pending">…</span>';
+      const scls = (sel&&s.st==='dead')?' class="row-selected"':'';
+      h += `<tr${scls}><td style="width:16px"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-radius:2px;background:${sel&&s.st==='dead'?'var(--primary)':'#fff'}"></span></td>`;
+      h += `<td class="${s.st==='dead'?'name-dead':''}">${esc(s.n)}</td><td class="muted">${esc(s.u)}</td><td class="muted">${s.cat}</td>`;
+      h += `<td>${s.tag.map(t=>`<span class="chip">${t}</span>`).join('')}</td><td>${st}</td></tr>`;
+    }
+    return h;
+  }
+
+  const topbar = `
+    <div class="topbar">
+      <span class="logo">◧ 网站收藏管家</span>
+      <input class="search" placeholder="搜索名称 / 链接 / 标签…">
+      <select><option>标签筛选 ▾</option></select>
+      <button class="primary">▶ 检测全部</button>
+      <button>＋ 添加</button>
+      <button>导入/导出</button>
+      <button>⚙</button>
+    </div>`;
+
+  function sidebar(active){
+    return `
+    <aside class="sidebar">
+      <div class="group-label">分类</div>
+      <div class="row ${active==='all'?'active':''}">全部 <span class="cnt">${DATA.sites.length}</span></div>
+      ${renderCats(DATA.cats,0)}
+      <div class="group-label">视图</div>
+      <div class="row dead">⚠ 失效 <span class="cnt">1</span></div>
+      <div class="group-label">标签</div>
+      <div class="row"># 框架</div><div class="row"># 工具</div><div class="row"># 参考</div>
+      <div class="group-label">系统</div>
+      <div class="row trash">🗑 回收站 <span class="cnt">0</span></div>
+    </aside>`;
+  }
+
+  const statusbar = `<footer class="statusbar"><span>共 5 个网站</span><span class="bad">失效 1</span><span>未检测 1</span><span class="flash-ok">已导出 md ✓</span></footer>`;
+
+  function shell(content, active){
+    return `<div class="app">${topbar}<div class="body" style="grid-template-columns:${SW}px 1fr">${sidebar(active)}<main class="content" style="position:relative">${content}</main></div>${statusbar}</div>`;
+  }
+
+  /* 弹窗骨架（B 大卡片分栏） */
+  function bigModal(title, left, right){
+    return `<div class="modal-mask"><div class="modal"><h3>${title}</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <div>${left}</div>
+        <div class="help">${right}</div>
+      </div></div></div>`;
+  }
+
+  const SCENES = [
+    {
+      key:'main', label:'主界面', tag:'主界面 · C 极简布局',
+      html: shell(`<table class="site-table"><thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr></thead><tbody>${renderTable()}</tbody></table>`,'all')
+    },
+    {
+      key:'site-menu', label:'网站右键菜单', tag:'网站右键 · Teleport 定位 + 翻转',
+      html: shell(`<div class="table-wrap"><table class="site-table"><thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr></thead><tbody>${renderTable()}</tbody></table>
+      <div class="menu-mask"></div>
+      <div class="ctx" style="left:120px;top:60px">
+        <button class="ctx-item">▶ 检测所选</button>
+        <button class="ctx-item">移动分类…</button>
+        <button class="ctx-item">添加标签…</button>
+        <button class="ctx-item">编辑</button>
+        <div class="ctx-divider"></div>
+        <button class="ctx-item danger">删除所选</button>
+      </div></div>`,'all')
+    },
+    {
+      key:'cat-menu', label:'分类右键菜单', tag:'分类右键 · 含添加子分类（第 3 层不显示）',
+      html: shell(`<table class="site-table"><thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr></thead><tbody>${renderTable(true)}</tbody></table>
+      <div class="menu-mask"></div>
+      <div class="ctx" style="left:${SW+20}px;top:150px">
+        <button class="ctx-item">重命名</button>
+        <button class="ctx-item">添加子分类</button>
+        <div class="ctx-divider"></div>
+        <button class="ctx-item danger">删除分类</button>
+      </div>`,'category')
+    },
+    {
+      key:'add-cat', label:'新建分类', tag:'新建分类 · 父级下拉 + 名称（第 3 层不出现在父级列表）',
+      html: shell(bigModal('新建分类',
+        `<label>父级分类</label>
+         <select><option>顶层</option><option>前端</option><option>　框架</option><option>　工具库</option><option>后端</option><option>设计</option></select>
+         <label>分类名称</label>
+         <input placeholder="分类名" value="">
+         <div class="actions"><button class="btn">取消</button><button class="btn primary">创建</button></div>`,
+        `<label>层级规则</label>
+         <p class="muted">分类最多嵌套 3 层。<br>父级列表只显示深度 ≤ 2 的分类，保证新分类不会超过第 3 层。</p>`),'category')
+    },
+    {
+      key:'rename', label:'重命名', tag:'重命名 · 应用内输入弹窗（替换浏览器 prompt）',
+      html: shell(bigModal('重命名分类',
+        `<label>分类名称</label>
+         <input value="前端">
+         <div class="actions"><button class="btn">取消</button><button class="btn primary">确定</button></div>`,
+        `<label>说明</label><p class="muted">修改后所有子分类与网站归属保持不变。</p>`),'category')
+    },
+    {
+      key:'del-cat', label:'删除分类确认', tag:'删除分类 · 两按钮二选一',
+      html: shell(bigModal('删除分类',
+        `<p class="muted">删除「设计」及其子分类，其中网站如何处理？</p>
+         <div class="actions" style="justify-content:flex-start">
+           <button class="btn primary">网站移入未分类</button>
+           <button class="btn danger">连同网站删除</button>
+         </div>
+         <div class="actions"><button class="btn">取消</button></div>`,
+        `<label>风险提示</label>
+         <p class="muted">「连同网站删除」会把该分类下所有网站移入回收站，可在回收站恢复。</p>`),'category')
+    },
+    {
+      key:'add-edit', label:'添加/编辑网站', tag:'添加/编辑网站 · 表单 + 新建分类联动',
+      html: shell(bigModal('添加网站',
+        `<label>名称</label><input placeholder="网站名称">
+         <label>链接</label><input placeholder="https://...">
+         <label>分类</label>
+         <select><option>未分类</option><option>前端</option><option>　框架</option><option>＋ 新建分类…</option></select>
+         <label>标签（空格分隔）</label><input placeholder="框架 工具">
+         <div class="actions"><button class="btn">取消</button><button class="btn primary">保存</button></div>`,
+        `<label>快捷操作</label>
+         <p class="muted">下拉选择「＋ 新建分类…」会弹出新建分类弹窗，创建后自动选中新分类，表单内容保留。</p>`),'all')
+    },
+    {
+      key:'import-export', label:'导入/导出', tag:'导入/导出 · 2×2 网格 + 分栏说明',
+      html: shell(bigModal('导入 / 导出',
+        `<label>导出</label>
+         <div class="grid2x2"><button class="btn primary">导出 MD</button><button class="btn primary">导出 JSON</button></div>
+         <label>导入</label>
+         <div class="grid2x2"><button class="btn">导入 MD</button><button class="btn">导入 JSON</button></div>
+         <div class="mode-row">
+           <label><input type="radio" checked> 合并导入</label>
+           <label style="margin-left:10px"><input type="radio"> 覆盖导入（自动备份 .bak）</label>
+         </div>`,
+        `<label>md 格式示例</label>
+         <code># 分类名<br>- [名称](https://链接)</code>
+         <label>JSON 说明</label>
+         <p class="muted">读取「导出 JSON」的备份文件，覆盖当前全部数据（自动备份 .bak）。导入成功后在状态栏闪现提示。</p>`),'all')
+    },
+    {
+      key:'settings', label:'设置', tag:'设置 · 完整路径 + 文件夹选择迁移',
+      html: shell(bigModal('设置 · 存储位置',
+        `<label>数据文件</label>
+         <input value="C:\Users\me\AppData\Roaming\website-collector\websites.json" readonly>
+         <div class="actions" style="justify-content:flex-start"><button class="btn">更改位置…</button></div>`,
+        `<label>迁移说明</label>
+         <p class="muted">点击「更改位置…」选择新的数据文件夹。目标目录非空会拒绝迁移，失败自动回滚，原数据不受影响。</p>`),'all')
+    },
+    {
+      key:'first-launch', label:'首次启动 · 选择目录', tag:'首次启动 · 引导选择数据目录',
+      html: shell(bigModal('选择数据目录',
+        `<p class="muted">首次使用，请选择数据存储位置。</p>
+         <label>默认位置</label>
+         <input value="C:\Users\me\AppData\Roaming\website-collector" readonly>
+         <div class="actions"><button class="btn">使用默认位置</button><button class="btn primary">选择数据目录…</button></div>`,
+        `<label>已有数据</label>
+         <p class="muted">若选中的目录已存在数据文件，会提示「该目录已有 N 个网站数据」，可选择读入或换目录。</p>`),'all')
+    },
+    {
+      key:'first-launch2', label:'首次启动 · 确认读入', tag:'首次启动 · 已有数据确认',
+      html: shell(bigModal('选择数据目录',
+        `<p class="muted">该目录已有 <b>3</b> 个网站数据，是否读入？</p>
+         <div class="actions"><button class="btn">换一个目录</button><button class="btn primary">读入该目录</button></div>`,
+        `<label>读入说明</label><p class="muted">读入后将使用该目录的数据文件作为默认存储位置。</p>`),'all')
+    },
+    {
+      key:'move-cat', label:'移动分类', tag:'移动分类 · 批量操作',
+      html: shell(bigModal('移动分类（2 项）',
+        `<label>目标分类</label>
+         <select><option>未分类</option><option>前端</option><option>　框架</option><option>后端</option></select>
+         <div class="actions"><button class="btn">取消</button><button class="btn primary">移动</button></div>`,
+        `<label>说明</label><p class="muted">选中多个网站后从「移动分类…」进入本弹窗，批量调整归属。</p>`),'all')
+    },
+    {
+      key:'add-tags', label:'添加标签', tag:'添加标签 · 批量操作',
+      html: shell(bigModal('添加标签（2 项）',
+        `<label>新标签（空格分隔）</label>
+         <input placeholder="新标签，空格分隔">
+         <div class="actions"><button class="btn">取消</button><button class="btn primary">添加</button></div>`,
+        `<label>说明</label><p class="muted">标签以空格分隔，多个标签可一次添加，批量应用到选中的网站。</p>`),'all')
+    },
+    {
+      key:'recycle', label:'回收站', tag:'回收站 · 恢复 / 彻底删除',
+      html: shell(`
+        <div class="batchbar"><b>回收站 · 1 项</b><button style="margin-left:auto" class="btn" style="border-color:var(--danger);color:var(--danger)">清空回收站</button></div>
+        <table class="site-table"><thead><tr><th>名称</th><th>链接</th><th>删除时间</th><th></th></tr></thead>
+        <tbody><tr><td class="name-dead">旧项目站点</td><td class="muted">legacy.example.com</td><td class="muted">2026/08/15</td>
+        <td><button class="btn">恢复</button> <button class="btn" style="border-color:var(--danger);color:var(--danger)">彻底删除</button></td></tr></tbody></table>`,'recycle')
+    },
+    {
+      key:'all-menu', label:'「全部」右键 · 添加顶层分类', tag:'侧边栏「全部」右键 → 添加顶层分类',
+      html: shell(`<table class="site-table"><thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr></thead><tbody>${renderTable()}</tbody></table>
+      <div class="menu-mask"></div>
+      <div class="ctx" style="left:10px;top:40px">
+        <button class="ctx-item">＋ 添加顶层分类</button>
+      </div>`,'all')
+    },
+    {
+      key:'all-add-cat', label:'「全部」右键 → 新建分类弹窗', tag:'右键「全部」→ 新建顶层分类弹窗',
+      html: shell(bigModal('新建分类',
+        `<label>父级分类</label>
+         <select><option selected>顶层</option><option>前端</option><option>后端</option><option>设计</option></select>
+         <label>分类名称</label>
+         <input placeholder="分类名" value="">
+         <div class="actions"><button class="btn">取消</button><button class="btn primary">创建</button></div>`,
+        `<label>顶层分类</label><p class="muted">父级固定为「顶层」，创建的分类显示在侧边栏分类列表最下方。</p>`),'all')
+    },
+    {
+      key:'batch', label:'批量操作栏', tag:'批量选中 · 检测/移动/标签/删除',
+      html: shell(`
+        <div class="batchbar">
+          <b>已选 2 项</b>
+          <button>▶ 检测所选</button><button>移动分类…</button><button>添加标签…</button>
+          <button style="border-color:var(--danger);color:var(--danger)">删除所选</button>
+          <button style="margin-left:auto">✕ 取消选择</button>
+        </div>
+        <table class="site-table"><thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr></thead>
+        <tbody>
+          <tr class="row-selected"><td><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-radius:2px;background:var(--primary)"></span></td><td>Vue 3 官方文档</td><td class="muted">vuejs.org</td><td class="muted">框架</td><td><span class="chip">框架</span></td><td><span class="ok">✓</span></td></tr>
+          <tr class="row-selected"><td><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-radius:2px;background:var(--primary)"></span></td><td>旧项目站点</td><td class="muted">legacy.example.com</td><td class="muted">设计</td><td></td><td><span class="dead">✗</span></td></tr>
+        </tbody></table>`,'all')
+    },
+    {
+      key:'nested', label:'嵌套弹窗 · 添加/编辑内新建分类', tag:'添加/编辑网站 → 「＋新建分类…」→ 嵌套新建分类弹窗',
+      html: shell(`
+        <div class="modal-mask"><div class="modal" style="width:min(560px,92%)">
+          <h3>添加网站</h3>
+          <label>名称</label><input placeholder="网站名称" value="Vue Router">
+          <label>链接</label><input placeholder="https://..." value="https://router.vuejs.org">
+          <label>分类</label>
+          <select><option>未分类</option><option>前端</option><option>　框架</option><option selected>＋ 新建分类…</option></select>
+          <label>标签（空格分隔）</label><input placeholder="框架 工具" value="框架">
+          <div class="actions"><button class="btn">取消</button><button class="btn primary">保存</button></div>
+        </div>
+        <div class="modal-mask" style="align-items:center;background:rgba(74,59,110,.45)">
+          <div class="modal" style="width:min(440px,92%)">
+            <h3>新建分类</h3>
+            <label>父级分类</label>
+            <select><option selected>顶层</option><option>前端</option><option>　框架</option><option>后端</option></select>
+            <label>分类名称</label><input placeholder="分类名" value="">
+            <div class="actions"><button class="btn">取消</button><button class="btn primary">创建</button></div>
+          </div>
+        </div>`,'all')
+    },
+    {
+      key:'empty-site', label:'空状态 · 还没有网站', tag:'主界面空状态',
+      html: shell(`<div class="empty">◇ 还没有网站<br><br><button class="btn">＋ 添加第一个网站</button></div>`,'all')
+    },
+    {
+      key:'empty-recycle', label:'空状态 · 回收站为空', tag:'回收站空状态',
+      html: shell(`
+        <div class="batchbar"><b>回收站 · 0 项</b><button style="margin-left:auto" style="border-color:var(--danger);color:var(--danger)">清空回收站</button></div>
+        <div class="empty">回收站为空</div>`,'recycle')
+    },
+    {
+      key:'dead-view', label:'失效视图', tag:'失效视图 · 只显示失效网站',
+      html: shell(`<table class="site-table"><thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr></thead>
+      <tbody>
+        <tr><td></td><td class="name-dead">旧项目站点</td><td class="muted">legacy.example.com</td><td class="muted">设计</td><td></td><td><span class="dead">✗</span></td></tr>
+      </tbody></table>
+      <p class="muted" style="margin-top:6px;font-size:11px">共 1 个失效网站 · 建议在行内右键「检测所选」复核</p>`,'dead')
+    },
+    {
+      key:'tag-view', label:'标签视图', tag:'标签视图 · 按标签筛选',
+      html: shell(`<table class="site-table"><thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr></thead>
+      <tbody>
+        <tr><td></td><td>Vue 3 官方文档</td><td class="muted">vuejs.org</td><td class="muted">框架</td><td><span class="chip">框架</span></td><td><span class="ok">✓</span></td></tr>
+        <tr><td></td><td>新收藏待检测</td><td class="muted">new-tool.example.io</td><td class="muted">前端</td><td><span class="chip">工具</span></td><td><span class="pending">…</span></td></tr>
+      </tbody></table>
+      <p class="muted" style="margin-top:6px;font-size:11px">标签「工具」 · 2 个网站</p>`,'tag')
+    },
+    {
+      key:'checking', label:'检测中', tag:'检测中 · 状态栏进度',
+      html: shell(`<table class="site-table"><thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr></thead><tbody>${renderTable()}</tbody></table>
+      <p class="muted" style="margin-top:6px;font-size:11px">检测进行中，可随时右键停止当前操作</p>`,'all')
+    },
+    {
+      key:'neterr', label:'断网状态', tag:'网络断开 · 状态栏警告',
+      html: shell(`<table class="site-table"><thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr></thead><tbody>${renderTable()}</tbody></table>
+      <p class="muted" style="margin-top:6px;font-size:11px">状态栏显示「⚠ 网络似乎断开，检测已中止」</p>`,'all')
+    },
+    {
+      key:'migrate-fail', label:'迁移失败提示', tag:'设置 · 迁移失败错误提示',
+      html: shell(bigModal('设置 · 存储位置',
+        `<label>数据文件</label>
+         <input value="C:\Users\me\AppData\Roaming\website-collector\websites.json" readonly>
+         <div class="actions" style="justify-content:flex-start"><button class="btn">更改位置…</button></div>
+         <p class="err">⚠ 迁移失败：目标目录非空，拒绝迁移。数据未受影响。</p>`,
+        `<label>失败处理</label>
+         <p class="muted">迁移失败自动回滚，原数据保留。请选择空目录或已有网站收藏数据的目录。</p>`),'all')
+    },
+    {
+      key:'json-confirm', label:'JSON 覆盖确认', tag:'导入 JSON · 两段式覆盖确认',
+      html: shell(bigModal('导入 / 导出',
+        `<label>将导入</label>
+         <input value="D:\backup\网站收藏_2026-08-17.json" readonly>
+         <p class="muted">JSON 导入会覆盖当前全部数据（自动备份 .bak），确定继续？</p>
+         <div class="actions"><button class="btn">取消</button><button class="btn danger">确定覆盖导入</button></div>`,
+        `<label>备份说明</label>
+         <p class="muted">覆盖前自动生成 .bak 备份文件，导入失败可从中恢复。</p>`),'all')
+    },
+    {
+      key:'md-mode', label:'md 导入模式', tag:'导入 MD · 覆盖/合并单选',
+      html: shell(bigModal('导入 / 导出',
+        `<label>导入 Markdown 文件</label>
+         <input value="E:\downloads\网站收藏.md" readonly>
+         <div class="mode-row">
+           <label><input type="radio" checked> 合并导入（保留现有数据）</label><br>
+           <label><input type="radio"> 覆盖导入（自动备份 .bak）</label>
+         </div>
+         <div class="actions"><button class="btn">取消</button><button class="btn primary">导入</button></div>`,
+        `<label>md 格式示例</label>
+         <code># 分类名<br>- [名称](https://链接)</code>
+         <p class="muted">仅识别「# 分类」标题与「- [名称](链接)」列表项。</p>`),'all')
+    },
+  ];
+
+  /* 导航渲染 */
+  const nav = document.getElementById('nav');
+  SCENES.forEach((s,i)=>{
+    const b = document.createElement('button');
+    b.id = 'nav-'+s.key;
+    b.innerHTML = s.label;
+    b.onclick = ()=>show(i);
+    nav.appendChild(b);
+  });
+
+  function show(i){
+    document.querySelectorAll('#nav button').forEach((b,j)=>b.classList.toggle('on', j===i));
+    document.getElementById('scene').innerHTML = SCENES[i].html;
+    document.getElementById('caption').innerHTML = '<b>'+SCENES[i].tag+'</b>';
+  }
+  show(0);
+</script>
+</body>
+</html>

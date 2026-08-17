@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网站收藏管家 · 布局交互对比</title>
+<style>
+  :root {
+    --bg:#FFF9FB; --panel:#FFE9F3; --primary:#7A5CFF; --accent:#FF5FA8;
+    --text:#4A3B6E; --text-2:#B59FD8; --border:#C9B8E8;
+    --ok:#4FF0A8; --pending:#FFE08A; --danger:#FF2D78;
+    --radius:3px; --radius-lg:6px; --radius-pill:999px;
+    --shadow:2px 2px 0 var(--border); --shadow-primary:2px 2px 0 var(--accent);
+    --font:'Courier New',Courier,monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body { font-family:var(--font); font-size:12px; line-height:1.6; color:var(--text); background:#F2EEFA; }
+
+  /* ============ 对比舞台 ============ */
+  .stage { position:fixed; inset:0; display:flex; flex-direction:column; }
+  .stage-head { padding:10px 16px; background:var(--text); color:#fff; display:flex; align-items:center; gap:12px; z-index:10; }
+  .stage-head h1 { font-size:14px; letter-spacing:1px; }
+  .stage-head .hint { font-size:11px; color:#C9B8E8; }
+  .viewport { flex:1; display:flex; align-items:center; justify-content:center; gap:20px; padding:20px; overflow:auto; }
+
+  /* 应用窗口外框 */
+  .frame { border:3px solid var(--border); border-radius:8px; box-shadow:8px 8px 0 rgba(74,59,110,.15); background:var(--bg); overflow:hidden; flex:none; }
+  .frame-caption { text-align:center; margin-top:10px; font-size:12px; color:var(--text-2); font-weight:700; }
+  .frame-caption b { color:var(--primary); }
+
+  /* ============ 应用布局（紧凑型 default） ============ */
+  .app { display:grid; grid-template-rows:auto 1fr auto; height:100%; }
+  .topbar { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--panel); border-bottom:3px solid var(--primary); }
+  .topbar .logo { font-weight:700; color:var(--text); font-size:14px; }
+  .topbar .search { flex:1; max-width:320px; font-family:var(--font); font-size:12px; border:2px solid var(--border); border-radius:var(--radius); padding:4px 8px; background:#fff; box-shadow:var(--shadow); color:var(--text); }
+  .topbar select.btn, .topbar button.btn { font-family:var(--font); font-size:12px; border:2px solid var(--border); background:#fff; border-radius:var(--radius); padding:3px 12px; box-shadow:var(--shadow); color:var(--text); cursor:pointer; }
+  .topbar button.btn.primary { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:var(--shadow-primary); }
+  .body { display:grid; min-height:0; }
+  .sidebar { background:var(--panel); border-right:3px solid var(--accent); padding:10px; overflow:auto; }
+  .sidebar .group-label { font-size:10px; color:var(--text-2); font-weight:700; margin-top:8px; }
+  .sidebar .row { padding:3px 8px; border-radius:var(--radius); cursor:pointer; }
+  .sidebar .row:hover { background:var(--pending); }
+  .sidebar .row.active { background:var(--primary); color:#fff; box-shadow:var(--shadow-primary); }
+  .sidebar .row .cnt { float:right; color:var(--text-2); font-size:10px; }
+  .sidebar .row.active .cnt { color:#e8d9ff; }
+  .sidebar .row.sub { padding-left:18px; }
+  .sidebar .row.dead, .sidebar .row.trash { color:var(--danger); }
+  .content { overflow:auto; padding:12px; background:var(--bg); }
+  .statusbar { display:flex; gap:14px; padding:5px 12px; background:var(--panel); border-top:3px solid var(--primary); font-size:10px; color:var(--primary); }
+  .statusbar .bad { color:var(--danger); font-weight:700; }
+  .site-table { width:100%; border-collapse:collapse; }
+  .site-table th { text-align:left; padding:4px 8px; color:var(--text-2); border-bottom:2px solid var(--primary); font-size:11px; }
+  .site-table td { padding:4px 8px; border-bottom:1px solid var(--panel); }
+  .site-table tr:hover { background:#FFF2F7; }
+  .site-table tr.row-selected, .site-table tr.row-selected:hover { background:#E6DBFF; }
+  .site-table .ok { color:#12906B; font-weight:700; }
+  .site-table .dead { color:var(--danger); font-weight:700; }
+  .site-table .pending { color:#A36A00; }
+  .chip { display:inline-block; background:#fff; border:2px solid var(--ok); border-radius:var(--radius-pill); padding:0 6px; font-size:10px; color:#12906B; margin-right:4px; box-shadow:1px 1px 0 var(--ok); }
+
+  /* ============ 弹窗（居中卡片 default） ============ */
+  .modal-mask { position:absolute; inset:0; background:rgba(74,59,110,.35); display:flex; align-items:center; justify-content:center; z-index:200; }
+  .modal { background:#fff; border:2px solid var(--primary); border-radius:var(--radius-lg); box-shadow:4px 4px 0 var(--accent); padding:16px; min-width:360px; }
+  .modal h3 { margin-bottom:10px; color:var(--primary); }
+  .modal label { display:block; margin:6px 0 2px; font-size:11px; color:var(--text-2); }
+  .modal input, .modal select { width:100%; margin-bottom:4px; font-family:var(--font); font-size:12px; border:2px solid var(--border); border-radius:var(--radius); padding:4px 8px; background:#fff; box-shadow:var(--shadow); color:var(--text); }
+  .modal .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+  .modal .actions.flex-start { justify-content:flex-start; }
+  .modal button.btn { font-family:var(--font); font-size:12px; border:2px solid var(--border); background:#fff; border-radius:var(--radius); padding:3px 12px; box-shadow:var(--shadow); color:var(--text); cursor:pointer; }
+  .modal button.btn.primary { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:var(--shadow-primary); }
+  .modal button.btn.danger { border-color:var(--accent); color:var(--danger); }
+  .modal .muted { color:var(--text-2); }
+  .mode-row { margin:8px 0; font-size:12px; }
+
+  /* 2×2 网格按钮（方案 B） */
+  .grid2x2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+
+  /* ============ Tweaks 面板 ============ */
+  .tweaks { position:fixed; right:14px; top:64px; width:230px; background:#fff; border:2px solid var(--primary); border-radius:var(--radius-lg); box-shadow:4px 4px 0 var(--accent); z-index:500; padding:12px; }
+  .tweaks h3 { font-size:12px; color:var(--primary); margin-bottom:8px; }
+  .tweaks .grp { margin-bottom:10px; }
+  .tweaks .grp-label { font-size:10px; color:var(--text-2); font-weight:700; margin-bottom:4px; }
+  .tweaks .opt { display:block; width:100%; text-align:left; font-family:var(--font); font-size:11px; border:2px solid var(--border); background:#fff; border-radius:var(--radius); padding:4px 8px; margin-bottom:4px; cursor:pointer; color:var(--text); }
+  .tweaks .opt.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .tweaks .opt.dim { opacity:.45; cursor:not-allowed; }
+  .tweaks input[type=range] { width:100%; }
+  .tweaks .val { font-size:10px; color:var(--text-2); }
+  .tweaks .note { font-size:10px; color:var(--danger); margin-top:6px; }
+
+  .toggle-btn { position:fixed; right:14px; top:14px; z-index:600; font-family:var(--font); font-size:12px; border:2px solid var(--accent); background:#fff; color:var(--danger); border-radius:var(--radius); padding:5px 12px; box-shadow:2px 2px 0 var(--accent); cursor:pointer; font-weight:700; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="stage-head">
+    <h1>网站收藏管家 · 布局 / 弹窗 / 交互方案对比</h1>
+    <span class="hint">右侧面板切换方案，实时对比。点击「查看弹窗」切换主界面 / 弹窗预览。</span>
+  </div>
+  <div class="viewport" id="viewport">
+    <!-- 应用窗口渲染区（由 JS 注入） -->
+  </div>
+</div>
+
+<button class="toggle-btn" id="toggleModal">显示弹窗预览</button>
+
+<div class="tweaks" id="tweaks">
+  <h3>Tweaks</h3>
+  <div class="grp">
+    <div class="grp-label">整体布局（主界面）</div>
+    <button class="opt on" data-var="layout" data-val="compact">A · 紧凑型（现状）</button>
+    <button class="opt" data-var="layout" data-val="spacious">B · 宽松型</button>
+    <button class="opt" data-var="layout" data-val="minimal">C · 极简型</button>
+  </div>
+  <div class="grp">
+    <div class="grp-label">侧栏宽度</div>
+    <input type="range" id="sidebarW" min="140" max="300" value="200" step="10">
+    <div class="val" id="sidebarVal">200px</div>
+  </div>
+  <div class="grp">
+    <div class="grp-label">弹窗样式</div>
+    <button class="opt on" data-var="modal" data-val="center">A · 居中卡片（现状）</button>
+    <button class="opt" data-var="modal" data-val="wide">B · 大卡片带说明区</button>
+    <button class="opt" data-var="modal" data-val="top">C · 顶部窄条</button>
+  </div>
+  <div class="grp">
+    <div class="grp-label">导入/导出按钮</div>
+    <button class="opt on" data-var="import" data-val="row">A · 单行横排（现状）</button>
+    <button class="opt" data-var="import" data-val="grid">B · 2×2 网格</button>
+  </div>
+  <div class="grp">
+    <div class="grp-label">状态栏成功提示</div>
+    <button class="opt on" data-var="flash" data-val="amber">A · 琥珀色（现状）</button>
+    <button class="opt" data-var="flash" data-val="green">B · 绿色（成功语义）</button>
+  </div>
+  <div class="note" id="note">红色标 * 项为已确认的 Bug 修复，与布局无关。</div>
+</div>
+
+<script>
+  const S = {
+    layout: 'compact',
+    modal: 'center',
+    import: 'row',
+    flash: 'amber',
+    sidebarW: 200,
+    showModal: false,
+  };
+
+  const DATA = {
+    cats: [
+      { n:'前端', c:[{n:'框架',c:[]},{n:'工具库',c:[]}] },
+      { n:'后端', c:[] },
+      { n:'设计', c:[{n:'配色',c:[{n:'色板',c:[]}]}] },
+    ],
+    sites: [
+      { n:'Vue 3 官方文档', u:'vuejs.org', tag:['框架'], st:'ok' },
+      { n:'Vite 构建工具', u:'vitejs.dev', tag:['工具'], st:'ok' },
+      { n:'MDN Web Docs', u:'developer.mozilla.org', tag:['参考'], st:'ok' },
+      { n:'旧项目站点', u:'legacy.example.com', tag:[], st:'dead' },
+      { n:'新收藏待检测', u:'new-tool.example.io', tag:['工具'], st:'unknown' },
+    ],
+  };
+
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+  function renderCats(list, depth){
+    let h = '';
+    for (const c of list){
+      const pad = depth>0 ? 18 : 0;
+      h += `<div class="row ${depth>0?'sub':''}${c.n==='前端'?' active':''}" style="padding-left:${pad}px">${esc(c.n)}<span class="cnt">${c.c.length}</span></div>`;
+      h += renderCats(c.c, depth+1);
+    }
+    return h;
+  }
+
+  function renderTable(){
+    let h = '';
+    for (const s of DATA.sites){
+      const st = s.st==='ok' ? '<span class="ok">✓</span>' : s.st==='dead' ? '<span class="dead">✗</span>' : '<span class="pending">…</span>';
+      const sel = s.st==='dead' ? ' row-selected' : '';
+      h += `<tr class="${sel}"><td style="width:16px"></td><td class="name-dead" style="color:${s.st==='dead'?'var(--danger)':'var(--text)'};font-weight:${s.st==='dead'?'700':'400'}">${esc(s.n)}</td><td class="muted">${esc(s.u)}</td>`;
+      h += `<td>${s.tag.map(t=>`<span class="chip">${t}</span>`).join('')}</td><td>${st}</td><td class="muted">—</td></tr>`;
+    }
+    return h;
+  }
+
+  function layoutStyles(){
+    const w = S.sidebarW;
+    const base = { sidebar: { gridTemplateColumns:`${w}px 1fr` }, sidebarPad: 10 };
+    if (S.layout==='compact'){ return base; }
+    if (S.layout==='spacious'){
+      return { sidebar: { gridTemplateColumns:`${Math.max(w,220)}px 1fr` }, sidebarPad: 14 };
+    }
+    // minimal
+    return { sidebar: { gridTemplateColumns:`${Math.min(w,180)}px 1fr` }, sidebarPad: 8 };
+  }
+
+  function statusbarHTML(){
+    const cls = S.flash==='green' ? 'ok-flash' : 'pending-flash';
+    return `<span>共 ${DATA.sites.length} 个网站</span><span class="bad">失效 1</span><span>未检测 1</span><span>上次检测 2026/08/17 09:00</span><span class="${cls}">已导出 md</span>`;
+  }
+
+  function appHTML(){
+    const ls = layoutStyles();
+    const flashCss = S.flash==='green'
+      ? `<style>.ok-flash{color:#12906B;font-weight:700}</style>`
+      : `<style>.pending-flash{color:#A36A00;font-weight:700}</style>`;
+    return `
+    <div class="app">
+      <div class="topbar">
+        <span class="logo">◧ 网站收藏管家</span>
+        <input class="search" placeholder="搜索名称 / 链接 / 标签…" value="">
+        <select class="btn"><option>标签筛选 ▾</option><option>框架</option><option>工具</option></select>
+        <button class="btn primary">▶ 检测全部</button>
+        <button class="btn">＋ 添加</button>
+        <button class="btn">导入/导出</button>
+        <button class="btn">⚙</button>
+      </div>
+      <div class="body" style="grid-template-columns:${ls.sidebar.gridTemplateColumns}">
+        <aside class="sidebar" style="padding:${ls.sidebarPad}px">
+          <div class="group-label">分类</div>
+          <div class="row active">全部 <span class="cnt">${DATA.sites.length}</span></div>
+          ${renderCats(DATA.cats,0)}
+          <div class="group-label">视图</div>
+          <div class="row dead">⚠ 失效 <span class="cnt">1</span></div>
+          <div class="group-label">标签</div>
+          <div class="row"># 框架</div><div class="row"># 工具</div><div class="row"># 参考</div>
+          <div class="group-label">系统</div>
+          <div class="row trash">🗑 回收站 <span class="cnt">0</span></div>
+        </aside>
+        <main class="content">
+          <table class="site-table">
+            <thead><tr><th style="width:16px"></th><th>名称</th><th>链接</th><th>标签</th><th>状态</th><th>最近检测</th></tr></thead>
+            <tbody>${renderTable()}</tbody>
+          </table>
+        </main>
+      </div>
+      <footer class="statusbar">${statusbarHTML()}</footer>
+    </div>`;
+  }
+
+  function modalButtons(){
+    if (S.import==='grid'){
+      return `<div class="grid2x2">
+        <button class="btn primary">导出 MD</button>
+        <button class="btn primary">导出 JSON</button>
+        <button class="btn">导入 MD</button>
+        <button class="btn">导入 JSON</button>
+      </div>`;
+    }
+    return `<div class="actions flex-start">
+      <button class="btn primary">导出 MD</button>
+      <button class="btn primary">导出 JSON</button>
+      <button class="btn">导入 MD</button>
+      <button class="btn">导入 JSON</button>
+    </div>`;
+  }
+
+  function modalHTML(){
+    const content = `
+      <h3>导入 / 导出</h3>
+      ${modalButtons()}
+      <p class="muted">md 导入格式示例：<br><code># 分类名<br>- [名称](https://链接)</code></p>
+      <p class="muted">JSON 导入：读取「导出 JSON」的 .json 备份文件，覆盖当前全部数据（自动备份 .bak）。</p>
+      <div class="mode-row"><label><input type="radio" checked> 合并导入</label>&nbsp;&nbsp;<label><input type="radio"> 覆盖导入（自动备份 .bak）</label></div>
+      <div class="actions"><button class="btn">关闭</button></div>`;
+
+    if (S.modal==='center'){
+      return `<div class="modal-mask"><div class="modal">${content}</div></div>`;
+    }
+    if (S.modal==='wide'){
+      return `<div class="modal-mask">
+        <div class="modal" style="min-width:520px;max-width:640px">
+          <h3>导入 / 导出</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <label>导出</label>
+              ${S.import==='grid' ? `<div class="grid2x2"><button class="btn primary">导出 MD</button><button class="btn primary">导出 JSON</button></div>` : `<div class="actions flex-start"><button class="btn primary">导出 MD</button><button class="btn primary">导出 JSON</button></div>`}
+              <label>导入</label>
+              ${S.import==='grid' ? `<div class="grid2x2"><button class="btn">导入 MD</button><button class="btn">导入 JSON</button></div>` : `<div class="actions flex-start"><button class="btn">导入 MD</button><button class="btn">导入 JSON</button></div>`}
+            </div>
+            <div style="border-left:2px dashed var(--border);padding-left:14px">
+              <label>说明</label>
+              <p class="muted">md 格式示例：<br><code># 分类名<br>- [名称](https://链接)</code></p>
+              <p class="muted">JSON 导入覆盖全部数据，自动备份 .bak。</p>
+              <div class="mode-row"><label><input type="radio" checked> 合并</label><br><label><input type="radio"> 覆盖</label></div>
+            </div>
+          </div>
+          <div class="actions"><button class="btn">关闭</button></div>
+        </div>
+      </div>`;
+    }
+    // top narrow bar
+    return `<div class="modal-mask" style="align-items:flex-start;padding-top:40px">
+      <div class="modal" style="min-width:520px">
+        ${content.replace('导入 / 导出','导入 / 导出 <span style="font-size:10px;color:var(--text-2)">（操作完成后自动关闭）</span>')}
+      </div>
+    </div>`;
+  }
+
+  function render(){
+    const vp = document.getElementById('viewport');
+    const sw = S.sidebarW;
+    const frameW = Math.min(860, sw + 640);
+    const inner = S.showModal
+      ? `<div class="app"><div class="body" style="grid-template-columns:${sw}px 1fr"><aside class="sidebar" style="padding:10px"><div class="group-label">分类</div><div class="row">全部 <span class="cnt">5</span></div>${renderCats(DATA.cats,0)}</aside><main class="content">${modalHTML()}</main></div></div>`
+      : appHTML();
+
+    const cap = S.showModal
+      ? `弹窗预览 · 弹窗样式「${S.modal==='center'?'A 居中卡片':S.modal==='wide'?'B 大卡片':'C 顶部窄条'}」 / 按钮「${S.import==='row'?'A 单行':'B 网格'}」`
+      : `主界面 · 布局「${S.layout==='compact'?'A 紧凑':S.layout==='spacious'?'B 宽松':'C 极简'}」 / 侧栏 ${sw}px / 提示「${S.flash==='amber'?'A 琥珀':'B 绿色'}」`;
+
+    vp.innerHTML = `<div class="frame" style="width:${frameW}px;height:${S.showModal?440:430}px"><div style="height:100%">${inner}</div></div><div class="frame-caption" style="position:absolute;bottom:8px;left:0;right:0"><b>${cap}</b></div>`;
+  }
+
+  document.querySelectorAll('.opt[data-var]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = btn.dataset.var, val = btn.dataset.val;
+      S[v] = val;
+      document.querySelectorAll(`.opt[data-var="${v}"]`).forEach(b=>b.classList.toggle('on', b===btn));
+      render();
+    });
+  });
+
+  const sb = document.getElementById('sidebarW');
+  sb.addEventListener('input', ()=>{
+    S.sidebarW = +sb.value;
+    document.getElementById('sidebarVal').textContent = sb.value + 'px';
+    render();
+  });
+
+  document.getElementById('toggleModal').addEventListener('click', (e)=>{
+    S.showModal = !S.showModal;
+    e.target.textContent = S.showModal ? '返回主界面' : '显示弹窗预览';
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
