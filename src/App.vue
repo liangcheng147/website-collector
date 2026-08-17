@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useAppStore } from './store/app'
+import TitleBar from './components/TitleBar.vue'
 import TopBar from './components/TopBar.vue'
 import Sidebar from './components/Sidebar.vue'
 import SiteTable from './components/SiteTable.vue'
@@ -36,6 +37,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
 
 <template>
   <div class="app">
+    <TitleBar />
     <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" />
     <div class="body">
       <Sidebar />
@@ -54,6 +56,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
 </template>
 
 <style scoped>
-.body { display: grid; grid-template-columns: 170px 1fr; min-height: 0; }
+.body { flex: 1; min-height: 0; display: grid; grid-template-columns: 170px 1fr; }
 .content { overflow: auto; padding: 12px; background: var(--bg); }
 </style>
