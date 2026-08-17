@@ -17,8 +17,17 @@ function confirm() {
   <ModalMask @close="emit('close')">
     <div class="modal">
       <h3>添加标签（{{ props.siteIds.length }} 项）</h3>
-      <input v-model="tags" placeholder="新标签，空格分隔" />
-      <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="confirm">添加</button></div>
+      <div class="modal-cols">
+        <div>
+          <label>新标签（空格分隔）</label>
+          <input v-model="tags" placeholder="新标签，空格分隔" />
+          <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="confirm">添加</button></div>
+        </div>
+        <div class="help">
+          <label>说明</label>
+          <p class="muted">标签以空格分隔，多个标签可一次添加，批量应用到选中的网站。</p>
+        </div>
+      </div>
     </div>
   </ModalMask>
 </template>
