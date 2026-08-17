@@ -4,6 +4,7 @@ mod commands;
 mod config;
 mod data;
 mod md;
+mod settings;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -33,6 +34,8 @@ pub fn run() {
             commands::toggle_maximize_window,
             commands::close_window,
             commands::is_maximized,
+            commands::get_settings,
+            commands::set_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

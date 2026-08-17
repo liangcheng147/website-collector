@@ -1,4 +1,4 @@
-use crate::{check, config, data, md};
+use crate::{check, config, data, md, settings};
 use tauri::Manager;
 
 fn exe_dir() -> std::path::PathBuf {
@@ -110,6 +110,16 @@ pub fn close_window(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn is_maximized(app: tauri::AppHandle) -> bool {
     main_window(&app).map(|w| w.is_maximized().unwrap_or(false)).unwrap_or(false)
+}
+
+#[tauri::command]
+pub fn get_settings(app: tauri::AppHandle) -> settings::Settings {
+    settings::load_settings(&active_data_dir(&app))
+}
+
+#[tauri::command]
+pub fn set_settings(app: tauri::AppHandle, settings: settings::Settings) -> Result<(), String> {
+    settings::save_settings(&active_data_dir(&app), &settings)
 }
 
 #[cfg(test)]
