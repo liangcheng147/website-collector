@@ -7,11 +7,12 @@ use std::path::{Path, PathBuf};
 pub struct Settings {
     #[serde(default)] pub theme: String,
     #[serde(default)] pub zoom: u32,
+    #[serde(default)] pub sidebar_collapsed: Vec<String>,
 }
 
 impl Settings {
     pub fn defaults() -> Self {
-        Settings { theme: "system".into(), zoom: 100 }
+        Settings { theme: "system".into(), zoom: 100, sidebar_collapsed: vec![] }
     }
 }
 
@@ -59,7 +60,7 @@ mod tests {
     #[test]
     fn save_then_load_roundtrip() {
         let d = tmp_dir("roundtrip");
-        let s = Settings { theme: "dark".into(), zoom: 130 };
+        let s = Settings { theme: "dark".into(), zoom: 130, ..Settings::defaults() };
         save_settings(&d, &s).unwrap();
         assert_eq!(load_settings(&d).theme, "dark");
         assert_eq!(load_settings(&d).zoom, 130);
@@ -72,6 +73,27 @@ mod tests {
         fs::write(settings_file_path(&d), "{ bad").unwrap();
         assert_eq!(load_settings(&d).zoom, 100);
         assert!(settings_file_path(&d).with_extension("json.bak").exists());
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn sidebar_collapsed_roundtrip() {
+        let d = tmp_dir("collapsed");
+        let mut s = Settings::defaults();
+        s.sidebar_collapsed = vec!["分类".into(), "系统".into()];
+        save_settings(&d, &s).unwrap();
+        let loaded = load_settings(&d);
+        assert_eq!(loaded.sidebar_collapsed, vec!["分类".to_string(), "系统".to_string()]);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn missing_sidebar_collapsed_defaults_empty() {
+        let d = tmp_dir("collapsed_missing");
+        fs::write(settings_file_path(&d), r#"{"theme":"dark","zoom":110}"#).unwrap();
+        let s = load_settings(&d);
+        assert!(s.sidebar_collapsed.is_empty());
+        assert_eq!(s.theme, "dark");
         let _ = fs::remove_dir_all(&d);
     }
 }

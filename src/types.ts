@@ -8,6 +8,7 @@ export interface Site {
 export interface Settings {
   theme: 'system' | 'light' | 'dark'
   zoom: number
+  sidebarCollapsed: string[]
 }
 export interface TrashedSite { site: Site; deletedAt: string }
 export interface AppData {

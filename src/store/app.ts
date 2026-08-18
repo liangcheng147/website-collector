@@ -27,7 +27,7 @@ export const useAppStore = defineStore('app', {
     connectivityError: false,
     flashMsg: '',
     location: { dir: '', isFallback: false },
-    settings: { theme: 'system', zoom: 100 } as Settings,
+    settings: { theme: 'system', zoom: 100, sidebarCollapsed: [] } as Settings,
   }),
   getters: {
     filteredSites(state): Site[] {

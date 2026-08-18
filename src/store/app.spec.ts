@@ -7,7 +7,7 @@ vi.mock('../api', () => ({
   checkConnectivity: vi.fn().mockResolvedValue(true),
   checkSite: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
   getDataLocation: vi.fn().mockResolvedValue({ dir: 'C:\\data', isFallback: false }),
-  getSettings: vi.fn().mockResolvedValue({ theme: 'system', zoom: 100 }),
+  getSettings: vi.fn().mockResolvedValue({ theme: 'system', zoom: 100, sidebarCollapsed: [] }),
   setSettings: vi.fn().mockResolvedValue(undefined),
 }))
 import * as api from '../api'
@@ -124,14 +124,14 @@ describe('app store', () => {
     const s = useAppStore()
     await s.updateSettings({ zoom: 150 })
     expect(s.settings.zoom).toBe(150)
-    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', zoom: 150 })
+    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', zoom: 150, sidebarCollapsed: [] })
   })
 
   it('init loads settings', async () => {
-    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', zoom: 130 })
+    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', zoom: 130, sidebarCollapsed: [] })
     const s = useAppStore()
     await s.init()
-    expect(s.settings).toEqual({ theme: 'dark', zoom: 130 })
+    expect(s.settings).toEqual({ theme: 'dark', zoom: 130, sidebarCollapsed: [] })
   })
 
   it('deleteSites moves to recycle bin', () => {
