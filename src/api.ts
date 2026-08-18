@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import type { AppData, CheckResult, Settings } from './types'
 
 export const loadData = () => invoke<AppData>('load_data')
@@ -19,3 +20,4 @@ export const importMdFromFile = (path: string, mode: string) => invoke<AppData>(
 export const importJsonFromFile = (path: string) => invoke<AppData>('import_json_from_file', { path })
 export const getSettings = () => invoke<Settings>('get_settings')
 export const setSettings = (settings: Settings) => invoke<void>('set_settings', { settings })
+export const openLink = (url: string) => openUrl(url)

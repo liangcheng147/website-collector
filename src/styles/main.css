@@ -127,3 +127,10 @@ html[data-theme="dark"] .modal-mask { background:rgba(0,0,0,.6); }
 .seg .btn.active { background:var(--primary-t); color:var(--primary); border-color:var(--primary-t); font-weight:600; }
 .slider-row { display:flex; align-items:center; gap:10px; margin-top:6px; }
 input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
+
+/* ---- 选中交互与打开链接 ---- */
+.site-table { user-select:none; }
+.site-table th:first-child, .site-table td:first-child { width:28px; text-align:center; }
+.site-table td:first-child .cb { cursor:pointer; }
+.open-btn { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:5px; background:var(--primary); color:#fff; font-size:11px; cursor:pointer; margin-left:6px; vertical-align:middle; user-select:none; }
+.open-btn:hover { background:var(--primary-w); }

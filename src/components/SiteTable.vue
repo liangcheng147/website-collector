@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useAppStore } from '../store/app'
+import type { Site } from '../types'
+import * as api from '../api'
 import ContextMenu from './ContextMenu.vue'
 
 const store = useAppStore()
@@ -28,6 +30,30 @@ function onAction(kind: string) {
   else if (kind === 'edit') emit('edit', store.data.sites.find(s => s.id === ids[0]))
   else if (kind === 'delete') store.deleteSites(ids)
 }
+
+const allSelected = computed(() =>
+  store.filteredSites.length > 0 && store.filteredSites.every(s => store.selectedIds.includes(s.id)))
+
+function onRowClick(e: MouseEvent, site: Site) {
+  if (e.ctrlKey || e.metaKey) store.toggleSelect(site.id)
+  else if (e.shiftKey) store.selectRange(site.id)
+  else store.selectOne(site.id)
+}
+function onSiteDragStart(e: DragEvent, id: string) {
+  if (!e.dataTransfer) return
+  e.dataTransfer.setData('application/x-site-id', id)
+  e.dataTransfer.effectAllowed = 'move'
+}
+function onRowDrop(e: DragEvent, site: Site) {
+  const tag = e.dataTransfer?.getData('application/x-tag')
+  if (tag) store.addTagsToSites([site.id], [tag])
+}
+function onRowDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types.includes('application/x-tag')) {
+    e.preventDefault()
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+  }
+}
 </script>
 
 <template>
@@ -42,20 +68,31 @@ function onAction(kind: string) {
     </div>
     <table class="site-table">
       <thead>
-        <tr><th></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th><th>备注</th></tr>
+        <tr>
+          <th><span class="cb" :class="{ checked: allSelected }" @click="store.selectAllVisible()"></span></th>
+          <th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th><th>备注</th>
+        </tr>
       </thead>
       <tbody>
         <tr
           v-for="s in store.filteredSites" :key="s.id"
           :class="{ 'row-selected': store.selectedIds.includes(s.id) }"
+          draggable="true"
+          @click="onRowClick($event, s)"
           @mouseenter="hoverId = s.id"
           @mouseleave="hoverId = null"
           @dblclick="onRowDblClick(s)"
           @contextmenu.prevent="onRight($event, s.id)"
+          @dragstart="onSiteDragStart($event, s.id)"
+          @dragover="onRowDragOver"
+          @drop="onRowDrop($event, s)"
         >
           <td><span class="cb" :class="{ checked: store.selectedIds.includes(s.id) }" @click.stop="store.toggleSelect(s.id)"></span></td>
           <td :class="{ 'name-dead': s.status === 'dead' }"><span v-if="hoverId === s.id" class="dots" @click.stop="onRowDots($event, s.id)">⋯</span> {{ s.name }}</td>
-          <td class="muted">{{ s.url }}</td>
+          <td class="muted">
+            {{ s.url }}
+            <span v-if="hoverId === s.id" class="open-btn" title="打开链接" @click.stop="api.openLink(s.url)">⧉</span>
+          </td>
           <td class="muted">{{ s.categoryId }}</td>
           <td><span v-for="t in s.tags" :key="t" class="chip">{{ t }}</span></td>
           <td :class="{ ok: s.status === 'ok', dead: s.status === 'dead', pending: s.status === 'unknown' }">{{ heart(s.status) }}</td>
