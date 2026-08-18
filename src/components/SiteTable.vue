@@ -77,20 +77,22 @@ function onRowDragOver(e: DragEvent) {
         <tr
           v-for="s in store.filteredSites" :key="s.id"
           :class="{ 'row-selected': store.selectedIds.includes(s.id) }"
-          draggable="true"
           @click="onRowClick($event, s)"
           @mouseenter="hoverId = s.id"
           @mouseleave="hoverId = null"
           @dblclick="onRowDblClick(s)"
           @contextmenu.prevent="onRight($event, s.id)"
-          @dragstart="onSiteDragStart($event, s.id)"
           @dragover="onRowDragOver"
           @drop="onRowDrop($event, s)"
         >
           <td><span class="cb" :class="{ checked: store.selectedIds.includes(s.id) }" @click.stop="store.toggleSelect(s.id)"></span></td>
-          <td :class="{ 'name-dead': s.status === 'dead' }"><span v-if="hoverId === s.id" class="dots" @click.stop="onRowDots($event, s.id)">⋯</span> {{ s.name }}</td>
-          <td class="muted">
-            {{ s.url }}
+          <td
+            :class="{ 'name-dead': s.status === 'dead' }"
+            draggable="true"
+            @dragstart="onSiteDragStart($event, s.id)"
+          ><span v-if="hoverId === s.id" class="dots" @click.stop="onRowDots($event, s.id)">⋯</span> {{ s.name }}</td>
+          <td class="muted link-cell">
+            <span class="link-text">{{ s.url }}</span>
             <span v-if="hoverId === s.id" class="open-btn" title="打开链接" @click.stop="api.openLink(s.url)">⧉</span>
           </td>
           <td class="muted">{{ s.categoryId }}</td>
