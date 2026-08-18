@@ -20,6 +20,12 @@ function onRowDots(e: MouseEvent, siteId: string) { onRight(e, siteId) }
 function onKey(e: KeyboardEvent) { if (e.key === 'Escape') menu.value = null }
 onMounted(() => document.addEventListener('keydown', onKey))
 onUnmounted(() => document.removeEventListener('keydown', onKey))
+const getCategoryName = (id: string | null) => {
+  if (!id) return '未分类'
+  const cat = store.flatCategories.find((c) => c.id === id)
+  return cat ? cat.name : '未分类'
+}
+
 function onRowDblClick(site: any) { emit('edit', site) }
 function onAction(kind: string) {
   const ids = [...store.selectedIds]
@@ -95,7 +101,7 @@ function onRowDragOver(e: DragEvent) {
             <span class="link-text">{{ s.url }}</span>
             <span v-if="hoverId === s.id" class="open-btn" title="打开链接" @click.stop="api.openLink(s.url)">⧉</span>
           </td>
-          <td class="muted">{{ s.categoryId }}</td>
+          <td class="muted">{{ getCategoryName(s.categoryId) }}</td>
           <td><span v-for="t in s.tags" :key="t" class="chip">{{ t }}</span></td>
           <td :class="{ ok: s.status === 'ok', dead: s.status === 'dead', pending: s.status === 'unknown' }">{{ heart(s.status) }}</td>
           <td class="muted">{{ s.note }}</td>
