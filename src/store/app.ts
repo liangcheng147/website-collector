@@ -229,6 +229,7 @@ export const useAppStore = defineStore('app', {
       const cur = ids.indexOf(id)
       if (cur < 0) { this.selectedIds = [id]; this.lastSelectedId = id; return }
       const anchor = ids.indexOf(this.lastSelectedId ?? id)
+      if (anchor < 0) { this.selectedIds = [id]; this.lastSelectedId = id; return }
       const from = Math.min(cur, anchor)
       const to = Math.max(cur, anchor)
       this.selectedIds = ids.slice(from, to + 1)

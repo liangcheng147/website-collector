@@ -258,6 +258,17 @@ describe('app store', () => {
     expect(s.selectedIds).toEqual(['a', 'b'])
   })
 
+  it('selectRange falls back to single-select when anchor hidden', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.sites[0].categoryId = 'c9' // a 移出 c1 视图 → filteredSites = [b, c]
+    s.view = { kind: 'category', id: 'c1' }
+    s.selectOne('a') // 锚点 a 不在当前视图
+    s.selectRange('b') // 目标非最后一行：buggy slice(-1, 1) 会得到 []，修复后应回退单选 ['b']
+    expect(s.selectedIds).toEqual(['b'])
+    expect(s.lastSelectedId).toBe('b')
+  })
+
   it('selectAllVisible selects all filtered sites', () => {
     const s = useAppStore()
     s.data = baseData
