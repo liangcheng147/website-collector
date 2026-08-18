@@ -102,3 +102,26 @@ html.win-maximized .app { border-radius:0; }
 .site-table td.dead, .site-table td.ok { animation:statusPop .3s ease; }
 
 .table-wrap { position:relative; }
+
+/* ---- 暗色主题 ---- */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:#16181D; --panel:#1F2329;
+  --primary:#6B8AFF; --primary-w:#4A6CF7; --primary-t:#232A45;
+  --text:#E4E6EB; --text-2:#9AA0AE; --border:#2A2D36; --border-2:#343846; --hover:#23262E;
+  --ok:#4ADE80; --ok-txt:#4ADE80; --pending:#FBBF24; --pending-txt:#FBBF24; --danger:#F87171; --danger-bg:#2A1D1D;
+}
+html[data-theme="dark"] button { background:var(--bg); }
+html[data-theme="dark"] input, html[data-theme="dark"] select, html[data-theme="dark"] textarea { background:var(--bg); }
+html[data-theme="dark"] input[readonly] { background:var(--bg); }
+html[data-theme="dark"] .modal { background:var(--panel); }
+html[data-theme="dark"] .cb { background:var(--bg); }
+html[data-theme="dark"] .ctx { background:var(--panel); }
+html[data-theme="dark"] .btn.primary, html[data-theme="dark"] .titlebar .mark { color:#0B0D12; }
+html[data-theme="dark"] .modal-mask { background:rgba(0,0,0,.6); }
+
+/* ---- 设置弹窗分区 ---- */
+.seg { display:flex; gap:6px; margin-bottom:14px; }
+.seg .btn.active { background:var(--primary-t); color:var(--primary); border-color:var(--primary-t); font-weight:600; }
+.slider-row { display:flex; align-items:center; gap:10px; margin-top:6px; }
+input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
