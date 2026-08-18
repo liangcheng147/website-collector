@@ -7,7 +7,7 @@ vi.mock('../api', () => ({
   checkConnectivity: vi.fn().mockResolvedValue(true),
   checkSite: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
   getDataLocation: vi.fn().mockResolvedValue({ dir: 'C:\\data', isFallback: false }),
-  getSettings: vi.fn().mockResolvedValue({ theme: 'system', zoom: 100, sidebarCollapsed: [] }),
+  getSettings: vi.fn().mockResolvedValue({ theme: 'system', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] }),
   setSettings: vi.fn().mockResolvedValue(undefined),
 }))
 import * as api from '../api'
@@ -124,14 +124,14 @@ describe('app store', () => {
     const s = useAppStore()
     await s.updateSettings({ zoom: 150 })
     expect(s.settings.zoom).toBe(150)
-    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', zoom: 150, sidebarCollapsed: [] })
+    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', zoom: 150, sidebarCollapsed: [], collapsedCategories: [] })
   })
 
   it('init loads settings', async () => {
-    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', zoom: 130, sidebarCollapsed: [] })
+    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', zoom: 130, sidebarCollapsed: [], collapsedCategories: [] })
     const s = useAppStore()
     await s.init()
-    expect(s.settings).toEqual({ theme: 'dark', zoom: 130, sidebarCollapsed: [] })
+    expect(s.settings).toEqual({ theme: 'dark', zoom: 130, sidebarCollapsed: [], collapsedCategories: [] })
   })
 
   it('deleteSites moves to recycle bin', () => {
@@ -150,6 +150,33 @@ describe('app store', () => {
     s.restoreSite('a')
     expect(s.data.sites).toHaveLength(3)
     expect(s.trashedSites).toHaveLength(0)
+  })
+
+  it('restoreSites restores multiple in one go', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.deleteSites(['a', 'b'])
+    s.restoreSites(['a', 'b'])
+    expect(s.data.sites).toHaveLength(3)
+    expect(s.trashedSites).toHaveLength(0)
+  })
+
+  it('restoreSites ignores ids not in recycle bin', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.deleteSites(['a'])
+    s.restoreSites(['a', 'zzz'])
+    expect(s.data.sites).toHaveLength(3)
+    expect(s.trashedSites).toHaveLength(0)
+  })
+
+  it('permanentlyDeleteSites removes from recycle bin only', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.deleteSites(['a', 'b'])
+    s.permanentlyDeleteSites(['a'])
+    expect(s.data.sites.map(x => x.id)).toEqual(['c'])
+    expect(s.trashedSites.map(t => t.site.id)).toEqual(['b'])
   })
 
   it('deleteCategory move-to-uncategorized clears categoryId', () => {

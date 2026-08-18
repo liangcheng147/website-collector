@@ -71,9 +71,16 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
       @dragleave="onDragLeave"
       @drop="onDrop"
     >
+      <span
+        v-if="cat.children.length > 0"
+        class="collapse-arrow"
+        @click.stop="store.toggleCategoryCollapse(cat.id)"
+      >{{ store.settings.collapsedCategories.includes(cat.id) ? '▶' : '▼' }}</span>
       {{ cat.name }}
     </div>
-    <CategoryNode v-for="cc in cat.children" :key="cc.id" :cat="cc" :depth="depth + 1" />
+    <div class="children" v-show="!store.settings.collapsedCategories.includes(cat.id)">
+      <CategoryNode v-for="cc in cat.children" :key="cc.id" :cat="cc" :depth="depth + 1" />
+    </div>
     <div class="menu-mask" v-if="menu" @click="menu = null" @contextmenu.prevent="menu = null"></div>
     <ContextMenu v-if="menu" :x="menu.x" :y="menu.y" :items="menuItems()" @action="(kind: string) => onAction(kind, cat)" />
     <PromptModal v-if="renameCat" :title="'重命名分类'" :initial="renameCat.name" hint="修改后所有子分类与网站归属保持不变。" @confirm="doRename" @close="renameCat = null" />

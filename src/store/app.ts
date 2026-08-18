@@ -28,7 +28,7 @@ export const useAppStore = defineStore('app', {
     connectivityError: false,
     flashMsg: '',
     location: { dir: '', isFallback: false },
-    settings: { theme: 'system', zoom: 100, sidebarCollapsed: [] } as Settings,
+    settings: { theme: 'system', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] } as Settings,
   }),
   getters: {
     filteredSites(state): Site[] {
@@ -98,12 +98,33 @@ export const useAppStore = defineStore('app', {
       const s = this.settings
       const dark = s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
       document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-      document.documentElement.style.zoom = String(s.zoom / 100)
+
+      const app = document.querySelector('.app') as HTMLElement | null
+      if (!app) return
+      const scale = s.zoom / 100
+      if (scale === 1) {
+        app.style.transform = ''
+        app.style.width = ''
+        app.style.height = ''
+      } else {
+        app.style.transform = `scale(${scale})`
+        app.style.transformOrigin = '0 0'
+        app.style.width = `${100 / scale}%`
+        app.style.height = `${100 / scale}%`
+      }
     },
     async updateSettings(patch: Partial<Settings>) {
       this.settings = { ...this.settings, ...patch }
       this.applyAppearance()
       try { await api.setSettings(this.settings) } catch (e) { this.flash('设置保存失败：' + e) }
+    },
+    toggleCategoryCollapse(id: string) {
+      const idx = this.settings.collapsedCategories.indexOf(id)
+      if (idx === -1) {
+        this.settings.collapsedCategories.push(id)
+      } else {
+        this.settings.collapsedCategories.splice(idx, 1)
+      }
     },
     async refreshTags() {
       const set = new Set<string>()
@@ -154,9 +175,25 @@ export const useAppStore = defineStore('app', {
       }
     },
 
+    restoreSites(siteIds: string[]) {
+      const set = new Set(siteIds)
+      const restored = this.data.recycleBin.filter(t => set.has(t.site.id)).map(t => t.site)
+      if (!restored.length) return
+      this.data.recycleBin = this.data.recycleBin.filter(t => !set.has(t.site.id))
+      this.data.sites.push(...restored)
+      this.persist()
+    },
+
     permanentlyDelete(siteId: string) {
       const idx = this.data.recycleBin.findIndex(t => t.site.id === siteId)
       if (idx >= 0) { this.data.recycleBin.splice(idx, 1); this.persist() }
+    },
+
+    permanentlyDeleteSites(siteIds: string[]) {
+      const set = new Set(siteIds)
+      const before = this.data.recycleBin.length
+      this.data.recycleBin = this.data.recycleBin.filter(t => !set.has(t.site.id))
+      if (this.data.recycleBin.length !== before) this.persist()
     },
 
     emptyRecycle() {
