@@ -40,7 +40,8 @@ html.win-maximized .app { border-radius:0; }
 .topbar .search { flex:1; max-width:300px; }
 
 .sidebar { background:var(--panel); border-right:1px solid var(--border); padding:10px 8px; overflow:auto; }
-.sidebar .group-label { font-size:11px; color:var(--text-2); font-weight:700; margin:10px 8px 4px; }
+.sidebar .group-label { font-size:11px; color:var(--text-2); font-weight:700; margin:10px 8px 4px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; user-select:none; }
+.sidebar .group-label .caret { font-size:10px; color:var(--text-2); }
 .sidebar .row { padding:5px 10px; border-radius:var(--radius); cursor:pointer; font-size:13px; color:var(--text); }
 .sidebar .row:hover { background:var(--hover); }
 .sidebar .row.active { background:var(--primary-t); color:var(--primary); font-weight:600; }
