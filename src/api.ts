@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { AppData, CheckResult } from './types'
+import type { AppData, CheckResult, Settings } from './types'
 
 export const loadData = () => invoke<AppData>('load_data')
 export const saveData = (data: AppData) => invoke<void>('save_data', { data })
@@ -17,3 +17,5 @@ export const exportMdToFile = (path: string) => invoke<void>('export_md_to_file'
 export const exportJsonToFile = (path: string) => invoke<void>('export_json_to_file', { path })
 export const importMdFromFile = (path: string, mode: string) => invoke<AppData>('import_md_from_file', { path, mode })
 export const importJsonFromFile = (path: string) => invoke<AppData>('import_json_from_file', { path })
+export const getSettings = () => invoke<Settings>('get_settings')
+export const setSettings = (settings: Settings) => invoke<void>('set_settings', { settings })

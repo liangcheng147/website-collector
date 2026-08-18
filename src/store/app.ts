@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { AppData, Site, TrashedSite, View, Category } from '../types'
+import type { AppData, Site, TrashedSite, View, Category, Settings } from '../types'
 import * as api from '../api'
 
 function collectCategoryIds(cats: Category[], rootId: string): string[] {
@@ -27,6 +27,7 @@ export const useAppStore = defineStore('app', {
     connectivityError: false,
     flashMsg: '',
     location: { dir: '', isFallback: false },
+    settings: { theme: 'system', zoom: 100 } as Settings,
   }),
   getters: {
     filteredSites(state): Site[] {
@@ -68,12 +69,26 @@ export const useAppStore = defineStore('app', {
       this.data = await api.loadData()
       const loc = await api.getDataLocation()
       this.location = loc
+      this.settings = await api.getSettings()
+      this.applyAppearance()
     },
     async persist() { await api.saveData(this.data) },
     setData(d: AppData) { this.data = d; this.persist() },
     flash(msg: string) {
       this.flashMsg = msg
       setTimeout(() => { this.flashMsg = '' }, 2500)
+    },
+    applyAppearance() {
+      if (typeof document === 'undefined') return
+      const s = this.settings
+      const dark = s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      document.documentElement.style.zoom = String(s.zoom / 100)
+    },
+    async updateSettings(patch: Partial<Settings>) {
+      this.settings = { ...this.settings, ...patch }
+      this.applyAppearance()
+      try { await api.setSettings(this.settings) } catch (e) { this.flash('设置保存失败：' + e) }
     },
     async refreshTags() {
       const set = new Set<string>()
@@ -90,12 +105,12 @@ export const useAppStore = defineStore('app', {
       return this.data.sites.some(s => s.url === url)
     },
 
-    addSite(input: { name: string; url: string; categoryId: string | null; tags: string[] }) {
+    addSite(input: { name: string; url: string; categoryId: string | null; tags: string[]; note: string }) {
       if (this.isDuplicateUrl(input.url)) return
       this.data.sites.push({
         id: this.id_gen(), name: input.name, url: input.url,
         categoryId: input.categoryId, tags: [...input.tags],
-        status: 'unknown', lastCheck: null,
+        status: 'unknown', lastCheck: null, note: input.note,
       })
       this.refreshTags()
     },

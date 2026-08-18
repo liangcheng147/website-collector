@@ -3,6 +3,11 @@ export interface Site {
   id: string; name: string; url: string
   categoryId: string | null; tags: string[]
   status: 'ok' | 'dead' | 'unknown'; lastCheck: string | null
+  note: string
+}
+export interface Settings {
+  theme: 'system' | 'light' | 'dark'
+  zoom: number
 }
 export interface TrashedSite { site: Site; deletedAt: string }
 export interface AppData {

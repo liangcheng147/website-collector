@@ -7,12 +7,14 @@ vi.mock('../api', () => ({
   checkConnectivity: vi.fn().mockResolvedValue(true),
   checkSite: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
   getDataLocation: vi.fn().mockResolvedValue({ dir: 'C:\\data', isFallback: false }),
+  getSettings: vi.fn().mockResolvedValue({ theme: 'system', zoom: 100 }),
+  setSettings: vi.fn().mockResolvedValue(undefined),
 }))
 import * as api from '../api'
 import type { AppData, Site } from '../types'
 
 function makeSite(id: string, status: Site['status'], tags: string[]): Site {
-  return { id, name: 'Site' + id, url: 'https://' + id + '.dev', categoryId: 'c1', tags, status, lastCheck: null }
+  return { id, name: 'Site' + id, url: 'https://' + id + '.dev', categoryId: 'c1', tags, status, lastCheck: null, note: '' }
 }
 
 const makeData = (): AppData => ({
@@ -89,10 +91,47 @@ describe('app store', () => {
   it('addSite persists and dedups tags', async () => {
     const s = useAppStore()
     s.data = baseData
-    s.addSite({ name: 'Vite', url: 'https://vite.dev', categoryId: 'c2', tags: ['工具', '框架'] })
+    s.addSite({ name: 'Vite', url: 'https://vite.dev', categoryId: 'c2', tags: ['工具', '框架'], note: '' })
     expect(s.data.sites).toHaveLength(4)
     expect(s.data.tags).toContain('框架')
     expect(s.data.tags).toContain('工具')
+  })
+
+  it('addSite carries note', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.addSite({ name: 'Vite', url: 'https://vite.dev', categoryId: 'c2', tags: ['工具'], note: '构建工具' })
+    expect(s.data.sites[s.data.sites.length - 1]!.note).toBe('构建工具')
+  })
+
+  it('updateSite sets note', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.updateSite('a', { note: '新备注' })
+    expect(s.data.sites[0].note).toBe('新备注')
+  })
+
+  it('search ignores note', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.sites[0].note = '绝密内部关键词'
+    s.view = { kind: 'all' }
+    s.search = '绝密内部关键词'
+    expect(s.filteredSites).toHaveLength(0)
+  })
+
+  it('updateSettings persists and applies', async () => {
+    const s = useAppStore()
+    await s.updateSettings({ zoom: 150 })
+    expect(s.settings.zoom).toBe(150)
+    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', zoom: 150 })
+  })
+
+  it('init loads settings', async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', zoom: 130 })
+    const s = useAppStore()
+    await s.init()
+    expect(s.settings).toEqual({ theme: 'dark', zoom: 130 })
   })
 
   it('deleteSites moves to recycle bin', () => {
