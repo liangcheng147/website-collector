@@ -18,10 +18,15 @@ import type { Site } from './types'
 const store = useAppStore()
 const modal = ref<'' | 'add' | 'import' | 'settings'>('')
 const editing = ref<Site | undefined>()
+const modalDefaultCategoryId = ref<string | null>(null)
 const pickIds = ref<string[]>([])
 const tagIds = ref<string[]>([])
 const manage = ref(false)
-function openAdd() { editing.value = undefined; modal.value = 'add' }
+function openAdd() {
+  editing.value = undefined
+  modalDefaultCategoryId.value = store.view.kind === 'category' ? (store.view.id ?? null) : null
+  modal.value = 'add'
+}
 function openEdit(site?: Site) { if (!site) return; editing.value = site; modal.value = 'add' }
 function onKey(e: KeyboardEvent) {
   if (e.key !== 'Escape') return
@@ -52,7 +57,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
       </template>
     </div>
     <StatusBar />
-    <AddEditModal v-if="modal === 'add'" :editing="editing" @close="modal = ''" />
+    <AddEditModal v-if="modal === 'add'" :editing="editing" :default-category-id="modalDefaultCategoryId" @close="modal = ''" />
     <ImportExportModal v-if="modal === 'import'" @close="modal = ''" />
     <SettingsModal v-if="modal === 'settings'" @close="modal = ''" />
     <PickCategoryModal v-if="pickIds.length" :site-ids="pickIds" @close="pickIds = []" />

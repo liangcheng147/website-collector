@@ -4,13 +4,13 @@ import ModalMask from './ModalMask.vue'
 import AddCategoryModal from './AddCategoryModal.vue'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
-const props = defineProps<{ editing?: any }>()
+const props = defineProps<{ editing?: any; defaultCategoryId?: string | null }>()
 const emit = defineEmits(['close'])
 const name = ref(props.editing?.name ?? '')
 const url = ref(props.editing?.url ?? '')
 const tags = ref((props.editing?.tags ?? []).join(' '))
 const note = ref(props.editing?.note ?? '')
-const categoryId = ref(props.editing?.categoryId ?? null)
+const categoryId = ref(props.editing?.categoryId ?? props.defaultCategoryId ?? null)
 const dup = ref(false)
 const showAddCat = ref(false)
 const pendingCat = ref<string | null>(null)
