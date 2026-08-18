@@ -9,7 +9,9 @@ const filePath = ref('')
 const msg = ref('')
 const section = ref<'theme' | 'display' | 'storage'>('theme')
 onMounted(async () => { filePath.value = await api.getDataFilePath() })
-function setTheme(theme: 'system' | 'light' | 'dark') { store.updateSettings({ theme }) }
+function setTheme(t: string) {
+  store.updateSettings({ theme: (['system', 'light', 'dark'].includes(t) ? t : 'system') as 'system' | 'light' | 'dark' })
+}
 function onZoom(e: Event) { store.updateSettings({ zoom: Number((e.target as HTMLInputElement).value) }) }
 async function openDir() {
   try { await api.openDataDir(); msg.value = '已打开数据目录' } catch (e) { msg.value = '打开失败：' + e }
@@ -28,11 +30,11 @@ async function openDir() {
 
       <template v-if="section === 'theme'">
         <label>主题模式</label>
-        <div class="mode-row">
-          <label><input type="radio" :checked="store.settings.theme === 'system'" @change="setTheme('system')" /> 跟随系统</label>
-          <label style="margin-left:10px"><input type="radio" :checked="store.settings.theme === 'light'" @change="setTheme('light')" /> 亮色</label>
-          <label style="margin-left:10px"><input type="radio" :checked="store.settings.theme === 'dark'" @change="setTheme('dark')" /> 暗色</label>
-        </div>
+        <select :value="store.settings.theme" @change="setTheme(($event.target as HTMLSelectElement).value)">
+          <option value="system">跟随系统</option>
+          <option value="light">亮色</option>
+          <option value="dark">暗色</option>
+        </select>
         <p class="muted">跟随系统：启动时读取系统主题，运行中不实时切换。</p>
       </template>
 

@@ -55,6 +55,8 @@ html.win-maximized .app { border-radius:0; }
 .statusbar .pending-hint { color:var(--pending-txt); font-weight:700; }
 .statusbar .flash-ok { color:var(--ok-txt); font-weight:700; }
 
+.body > * { min-height:0; }
+
 .site-table { width:100%; border-collapse:collapse; }
 .site-table th { text-align:left; padding:7px 10px; color:var(--text-2); border-bottom:1px solid var(--border); font-size:12px; font-weight:600; }
 .site-table td { padding:7px 10px; border-bottom:1px solid var(--border); font-size:13px; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
