@@ -7,6 +7,8 @@ pub fn export_to_md(data: &AppData) -> String {
             out.push_str(&format!("{} {}\n", "#".repeat(depth), c.name));
             for s in data.sites.iter().filter(|s| s.category_id.as_deref() == Some(&c.id)) {
                 out.push_str(&site_line(s));
+                let note = s.note.trim().replace('\t', " ").replace('\n', " ").replace('\r', " ");
+                if !note.is_empty() { out.push_str(&format!("> {}\n", note)); }
             }
             walk(&c.children, data, out, depth + 1);
             out.push('\n');
@@ -36,6 +38,7 @@ pub fn import_from_md(text: &str) -> AppData {
     let mut sites: Vec<Site> = Vec::new();
     let mut heading_stack: Vec<(usize, usize)> = Vec::new(); // (depth, flat index)
     let mut site_seq = 0usize;
+    let mut last_site: Option<usize> = None;
 
     for raw in text.lines() {
         let line = raw.trim();
@@ -48,6 +51,7 @@ pub fn import_from_md(text: &str) -> AppData {
             let idx = flat.len();
             flat.push(FlatCat { name, parent });
             heading_stack.push((depth, idx));
+            last_site = None;
         } else if let Some((name, rest)) = line.split_once('\t') {
             let name = name.trim().to_string();
             let url = rest.split('\t').next().unwrap_or("").trim().to_string();
@@ -60,7 +64,11 @@ pub fn import_from_md(text: &str) -> AppData {
                     note: "".into(),
                 });
                 site_seq += 1;
+                last_site = Some(sites.len() - 1);
             }
+        } else if let Some(note_text) = line.strip_prefix('>') {
+            let note = note_text.trim();
+            if let Some(idx) = last_site { if !note.is_empty() { sites[idx].note = note.to_string(); } }
         }
     }
 
@@ -112,7 +120,7 @@ use crate::data::{self, AppData, Category, Site};
                 id: "s1".into(), name: "React".into(), url: "https://react.dev".into(),
                 category_id: Some("c2".into()), tags: vec!["框架".into()],
                 status: "ok".into(), last_check: Some("2026-08-15".into()),
-                note: "".into(),
+                note: "React 官方文档与教程站".into(),
             }],
             recycle_bin: vec![], tags: vec![],
         };
@@ -120,18 +128,46 @@ use crate::data::{self, AppData, Category, Site};
         assert!(md.contains("# 开发工具"));
         assert!(md.contains("## 前端"));
         assert!(md.contains("React\thttps://react.dev\t✅ 2026-08-15"));
+        assert!(md.contains("> React 官方文档与教程站"));
         assert!(!md.contains("框架"), "标签不应出现在 md 中");
     }
 
     #[test]
     fn import_ignores_status_and_tags() {
-        let text = "# 开发工具\n## 前端\nReact\thttps://react.dev\t✅ 2026-08-15\nVue\thttps://vuejs.org\t❌ 2026-08-15\n";
+        let text = "# 开发工具\n## 前端\nReact\thttps://react.dev\t✅ 2026-08-15\n> React 官方文档与教程站\nVue\thttps://vuejs.org\t❌ 2026-08-15\n";
         let data = import_from_md(text);
         assert_eq!(data.categories.len(), 1);
         assert_eq!(data.categories[0].children.len(), 1);
         assert_eq!(data.sites.len(), 2);
         assert_eq!(data.sites[0].status, "unknown");
         assert_eq!(data.sites[0].tags.len(), 0);
+        assert_eq!(data.sites[0].note, "React 官方文档与教程站");
+        assert_eq!(data.sites[1].note, "");
+    }
+
+    #[test]
+    fn export_sanitizes_note_tabs_and_newlines() {
+        let data = AppData {
+            version: 1,
+            categories: vec![Category { id: "c1".into(), name: "开发".into(), children: vec![] }],
+            sites: vec![Site {
+                id: "s1".into(), name: "A".into(), url: "https://a.dev".into(),
+                category_id: Some("c1".into()), tags: vec![], status: "ok".into(),
+                last_check: Some("2026-08-15".into()), note: "多\t列\n换行\r备注".into(),
+            }],
+            recycle_bin: vec![], tags: vec![],
+        };
+        let md = export_to_md(&data);
+        assert!(md.contains("> 多 列 换行 备注"));
+        assert!(!md.contains("> 多\t列"), "备注中的 tab 已被替换为空格");
+    }
+
+    #[test]
+    fn import_note_binding_stops_at_heading() {
+        let text = "# 开发\nA\thttps://a.dev\n> A 的备注\n# 资讯\n> 游离备注不应被读入\nB\thttps://b.dev\n";
+        let data = import_from_md(text);
+        assert_eq!(data.sites[0].note, "A 的备注");
+        assert_eq!(data.sites[1].note, "");
     }
 
     #[test]
