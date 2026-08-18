@@ -284,4 +284,38 @@ describe('app store', () => {
     s.selectAllVisible()
     expect(s.selectedIds).toEqual([])
   })
+
+  it('moveCategory moves to top level', () => {
+    const s = useAppStore()
+    s.data = baseData // c1(开发) → c2(前端)
+    s.moveCategory('c2', null)
+    expect(s.data.categories.some(c => c.id === 'c2')).toBe(true)
+    expect(s.data.categories[0].children.some(c => c.id === 'c2')).toBe(false)
+  })
+
+  it('moveCategory moves under another category', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.categories.push({ id: 'c3', name: '工具', children: [] })
+    s.moveCategory('c1', 'c3')
+    expect(s.data.categories.some(c => c.id === 'c1')).toBe(false)
+    expect(s.data.categories.find(c => c.id === 'c3')!.children.some(c => c.id === 'c1')).toBe(true)
+  })
+
+  it('moveCategory rejects moving into own subtree', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.moveCategory('c1', 'c2') // c2 是 c1 的子孙
+    expect(s.data.categories[0].id).toBe('c1')
+    expect(s.data.categories[0].children.some(c => c.id === 'c2')).toBe(true)
+  })
+
+  it('moveCategory rejects too deep target', () => {
+    const s = useAppStore()
+    s.data = baseData
+    // baseData: c1(开发) → c2(前端)；把 c2 再挂一个子分类 c3（depth 2）
+    s.data.categories[0].children[0].children.push({ id: 'c3', name: 'C', children: [] })
+    s.moveCategory('c1', 'c3') // c3 已是第 3 层（depth 2），不能再作为父
+    expect(s.data.categories.some(c => c.id === 'c1')).toBe(true)
+  })
 })

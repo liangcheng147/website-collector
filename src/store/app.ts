@@ -206,6 +206,41 @@ export const useAppStore = defineStore('app', {
       this.persist()
     },
 
+    moveCategory(id: string, targetParentId: string | null) {
+      if (id === targetParentId) return
+      let node: any = null
+      let from: any[] = []
+      const find = (list: any[]): boolean => {
+        for (const c of list) {
+          if (c.id === id) { node = c; from = list; return true }
+          if (find(c.children)) return true
+        }
+        return false
+      }
+      if (!find(this.data.categories) || !node) return
+      if (targetParentId != null) {
+        const isDescendant = (c: any): boolean => c.id === targetParentId || c.children.some(isDescendant)
+        if (node.children.some(isDescendant)) return
+        const targetDepth = this.flatCategories.find(f => f.id === targetParentId)?.depth ?? 0
+        if (targetDepth >= 2) return
+      }
+      const idx = from.indexOf(node)
+      if (idx >= 0) from.splice(idx, 1)
+      if (targetParentId == null) {
+        this.data.categories.push(node)
+      } else {
+        const walk = (list: any[]): boolean => {
+          for (const c of list) {
+            if (c.id === targetParentId) { c.children.push(node); return true }
+            if (walk(c.children)) return true
+          }
+          return false
+        }
+        walk(this.data.categories)
+      }
+      this.persist()
+    },
+
     addTagsToSites(ids: string[], tags: string[]) {
       const set = new Set(ids)
       this.data.sites.forEach(s => {

@@ -11,6 +11,7 @@ const menu = ref<{ x: number; y: number } | null>(null)
 const renameCat = ref<any | null>(null)
 const delCat = ref<any | null>(null)
 const addCat = ref(false)
+const dragOver = ref(false)
 
 function menuItems() {
   const items: { kind: string; label: string; danger?: boolean }[] = [{ kind: 'rename', label: '重命名' }]
@@ -31,6 +32,27 @@ function doDelete(mode: string) {
   store.deleteCategory(delCat.value.id, mode === 'delete' ? 'delete-sites' : 'move-to-uncategorized')
   delCat.value = null
 }
+function onCatDragStart(e: DragEvent) {
+  if (!e.dataTransfer) return
+  e.dataTransfer.setData('application/x-cat-id', props.cat.id)
+  e.dataTransfer.effectAllowed = 'move'
+}
+function onDrop(e: DragEvent) {
+  e.preventDefault()
+  const siteId = e.dataTransfer?.getData('application/x-site-id')
+  if (siteId) { store.moveSites([siteId], props.cat.id); return }
+  const catId = e.dataTransfer?.getData('application/x-cat-id')
+  if (catId) store.moveCategory(catId, props.cat.id)
+}
+function onDragOver(e: DragEvent) {
+  const types = e.dataTransfer?.types ?? []
+  if (types.includes('application/x-site-id') || types.includes('application/x-cat-id')) {
+    e.preventDefault()
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+    dragOver.value = true
+  }
+}
+function onDragLeave() { dragOver.value = false }
 function onKey(e: KeyboardEvent) { if (e.key === 'Escape') menu.value = null }
 onMounted(() => document.addEventListener('keydown', onKey))
 onUnmounted(() => document.removeEventListener('keydown', onKey))
@@ -39,10 +61,15 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
 <template>
   <div>
     <div
-      :class="[(depth > 0 ? 'row sub' : 'row'), { active: store.view.kind === 'category' && store.view.id === cat.id }]"
+      :class="[(depth > 0 ? 'row sub' : 'row'), { active: store.view.kind === 'category' && store.view.id === cat.id, 'drop-over': dragOver }]"
       :style="{ paddingLeft: (depth > 0 ? 12 : 0) + depth * 14 + 'px' }"
+      draggable="true"
       @click="setView('category', cat.id)"
       @contextmenu.prevent="onCatMenu($event)"
+      @dragstart="onCatDragStart($event)"
+      @dragover="onDragOver"
+      @dragleave="onDragLeave"
+      @drop="onDrop"
     >
       {{ cat.name }}
     </div>

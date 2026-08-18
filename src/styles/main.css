@@ -135,3 +135,5 @@ input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
 .site-table td:first-child .cb { cursor:pointer; }
 .open-btn { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:5px; background:var(--primary); color:#fff; font-size:11px; cursor:pointer; margin-left:6px; vertical-align:middle; user-select:none; }
 .open-btn:hover { background:var(--primary-w); }
+
+.sidebar .row.drop-over, .site-table tr.drop-over, .cat-node.drop-over { outline:2px dashed var(--primary); outline-offset:-2px; background:var(--primary-t); }
