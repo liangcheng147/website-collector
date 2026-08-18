@@ -22,6 +22,7 @@ export const useAppStore = defineStore('app', {
     search: '',
     selectedTag: null as string | null,
     selectedIds: [] as string[],
+    lastSelectedId: null as string | null,
     checking: false,
     progress: { done: 0, total: 0 },
     connectivityError: false,
@@ -217,6 +218,26 @@ export const useAppStore = defineStore('app', {
       const i = this.selectedIds.indexOf(id)
       if (i >= 0) this.selectedIds.splice(i, 1)
       else this.selectedIds.push(id)
+      this.lastSelectedId = id
+    },
+    selectOne(id: string) {
+      this.selectedIds = [id]
+      this.lastSelectedId = id
+    },
+    selectRange(id: string) {
+      const ids = this.filteredSites.map(s => s.id)
+      const cur = ids.indexOf(id)
+      if (cur < 0) { this.selectedIds = [id]; this.lastSelectedId = id; return }
+      const anchor = ids.indexOf(this.lastSelectedId ?? id)
+      const from = Math.min(cur, anchor)
+      const to = Math.max(cur, anchor)
+      this.selectedIds = ids.slice(from, to + 1)
+      this.lastSelectedId = id
+    },
+    selectAllVisible() {
+      const ids = this.filteredSites.map(s => s.id)
+      if (ids.length && ids.every(i => this.selectedIds.includes(i))) this.selectedIds = []
+      else this.selectedIds = ids
     },
     clearSelection() { this.selectedIds = [] },
     deleteSelected() { this.deleteSites([...this.selectedIds]) },

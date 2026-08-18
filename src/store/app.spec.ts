@@ -221,4 +221,56 @@ describe('app store', () => {
     await s.init()
     expect(s.location).toEqual({ dir: 'C:\\data', isFallback: false })
   })
+
+  it('selectOne resets selection and records anchor', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.selectedIds = ['a', 'b']
+    s.selectOne('c')
+    expect(s.selectedIds).toEqual(['c'])
+    expect(s.lastSelectedId).toBe('c')
+  })
+
+  it('toggleSelect maintains anchor', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.toggleSelect('a')
+    s.toggleSelect('b')
+    expect(s.selectedIds).toEqual(['a', 'b'])
+    expect(s.lastSelectedId).toBe('b')
+  })
+
+  it('selectRange selects between anchor and target', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.view = { kind: 'all' } // filteredSites 顺序 = [a, b, c]
+    s.selectOne('a')
+    s.selectRange('c')
+    expect(s.selectedIds).toEqual(['a', 'b', 'c'])
+  })
+
+  it('selectRange respects filtered order', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.view = { kind: 'tag', id: '框架' } // filteredSites = [a, b]
+    s.selectOne('b')
+    s.selectRange('a')
+    expect(s.selectedIds).toEqual(['a', 'b'])
+  })
+
+  it('selectAllVisible selects all filtered sites', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.search = '框架'
+    s.selectAllVisible()
+    expect(s.selectedIds).toEqual(['a', 'b'])
+  })
+
+  it('selectAllVisible clears when already all selected', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.selectedIds = ['a', 'b', 'c']
+    s.selectAllVisible()
+    expect(s.selectedIds).toEqual([])
+  })
 })
