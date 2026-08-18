@@ -64,6 +64,20 @@ export const useAppStore = defineStore('app', {
       walk(this.data.categories, 0)
       return out
     },
+    categoryCounts(state): Record<string, number> {
+      const counts: Record<string, number> = {}
+      const parentOf = new Map<string, string | null>()
+      const walk = (list: any[], parentId: string | null) => {
+        for (const c of list) { parentOf.set(c.id, parentId); walk(c.children, c.id) }
+      }
+      walk(state.data.categories, null)
+      for (const s of state.data.sites) {
+        if (!s.categoryId) continue
+        let cur: string | null = s.categoryId
+        while (cur) { counts[cur] = (counts[cur] ?? 0) + 1; cur = parentOf.get(cur) ?? null }
+      }
+      return counts
+    },
   },
   actions: {
     async init() {
@@ -195,6 +209,32 @@ export const useAppStore = defineStore('app', {
         this.data.sites.forEach(s => { if (s.categoryId && ids.has(s.categoryId)) s.categoryId = null })
       } else {
         const toDelete = this.data.sites.filter(s => s.categoryId && ids.has(s.categoryId)).map(s => s.id)
+        this.deleteSites(toDelete)
+      }
+      this.persist()
+    },
+
+    deleteCategories(ids: string[], mode: 'move-to-uncategorized' | 'delete-sites') {
+      const affected = new Set<string>()
+      const collectSubtree = (c: any) => { affected.add(c.id); c.children.forEach(collectSubtree) }
+      const walk = (list: any[]) => {
+        for (const c of list) {
+          if (ids.includes(c.id)) collectSubtree(c)
+          else walk(c.children)
+        }
+      }
+      walk(this.data.categories)
+      const prune = (list: any[]) => {
+        const kept = list.filter(c => !affected.has(c.id))
+        kept.forEach(c => prune(c.children))
+        list.length = 0
+        kept.forEach(c => list.push(c))
+      }
+      prune(this.data.categories)
+      if (mode === 'move-to-uncategorized') {
+        this.data.sites.forEach(s => { if (s.categoryId && affected.has(s.categoryId)) s.categoryId = null })
+      } else {
+        const toDelete = this.data.sites.filter(s => s.categoryId && affected.has(s.categoryId)).map(s => s.id)
         this.deleteSites(toDelete)
       }
       this.persist()

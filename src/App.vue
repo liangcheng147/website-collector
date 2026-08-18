@@ -12,6 +12,7 @@ import ImportExportModal from './components/ImportExportModal.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import PickCategoryModal from './components/PickCategoryModal.vue'
 import AddTagsModal from './components/AddTagsModal.vue'
+import ManageView from './components/ManageView.vue'
 import type { Site } from './types'
 
 const store = useAppStore()
@@ -19,6 +20,7 @@ const modal = ref<'' | 'add' | 'import' | 'settings'>('')
 const editing = ref<Site | undefined>()
 const pickIds = ref<string[]>([])
 const tagIds = ref<string[]>([])
+const manage = ref(false)
 function openAdd() { editing.value = undefined; modal.value = 'add' }
 function openEdit(site?: Site) { if (!site) return; editing.value = site; modal.value = 'add' }
 function onKey(e: KeyboardEvent) {
@@ -38,13 +40,16 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
 <template>
   <div class="app">
     <TitleBar />
-    <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" />
+    <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" @manage="manage = true" />
     <div class="body">
-      <Sidebar />
-      <main class="content">
-        <RecycleView v-if="store.view.kind === 'recycle'" />
-        <SiteTable v-else @edit="openEdit" @check-site="(ids: string[]) => ids.length === 1 ? store.checkOne(ids[0]) : store.checkSelected()" @move="pickIds = $event" @tag="tagIds = $event" />
-      </main>
+      <ManageView v-if="manage" @back="manage = false" />
+      <template v-else>
+        <Sidebar />
+        <main class="content">
+          <RecycleView v-if="store.view.kind === 'recycle'" />
+          <SiteTable v-else @edit="openEdit" @check-site="(ids: string[]) => ids.length === 1 ? store.checkOne(ids[0]) : store.checkSelected()" @move="pickIds = $event" @tag="tagIds = $event" />
+        </main>
+      </template>
     </div>
     <StatusBar />
     <AddEditModal v-if="modal === 'add'" :editing="editing" @close="modal = ''" />

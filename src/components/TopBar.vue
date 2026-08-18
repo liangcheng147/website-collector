@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAppStore } from '../store/app'
 const store = useAppStore()
+const emit = defineEmits(['check-all', 'add', 'import-export', 'settings', 'manage'])
 </script>
 
 <template>
@@ -13,6 +14,7 @@ const store = useAppStore()
     </select>
     <button class="btn primary" @click="$emit('check-all')">▶ 检测全部</button>
     <button class="btn" @click="$emit('add')">＋ 添加</button>
+    <button class="btn" @click="emit('manage')">▦ 管理</button>
     <button class="btn" @click="$emit('import-export')">导入/导出</button>
     <button class="btn" @click="$emit('settings')">⚙</button>
   </header>

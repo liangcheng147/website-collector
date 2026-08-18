@@ -318,4 +318,39 @@ describe('app store', () => {
     s.moveCategory('c1', 'c3') // c3 已是第 3 层（depth 2），不能再作为父
     expect(s.data.categories.some(c => c.id === 'c1')).toBe(true)
   })
+
+  it('categoryCounts counts descendants', () => {
+    const s = useAppStore()
+    s.data = baseData
+    // baseData: 站点 a,b,c 都在 c1 下；把 a 挂到 c2
+    s.data.sites[0].categoryId = 'c2'
+    expect(s.categoryCounts['c1']).toBe(3)
+    expect(s.categoryCounts['c2']).toBe(1)
+  })
+
+  it('deleteCategories moves sites to uncategorized', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.sites.forEach(x => x.categoryId = 'c2') // 站点都挂 c2 下
+    s.deleteCategories(['c2'], 'move-to-uncategorized')
+    expect(s.data.categories[0].children).toHaveLength(0)
+    expect(s.data.sites.every(x => x.categoryId === null)).toBe(true)
+  })
+
+  it('deleteCategories with parent removes descendants too', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.deleteCategories(['c1'], 'move-to-uncategorized')
+    expect(s.data.categories).toHaveLength(0)
+    expect(s.data.sites.every(x => x.categoryId === null)).toBe(true)
+  })
+
+  it('deleteCategories delete-sites sends sites to recycle', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.deleteCategories(['c1'], 'delete-sites')
+    expect(s.data.categories).toHaveLength(0)
+    expect(s.data.sites).toHaveLength(0)
+    expect(s.trashedSites).toHaveLength(3)
+  })
 })
