@@ -353,4 +353,59 @@ describe('app store', () => {
     expect(s.data.sites).toHaveLength(0)
     expect(s.trashedSites).toHaveLength(3)
   })
+
+  it('renameTag renames across sites', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.renameTag('框架', '前端框架')
+    expect(s.data.sites[0].tags).toContain('前端框架')
+    expect(s.data.sites[0].tags).not.toContain('框架')
+    expect(s.data.tags).toContain('前端框架')
+    expect(s.data.tags).not.toContain('框架')
+  })
+
+  it('deleteTags removes from all sites', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.deleteTags(['框架'])
+    expect(s.data.sites.every(x => !x.tags.includes('框架'))).toBe(true)
+    expect(s.data.tags).toEqual(['工具'])
+  })
+
+  it('mergeTags merges into target and dedups', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.sites[0].tags = ['框架', '工具']
+    s.mergeTags(['框架', '工具'], '全栈')
+    expect(s.data.sites[0].tags).toEqual(['全栈'])
+    expect(s.data.sites[2].tags).toEqual(['全栈'])
+    expect(s.data.tags).toContain('全栈')
+    expect(s.data.tags).not.toContain('框架')
+  })
+
+  it('addTagsByScope adds to category descendants only', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.sites[0].categoryId = 'c2' // a 挂 c2（c1 的子树）
+    s.data.sites[1].categoryId = 'c1' // b 挂 c1
+    s.data.sites[2].categoryId = null // c 未分类
+    s.addTagsByScope('c2', ['新标签'])
+    expect(s.data.sites[0].tags).toContain('新标签')
+    expect(s.data.sites[1].tags).not.toContain('新标签')
+    expect(s.data.sites[2].tags).not.toContain('新标签')
+  })
+
+  it('addTagsByScope null applies to all', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.addTagsByScope(null, ['全部'])
+    expect(s.data.sites.every(x => x.tags.includes('全部'))).toBe(true)
+  })
+
+  it('removeTagsByScope removes from scope', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.removeTagsByScope(null, ['框架'])
+    expect(s.data.sites.every(x => !x.tags.includes('框架'))).toBe(true)
+  })
 })

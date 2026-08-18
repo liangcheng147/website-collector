@@ -155,3 +155,4 @@ input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
 .chk-col { width:30px; flex:none; }
 .name-col { flex:1; }
 .cnt-col { width:60px; flex:none; text-align:center; }
+.btn.mini { padding:1px 8px; font-size:11px; }

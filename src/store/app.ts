@@ -289,6 +289,50 @@ export const useAppStore = defineStore('app', {
       this.refreshTags()
     },
 
+    renameTag(oldName: string, newName: string) {
+      this.data.sites.forEach(s => {
+        const i = s.tags.indexOf(oldName)
+        if (i >= 0) s.tags[i] = newName
+      })
+      this.refreshTags()
+    },
+
+    deleteTags(tags: string[]) {
+      const set = new Set(tags)
+      this.data.sites.forEach(s => { s.tags = s.tags.filter(t => !set.has(t)) })
+      this.refreshTags()
+    },
+
+    mergeTags(source: string[], target: string) {
+      const set = new Set(source)
+      this.data.sites.forEach(s => {
+        const replaced = s.tags.map(t => set.has(t) ? target : t)
+        s.tags = [...new Set(replaced)]
+      })
+      this.refreshTags()
+    },
+
+    addTagsByScope(categoryId: string | null, tags: string[]) {
+      const ids = categoryId == null ? null : new Set(collectCategoryIds(this.data.categories, categoryId))
+      this.data.sites.forEach(s => {
+        if (ids == null || (s.categoryId && ids.has(s.categoryId))) {
+          tags.forEach(t => { if (!s.tags.includes(t)) s.tags.push(t) })
+        }
+      })
+      this.refreshTags()
+    },
+
+    removeTagsByScope(categoryId: string | null, tags: string[]) {
+      const set = new Set(tags)
+      const ids = categoryId == null ? null : new Set(collectCategoryIds(this.data.categories, categoryId))
+      this.data.sites.forEach(s => {
+        if (ids == null || (s.categoryId && ids.has(s.categoryId))) {
+          s.tags = s.tags.filter(t => !set.has(t))
+        }
+      })
+      this.refreshTags()
+    },
+
     toggleSelect(id: string) {
       const i = this.selectedIds.indexOf(id)
       if (i >= 0) this.selectedIds.splice(i, 1)
