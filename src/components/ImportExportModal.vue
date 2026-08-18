@@ -98,7 +98,7 @@ async function confirmJsonImport() {
           </div>
           <div class="help">
             <label>md 格式示例</label>
-            <code># 分类名<br />- [名称](https://链接)</code>
+            <code># 分类名<br />名称&#9;https://链接&#9;状态<br />&gt; 网站简介备注</code>
             <label>JSON 说明</label>
             <p class="muted">读取「导出 JSON」的备份文件，覆盖当前全部数据（自动备份 .bak）。导入成功后在状态栏闪现提示。</p>
           </div>

@@ -9,6 +9,7 @@ const emit = defineEmits(['close'])
 const name = ref(props.editing?.name ?? '')
 const url = ref(props.editing?.url ?? '')
 const tags = ref((props.editing?.tags ?? []).join(' '))
+const note = ref(props.editing?.note ?? '')
 const categoryId = ref(props.editing?.categoryId ?? null)
 const dup = ref(false)
 const showAddCat = ref(false)
@@ -31,11 +32,11 @@ function onCatCreated(id: string) {
 
 function save() {
   const tagList = tags.value.split(/[#\s，,]+/).filter(Boolean)
-  if (props.editing) store.updateSite(props.editing.id, { name: name.value, url: url.value, categoryId: categoryId.value, tags: tagList })
+  if (props.editing) store.updateSite(props.editing.id, { name: name.value, url: url.value, categoryId: categoryId.value, tags: tagList, note: note.value })
   else {
     dup.value = store.isDuplicateUrl(url.value)
     if (dup.value) return
-    store.addSite({ name: name.value, url: url.value, categoryId: categoryId.value, tags: tagList })
+    store.addSite({ name: name.value, url: url.value, categoryId: categoryId.value, tags: tagList, note: note.value })
   }
   emit('close')
 }
@@ -56,6 +57,7 @@ function save() {
             <option :value="'__new_cat__'">＋ 新建分类…</option>
           </select>
           <label>标签（空格分隔）</label><input v-model="tags" placeholder="框架 工具" />
+          <label>备注（50 字以内）</label><textarea v-model="note" maxlength="50" style="height:52px;resize:none" placeholder="网站简介" />
           <p v-if="dup" class="err">⚠ 链接已存在</p>
           <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="save">保存</button></div>
         </div>

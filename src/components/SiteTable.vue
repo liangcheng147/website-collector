@@ -42,7 +42,7 @@ function onAction(kind: string) {
     </div>
     <table class="site-table">
       <thead>
-        <tr><th></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th></tr>
+        <tr><th></th><th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th><th>备注</th></tr>
       </thead>
       <tbody>
         <tr
@@ -59,6 +59,7 @@ function onAction(kind: string) {
           <td class="muted">{{ s.categoryId }}</td>
           <td><span v-for="t in s.tags" :key="t" class="chip">{{ t }}</span></td>
           <td :class="{ ok: s.status === 'ok', dead: s.status === 'dead', pending: s.status === 'unknown' }">{{ heart(s.status) }}</td>
+          <td class="muted">{{ s.note }}</td>
         </tr>
       </tbody>
     </table>
