@@ -225,6 +225,7 @@ selectRange(id: string) {
   const cur = ids.indexOf(id)
   if (cur < 0) { this.selectedIds = [id]; this.lastSelectedId = id; return }
   const anchor = ids.indexOf(this.lastSelectedId ?? id)
+  if (anchor < 0) { this.selectedIds = [id]; this.lastSelectedId = id; return }
   const from = Math.min(cur, anchor)
   const to = Math.max(cur, anchor)
   this.selectedIds = ids.slice(from, to + 1)
@@ -744,10 +745,15 @@ getters 中 `flatCategories` 之后新增：
 ```ts
 categoryCounts(state): Record<string, number> {
   const counts: Record<string, number> = {}
+  const parentOf = new Map<string, string>()
+  const walk = (list: any[], parentId: string | null) => {
+    for (const c of list) { parentOf.set(c.id, parentId); walk(c.children, c.id) }
+  }
+  walk(state.data.categories, null)
   for (const s of state.data.sites) {
     if (!s.categoryId) continue
-    const ids = collectCategoryIds(state.data.categories, s.categoryId)
-    ids.forEach(id => { counts[id] = (counts[id] ?? 0) + 1 })
+    let cur: string | null = s.categoryId
+    while (cur) { counts[cur] = (counts[cur] ?? 0) + 1; cur = parentOf.get(cur) ?? null }
   }
   return counts
 },
