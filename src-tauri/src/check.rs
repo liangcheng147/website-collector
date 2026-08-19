@@ -42,7 +42,7 @@ pub fn root_url(raw: &str) -> String {
 }
 
 fn classify(status: u16) -> &'static str {
-    if (200..400).contains(&status) { "ok" } else { "dead" }
+    if (200..400).contains(&status) || status == 403 { "ok" } else { "dead" }
 }
 
 async fn probe(c: &reqwest::Client, url: &str) -> Option<CheckResult> {
@@ -177,6 +177,30 @@ mod tests {
         let res = tokio::runtime::Runtime::new().unwrap().block_on(async { check_site(&url).await });
         assert_eq!(res.status, "ok");
         assert_eq!(res.used_url, url);
+    }
+
+    #[test]
+    fn forbidden_challenge_implies_ok() {
+        // 服务器对所有请求返回 403（反爬质询页），浏览器可过 → 应判 ok（推断）
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            use std::io::{Read, Write};
+            for _ in 0..4 {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut buf = [0u8; 4096];
+                    let _ = stream.read(&mut buf);
+                    let resp = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                    let _ = stream.write_all(resp.as_bytes());
+                }
+            }
+        });
+        let url = format!("http://{}/", addr);
+        let res = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            check_site(&url).await
+        });
+        assert_eq!(res.status, "ok");
+        assert_eq!(res.used_url, format!("http://{}/", addr));
     }
 
     #[test]
