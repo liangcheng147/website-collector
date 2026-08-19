@@ -84,7 +84,7 @@ export const useAppStore = defineStore('app', {
       this.data = await api.loadData()
       const loc = await api.getDataLocation()
       this.location = loc
-      this.settings = await api.getSettings()
+      this.settings = { ...this.settings, ...(await api.getSettings()) }
       this.applyAppearance()
     },
     async persist() { await api.saveData(this.data) },

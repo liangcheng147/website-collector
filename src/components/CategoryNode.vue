@@ -39,6 +39,7 @@ function onCatDragStart(e: DragEvent) {
 }
 function onDrop(e: DragEvent) {
   e.preventDefault()
+  dragOver.value = false
   const siteId = e.dataTransfer?.getData('application/x-site-id')
   if (siteId) { store.moveSites([siteId], props.cat.id); return }
   const catId = e.dataTransfer?.getData('application/x-cat-id')

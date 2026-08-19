@@ -26,6 +26,9 @@ dist-ssr
 # Superpowers scratch
 .superpowers/
 
+# Design exploration scratch
+design/
+
 # Git worktrees
 .worktrees/
 

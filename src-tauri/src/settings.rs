@@ -8,11 +8,12 @@ pub struct Settings {
     #[serde(default)] pub theme: String,
     #[serde(default)] pub zoom: u32,
     #[serde(default)] pub sidebar_collapsed: Vec<String>,
+    #[serde(default)] pub collapsed_categories: Vec<String>,
 }
 
 impl Settings {
     pub fn defaults() -> Self {
-        Settings { theme: "system".into(), zoom: 100, sidebar_collapsed: vec![] }
+        Settings { theme: "system".into(), zoom: 100, sidebar_collapsed: vec![], collapsed_categories: vec![] }
     }
 }
 
@@ -94,6 +95,26 @@ mod tests {
         let s = load_settings(&d);
         assert!(s.sidebar_collapsed.is_empty());
         assert_eq!(s.theme, "dark");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn missing_collapsed_categories_defaults_empty() {
+        let d = tmp_dir("collapsed_cats_missing");
+        fs::write(settings_file_path(&d), r#"{"theme":"system","zoom":100}"#).unwrap();
+        let s = load_settings(&d);
+        assert!(s.collapsed_categories.is_empty());
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn collapsed_categories_roundtrip() {
+        let d = tmp_dir("collapsed_cats_roundtrip");
+        let mut s = Settings::defaults();
+        s.collapsed_categories = vec!["c1".into(), "c2".into()];
+        save_settings(&d, &s).unwrap();
+        let loaded = load_settings(&d);
+        assert_eq!(loaded.collapsed_categories, vec!["c1".to_string(), "c2".to_string()]);
         let _ = fs::remove_dir_all(&d);
     }
 }

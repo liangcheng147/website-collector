@@ -134,6 +134,14 @@ describe('app store', () => {
     expect(s.settings).toEqual({ theme: 'dark', zoom: 130, sidebarCollapsed: [], collapsedCategories: [] })
   })
 
+  it('init keeps defaults when getSettings omits collapsedCategories', async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'system', zoom: 100, sidebarCollapsed: [] } as any)
+    const s = useAppStore()
+    await s.init()
+    expect(s.settings.collapsedCategories).toEqual([])
+    expect(s.settings.collapsedCategories.includes('c1')).toBe(false)
+  })
+
   it('deleteSites moves to recycle bin', () => {
     const s = useAppStore()
     s.data = baseData
