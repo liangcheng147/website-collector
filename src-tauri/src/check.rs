@@ -55,16 +55,37 @@ pub async fn check_connectivity() -> bool {
     c.get("https://example.com").send().await.is_ok()
 }
 
+fn variants(url: &str) -> Vec<String> {
+    let full = normalize_url(url);
+    let mut v = vec![full.clone()];
+    if let Ok(u) = url::Url::parse(&full) {
+        let alt = if u.scheme() == "http" {
+            format!("https://{}", &u[url::Position::BeforeHost..])
+        } else {
+            format!("http://{}", &u[url::Position::BeforeHost..])
+        };
+        if !v.contains(&alt) { v.push(alt); }
+    }
+    v
+}
+
 pub async fn check_site(url: &str) -> CheckResult {
     let c = client();
     let full = normalize_url(url);
-    if let Some(r) = probe(&c, &full).await {
-        if r.status == "ok" { return r; }
+    // 1. 原 URL 双协议
+    for cand in variants(url) {
+        if let Some(r) = probe(&c, &cand).await {
+            if r.status == "ok" { return r; }
+        }
     }
-    // 原链接 404/403/5xx、超时或网络错误 → 降级测根域名（PRD: 避免子页面 404 误标）
+    // 2. 降级测根域名（避免子页面 404 误标），同样双协议
     let root = root_url(url);
     if root != full {
-        if let Some(r) = probe(&c, &root).await { return r; }
+        for cand in variants(&root) {
+            if let Some(r) = probe(&c, &cand).await {
+                if r.status == "ok" { return r; }
+            }
+        }
     }
     CheckResult { status: "dead".into(), used_url: full }
 }
@@ -95,13 +116,15 @@ mod tests {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
         std::thread::spawn(move || {
-            use std::io::{BufRead, Write};
-            for _ in 0..2 {
+            use std::io::{Read, Write};
+            // 双协议探测：可能先收到 https(TLS) 连接（用 read 而非 read_line 避免阻塞），
+            // 依次可能为 http/sub、https/sub、http 根、https 根，最多 4 次连接
+            for _ in 0..4 {
                 if let Ok((mut stream, _)) = listener.accept() {
-                    let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
-                    let mut line = String::new();
-                    let _ = reader.read_line(&mut line);
-                    let not_found = line.contains("/sub");
+                    let mut buf = [0u8; 4096];
+                    let n = stream.read(&mut buf).unwrap_or(0);
+                    let text = String::from_utf8_lossy(&buf[..n]);
+                    let not_found = text.contains("/sub");
                     let (status, body) = if not_found { ("404 Not Found", "not found") } else { ("200 OK", "ok") };
                     let resp = format!(
                         "HTTP/1.1 {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
@@ -154,6 +177,30 @@ mod tests {
         let res = tokio::runtime::Runtime::new().unwrap().block_on(async { check_site(&url).await });
         assert_eq!(res.status, "ok");
         assert_eq!(res.used_url, url);
+    }
+
+    #[test]
+    fn http_only_site_falls_back_from_https() {
+        // 服务器只监听 http（无 TLS），https 探测必然失败 → 应回退 http 成功并判定 ok
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            use std::io::{Read, Write};
+            // 第一次连接是 https(TLS) 探测，读到 ClientHello 后回 HTTP 响应即可让其失败；
+            // 第二次是 http 探测，返回 200 OK
+            for _ in 0..2 {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut buf = [0u8; 4096];
+                    let _ = stream.read(&mut buf);
+                    let _ = stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok");
+                }
+            }
+        });
+        // 用 https 形式请求 127.0.0.1（服务器不监听 TLS，https 必然失败），应回退 http 成功
+        let https_url = format!("https://{}/", addr);
+        let res = tokio::runtime::Runtime::new().unwrap().block_on(async { check_site(&https_url).await });
+        assert_eq!(res.status, "ok");
+        assert_eq!(res.used_url, format!("http://{}/", addr));
     }
 
     #[test]
