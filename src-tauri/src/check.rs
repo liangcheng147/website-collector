@@ -204,6 +204,52 @@ mod tests {
     }
 
     #[test]
+    fn root_also_404_is_dead() {
+        // 子页面和根域名都返回 404 → 应判 dead
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            use std::io::{Read, Write};
+            for _ in 0..4 {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut buf = [0u8; 4096];
+                    let _ = stream.read(&mut buf);
+                    let resp = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                    let _ = stream.write_all(resp.as_bytes());
+                }
+            }
+        });
+        let url = format!("http://{}/sub", addr);
+        let res = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            check_site(&url).await
+        });
+        assert_eq!(res.status, "dead");
+    }
+
+    #[test]
+    fn root_also_500_is_dead() {
+        // 子页面和根域名都返回 500 → 应判 dead
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            use std::io::{Read, Write};
+            for _ in 0..4 {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut buf = [0u8; 4096];
+                    let _ = stream.read(&mut buf);
+                    let resp = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                    let _ = stream.write_all(resp.as_bytes());
+                }
+            }
+        });
+        let url = format!("http://{}/sub", addr);
+        let res = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            check_site(&url).await
+        });
+        assert_eq!(res.status, "dead");
+    }
+
+    #[test]
     fn http_only_site_falls_back_from_https() {
         // 服务器只监听 http（无 TLS），https 探测必然失败 → 应回退 http 成功并判定 ok
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
