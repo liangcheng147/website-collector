@@ -1,66 +1,75 @@
-# 可达性检测改进设计（浏览器头伪装 + 协议双试）
+# 可达性检测改进（v2：403 即 ok + 根域名降级）
 
 - 日期：2026-08-19
-- 状态：已实现
+- 状态：已确认
 - 关联：`src-tauri/src/check.rs`
 
-## 背景与问题
+## 问题背景
 
-「归集」的网站失效检测用 `reqwest` 对站点发 GET 请求，收到 200-399 判定 ok，否则判定 dead。实测发现大量**国内网站**存在误判：浏览器能正常打开，检测却标为失效。
+当前检测逻辑（浏览器头伪装 + http/https 双协议 + 根域名降级）仍有两类真实站点被误判为 dead：
 
-**根因实证**（以 `http://www.51pptmoban.com` 为例）：
+1. **aigei.com**（403 + banip 软验证表单）：首访返回 403 验证页，浏览器执行 JS 自动提交表单后放行。curl 不执行 JS → 停在 403。
+2. **hippopx.com**（Cloudflare 托管质询）：返回 403 `Cf-Mitigated: challenge`，需真实浏览器执行 JS 质询（Managed Challenge 自动过，Interactive Challenge 需人机验证）。
 
-| 探测方式 | 结果 |
-|---|---|
-| reqwest 默认 UA（当前行为） | 403 → dead ❌ |
-| Chrome UA + http | 301 重定向 |
-| Chrome UA + https | 200 → ok ✅ |
+两站实测均为 HTTP 403，浏览器均可正常打开，但当前逻辑判 dead。
 
-结论：站点 WAF 对非浏览器请求头返回 403，导致误判。
+## 设计决策
 
-## 需求
+**检测目标定义为「用户能看到内容、能正常使用」。** 用户确认接受以下推断：
 
-- 判定标准：**可达性验证**——网站能正常访问即 ok，不做内容级验证，不引入第三种状态
-- 目标：解决国内站反爬 403 误判，同时覆盖仅支持 http 的旧站
+> **「能弹出人机验证/质询 = 站点可用」**——服务器部署反爬说明内容存在，浏览器可过验证，判定 ok 是合理的推断。
 
-## 设计（方案 A）
+### 核心判定表
 
-改动范围：仅 `src-tauri/src/check.rs`（及 `Cargo.toml` 加 brotli 特性）。
+| HTTP 响应 | 判定 | 理由 |
+|---|---|---|
+| 2xx / 3xx | **ok** | 内容直接可访问 |
+| **403** | **ok** | 服务器活着 + 内容存在 + 浏览器可过反爬（推断） |
+| 404 / 500 等其余非 2xx | **降级根域名再试** | 子路径可能失效，根域名可能正常 |
+| 连接失败（DNS/超时/TLS/拒连） | **dead** | 服务器无响应 |
 
-### 1. 浏览器头伪装
+### 检测流程（伪代码）
 
-`client()` 构建 reqwest client 时设置：
-- `User-Agent`: Chrome/126 完整 UA（`Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36`）
-- `Accept`
-- `Accept-Language`: `zh-CN,zh;q=0.9,en;q=0.8`
-- `Accept-Encoding`: `gzip, deflate, br`
-- 启用 gzip/brotli 自动解压（`Cargo.toml` 的 `reqwest` 依赖补 `brotli` 特性）
+```
+check_site(url):
+  candidates1 = [原URL双协议（https 优先，失败换 http）]
+  遍历 candidates1:
+    probe(candidate):
+      连接成功 → 2xx/3xx → ok
+      连接成功 → 403 → ok
+      连接成功 → 其他状态码 → 记录，继续
+      连接失败 → 继续
+  若 root != 原URL:
+    candidates2 = [根域名双协议]
+    遍历 candidates2:
+      同上判定
+  → dead
+```
 
-超时 10s、重定向 10 次的策略保持不变。
+### 关键行为
 
-### 2. 协议双试（http/https）
+- **403 即 ok**，不再需要 body 识别（不匹配 cf_chl / banip 等特征）。
+- **404/500 走根域名降级**（保留现有 `falls_back_to_root_on_404` 逻辑）。
+- **保留**：浏览器头伪装、http/https 双协议、根域名降级、超时 10s、重定向 10 次、gzip/brotli。
+- **不引入** WebView2 / wry / 无头浏览器，零新依赖。
 
-`check_site` 探测顺序：
-1. 原 URL（`normalize_url` 默认补 `https://`）
-2. 失败后补试另一协议（http → 补试 https；https → 补试 http）
-3. 仍失败则降级测根域名（保留现有逻辑），同样双协议试
-4. 全部失败 → dead
+## 全局约束
 
-`normalize_url` / `root_url` 行为不变。
-
-### 3. 判定标准不变
-
-- 200-399 → `ok`
-- 其余（404/403/5xx/网络错误/超时）→ `dead`
+- 判定标准：任意 2xx/3xx 状态码 → ok；**403 → ok**（推断）；404/5xx 等其余非 2xx → 根域名降级；连接失败 → dead。**403 不在 2xx-3xx 范围内，是独立判定的特例。**
+- `CheckResult { status, used_url }` 结构不变（camelCase 序列化）。
+- 不改前端、commands.rs、tauri.conf.json。
+- reqwest 保持 `version = "0.12"`，仅追加 gzip/brotli，不引入新 crate。
 
 ## 测试
 
-- 保留现有 5 个单测（`normalize_adds_https`、`root_strips_path`、`root_on_bare_domain`、`falls_back_to_root_on_404`、`connectivity_false_on_bad_host`）
-- 新增测试：本地 HTTP 服务器对非浏览器 UA 返回 403、对浏览器 UA 返回 200，验证伪装头生效、结果判定 ok
-- 新增测试：仅 http 可达的站点（https 失败 → http 成功）判定 ok
+- `falls_back_to_root_on_404`：保留（子页面 404 → 根域名 200 → ok）。
+- 新增：`403_implies_ok`（服务器返回 403 → ok）。
+- 新增：`root_also_404_is_dead`（子页面与根域名均 404 → dead）。
+- 新增：`root_also_500_is_dead`（子页面与根域名均 500 → dead）。
+- 新增：`http_only_site_falls_back_from_https`（保留）。
 
-## 风险与不变量
+## 非目标
 
-- brotli 特性增加少量编译体积，可接受
-- 不改动状态分类、不引入 UI 改动、不改前端
-- 该站 301 重定向到自身（http）再需 https 才 200 的情况，由"协议双试"覆盖
+- 不做内容级验证（不检查页面标题/正文）。
+- 不引入第三种状态（如 "unknown"）。
+- 不检测"IP 真被封禁但服务器正常"的误判场景（推断接受）。
