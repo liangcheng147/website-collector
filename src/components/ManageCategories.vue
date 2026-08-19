@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useAppStore } from '../store/app'
+import { useSelection } from '../composables/useSelection'
 import ConfirmModal from './ConfirmModal.vue'
 const store = useAppStore()
 const name = ref('')
 const parentId = ref<string | null>(null)
-const selected = ref<string[]>([])
+const sel = useSelection(() => store.flatCategories.map(c => c.id))
 const delMode = ref(false)
 const catList = computed(() =>
   store.flatCategories.map(c => ({ ...c, count: store.categoryCounts[c.id] ?? 0 })))
@@ -15,14 +16,9 @@ function add() {
   store.addCategory(name.value.trim(), validParent ? validParent.id : null)
   name.value = ''
 }
-function toggle(id: string) {
-  const i = selected.value.indexOf(id)
-  if (i >= 0) selected.value.splice(i, 1)
-  else selected.value.push(id)
-}
 function doDelete(mode: string) {
-  store.deleteCategories([...selected.value], mode === 'delete' ? 'delete-sites' : 'move-to-uncategorized')
-  selected.value = []
+  store.deleteCategories([...sel.selected.value], mode === 'delete' ? 'delete-sites' : 'move-to-uncategorized')
+  sel.clear()
   delMode.value = false
 }
 </script>
@@ -44,13 +40,13 @@ function doDelete(mode: string) {
     <div class="manage-card">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <h4>分类列表</h4>
-        <button class="btn danger" :disabled="!selected.length" @click="delMode = true">🗑 批量删除所选</button>
+        <button class="btn danger" :disabled="!sel.selected.value.length" @click="delMode = true">🗑 批量删除所选</button>
       </div>
       <div class="cat-head">
-        <span class="chk-col"></span><span class="name-col">分类</span><span class="cnt-col">网站数</span>
+        <span class="chk-col"><span class="cb" :class="{ checked: sel.allSelected.value }" @click="sel.selectAll()"></span></span><span class="name-col">分类</span><span class="cnt-col">网站数</span>
       </div>
-      <div v-for="c in catList" :key="c.id" class="cat-row">
-        <span class="chk-col"><span class="cb" :class="{ checked: selected.includes(c.id) }" @click="toggle(c.id)"></span></span>
+      <div v-for="c in catList" :key="c.id" class="cat-row" :class="{ 'row-selected': sel.selected.value.includes(c.id) }" @click="sel.onRowClick($event, c.id)">
+        <span class="chk-col"><span class="cb" :class="{ checked: sel.selected.value.includes(c.id) }" @click.stop="sel.toggle(c.id)"></span></span>
         <span class="name-col" :style="{ paddingLeft: c.depth * 14 + 'px' }">{{ c.name }}</span>
         <span class="cnt-col muted">{{ c.count }}</span>
       </div>
@@ -60,7 +56,7 @@ function doDelete(mode: string) {
   <ConfirmModal
     v-if="delMode"
     title="删除分类"
-    :message="`删除所选 ${selected.length} 个分类，其中网站如何处理？`"
+    :message="`删除所选 ${sel.selected.value.length} 个分类，其中网站如何处理？`"
     :options="[{ value: 'move', label: '网站移入未分类' }, { value: 'delete', label: '连同网站删除', danger: true }]"
     hint="「连同网站删除」会把这些分类下所有网站移入回收站，可在回收站恢复。"
     @choose="doDelete"
