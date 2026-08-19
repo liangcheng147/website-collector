@@ -5,10 +5,23 @@ use std::time::Duration;
 #[serde(rename_all = "camelCase")]
 pub struct CheckResult { pub status: String, pub used_url: String }
 
+const BROWSER_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
 fn client() -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .redirect(reqwest::redirect::Policy::limited(10))
+        .user_agent(BROWSER_UA)
+        .default_headers({
+            use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE};
+            let mut h = HeaderMap::new();
+            h.insert(ACCEPT, HeaderValue::from_static("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"));
+            h.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("zh-CN,zh;q=0.9,en;q=0.8"));
+            h.insert(ACCEPT_ENCODING, HeaderValue::from_static("gzip, deflate, br"));
+            h
+        })
+        .gzip(true)
+        .brotli(true)
         .build()
         .unwrap_or_else(|_| reqwest::Client::new())
 }
@@ -104,6 +117,43 @@ mod tests {
         });
         assert_eq!(res.status, "ok");
         assert_eq!(res.used_url, format!("http://{}", addr));
+    }
+
+    #[test]
+    fn browser_ua_bypasses_403_waf() {
+        // 服务器只对非浏览器 UA 返回 403
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            use std::io::{BufRead, Write};
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
+                let mut line = String::new();
+                let mut ua = String::new();
+                loop {
+                    line.clear();
+                    if reader.read_line(&mut line).unwrap_or(0) == 0 { break; }
+                    if line.trim().is_empty() { break; }
+                    if line.to_ascii_lowercase().starts_with("user-agent:") {
+                        ua = line.splitn(2, ':').nth(1).map(|s| s.trim().to_string()).unwrap_or_default();
+                    }
+                }
+                let (status, body) = if ua.contains("Mozilla/5.0") {
+                    ("200 OK", "ok")
+                } else {
+                    ("403 Forbidden", "forbidden")
+                };
+                let resp = format!(
+                    "HTTP/1.1 {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    status, body.len(), body
+                );
+                let _ = stream.write_all(resp.as_bytes());
+            }
+        });
+        let url = format!("http://{}/", addr);
+        let res = tokio::runtime::Runtime::new().unwrap().block_on(async { check_site(&url).await });
+        assert_eq!(res.status, "ok");
+        assert_eq!(res.used_url, url);
     }
 
     #[test]
