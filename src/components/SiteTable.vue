@@ -66,10 +66,11 @@ function onRowDragOver(e: DragEvent) {
   <div class="table-wrap">
     <div v-if="store.selectedIds.length" class="batchbar">
       <b>已选 {{ store.selectedIds.length }} 项</b>
-      <button class="btn" @click="emit('check-site', [...store.selectedIds])">▶ 检测所选</button>
-      <button class="btn" @click="emit('move', [...store.selectedIds])">移动分类…</button>
-      <button class="btn" @click="emit('tag', [...store.selectedIds])">添加标签…</button>
-      <button class="btn danger" @click="store.deleteSites([...store.selectedIds])">删除所选</button>
+      <button v-if="store.checking" class="btn danger" @click="store.cancelCheck()">■ 取消检测</button>
+      <button v-else class="btn" @click="emit('check-site', [...store.selectedIds])">■ 检测所选</button>
+      <button class="btn" :disabled="store.checking" @click="emit('move', [...store.selectedIds])">移动分类…</button>
+      <button class="btn" :disabled="store.checking" @click="emit('tag', [...store.selectedIds])">添加标签…</button>
+      <button class="btn danger" :disabled="store.checking" @click="store.deleteSites([...store.selectedIds])">删除所选</button>
       <button class="btn" style="margin-left:auto" @click="store.clearSelection()">✕ 取消选择</button>
     </div>
     <table class="site-table">

@@ -110,7 +110,7 @@ html.win-maximized .app { border-radius:0; }
 .mode-row { margin:12px 0; font-size:13px; }
 .mode-row label { display:inline; margin:0; font-weight:400; color:var(--text); }
 
-.menu-mask { position:fixed; inset:0; z-index:99; }
+.btn:disabled { opacity: .5; cursor: default; }
 .ctx { position:fixed; z-index:100; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow-md); padding:5px; min-width:160px; }
 .ctx-item { display:block; width:100%; text-align:left; border:none; box-shadow:none; background:none; padding:6px 12px; border-radius:var(--radius); cursor:pointer; font-family:var(--font); font-size:13px; color:var(--text); }
 .ctx-item:hover { background:var(--hover); }

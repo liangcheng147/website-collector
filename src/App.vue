@@ -45,7 +45,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
 <template>
   <div class="app">
     <TitleBar />
-    <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" @manage="manage = true" />
+    <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" @cancel-check="store.cancelCheck" @manage="manage = true" />
     <div class="body">
       <ManageView v-if="manage" @back="manage = false" />
       <template v-else>
