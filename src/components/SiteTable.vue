@@ -109,7 +109,6 @@ function onRowDragOver(e: DragEvent) {
       </tbody>
     </table>
     <div v-if="store.filteredSites.length === 0" class="empty">◇ 还没有网站</div>
-    <div class="menu-mask" v-if="menu" @click="menu = null" @contextmenu.prevent="menu = null"></div>
-    <ContextMenu v-if="menu" :x="menu.x" :y="menu.y" @action="onAction" />
+    <ContextMenu v-if="menu" :x="menu.x" :y="menu.y" @action="onAction" @close="menu = null" />
   </div>
 </template>

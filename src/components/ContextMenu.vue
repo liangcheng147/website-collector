@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { onMounted, ref, nextTick } from 'vue'
+import { onMounted, onUnmounted, ref, nextTick } from 'vue'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
-const emit = defineEmits(['action'])
+const emit = defineEmits(['action', 'close'])
 const props = defineProps<{ x: number; y: number; items?: { kind: string; label: string; danger?: boolean }[] }>()
 const el = ref<HTMLDivElement | null>(null)
 const pos = ref({ x: props.x, y: props.y })
+
+function onGlobalDown(e: Event) {
+  if (!el.value?.contains(e.target as Node)) emit('close')
+}
 
 onMounted(async () => {
   await nextTick()
@@ -18,6 +22,13 @@ onMounted(async () => {
   if (props.x + w > window.innerWidth - pad) nx = Math.max(pad, window.innerWidth - w - pad)
   if (props.y + h > window.innerHeight - pad) ny = Math.max(pad, window.innerHeight - h - pad)
   pos.value = { x: nx, y: ny }
+  document.addEventListener('pointerdown', onGlobalDown)
+  document.addEventListener('wheel', onGlobalDown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onGlobalDown)
+  document.removeEventListener('wheel', onGlobalDown)
 })
 
 function act(kind: string) { emit('action', kind); store.clearSelection() }
@@ -25,7 +36,7 @@ function act(kind: string) { emit('action', kind); store.clearSelection() }
 
 <template>
   <Teleport to="body">
-    <div ref="el" class="ctx" :style="{ left: pos.x + 'px', top: pos.y + 'px' }">
+    <div ref="el" class="ctx" :style="{ left: pos.x + 'px', top: pos.y + 'px' }" @contextmenu.prevent>
       <template v-if="props.items && props.items.length">
         <button v-for="it in props.items" :key="it.kind" class="ctx-item" :class="{ danger: it.danger }" @click="act(it.kind)">{{ it.label }}</button>
       </template>

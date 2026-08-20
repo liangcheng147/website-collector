@@ -82,8 +82,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
     <div class="children" v-show="!store.settings.collapsedCategories.includes(cat.id)">
       <CategoryNode v-for="cc in cat.children" :key="cc.id" :cat="cc" :depth="depth + 1" />
     </div>
-    <div class="menu-mask" v-if="menu" @click="menu = null" @contextmenu.prevent="menu = null"></div>
-    <ContextMenu v-if="menu" :x="menu.x" :y="menu.y" :items="menuItems()" @action="(kind: string) => onAction(kind, cat)" />
+    <ContextMenu v-if="menu" :x="menu.x" :y="menu.y" :items="menuItems()" @action="(kind: string) => onAction(kind, cat)" @close="menu = null" />
     <PromptModal v-if="renameCat" :title="'重命名分类'" :initial="renameCat.name" hint="修改后所有子分类与网站归属保持不变。" @confirm="doRename" @close="renameCat = null" />
     <ConfirmModal
       v-if="delCat"
