@@ -443,4 +443,33 @@ describe('app store', () => {
     s.removeTagsByScope(null, ['框架'])
     expect(s.data.sites.every(x => !x.tags.includes('框架'))).toBe(true)
   })
+
+  it('cancelCheck stops checkAll after current site', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    const resolvers: ((v: any) => void)[] = []
+    vi.mocked(api.checkSite).mockImplementation(() => new Promise<any>(res => resolvers.push(res)))
+    const promise = s.checkAll()
+    for (let i = 0; i < 10; i++) await Promise.resolve()
+    expect(resolvers.length).toBe(1)
+    resolvers[0]({ status: 'ok', usedUrl: 'x' })
+    for (let i = 0; i < 10; i++) await Promise.resolve()
+    s.cancelCheck()
+    resolvers[1]({ status: 'dead', usedUrl: 'x' })
+    await promise
+    expect(api.checkSite).toHaveBeenCalledTimes(2) // 只测到 b 就停
+    expect(s.data.sites.filter(x => x.lastCheck).length).toBe(2) // a、b 结果保留
+    expect(s.progress.done).toBe(2)
+    expect(s.checking).toBe(false)
+    expect(s.cancelled).toBe(true)
+  })
+
+  it('checkOne is skipped while checking', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.checking = true
+    await s.checkOne('a')
+    expect(api.checkSite).not.toHaveBeenCalled()
+  })
 })

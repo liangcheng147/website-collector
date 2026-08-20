@@ -24,6 +24,8 @@ export const useAppStore = defineStore('app', {
     selectedIds: [] as string[],
     lastSelectedId: null as string | null,
     checking: false,
+    cancelled: false,
+    cancelRequested: false,
     progress: { done: 0, total: 0 },
     connectivityError: false,
     flashMsg: '',
@@ -399,8 +401,11 @@ export const useAppStore = defineStore('app', {
     clearSelection() { this.selectedIds = [] },
     deleteSelected() { this.deleteSites([...this.selectedIds]) },
 
+    cancelCheck() { this.cancelRequested = true },
+
     async checkAll() {
       if (this.checking) return
+      this.cancelled = false
       if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
       this.connectivityError = false
       this.checking = true
@@ -412,13 +417,17 @@ export const useAppStore = defineStore('app', {
           s.lastCheck = new Date().toISOString()
           this.progress.done++
           this.persist()
+          if (this.cancelRequested) break
         }
       } finally {
+        this.cancelled = this.cancelRequested
         this.checking = false
+        this.cancelRequested = false
       }
     },
 
     async checkOne(id: string) {
+      if (this.checking) return
       const s = this.data.sites.find(x => x.id === id)
       if (!s) return
       const r = await api.checkSite(s.url)
@@ -429,6 +438,7 @@ export const useAppStore = defineStore('app', {
 
     async checkSelected() {
       if (this.checking) return
+      this.cancelled = false
       if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
       this.connectivityError = false
       this.checking = true
@@ -440,9 +450,12 @@ export const useAppStore = defineStore('app', {
           if (s) { const r = await api.checkSite(s.url); s.status = r.status; s.lastCheck = new Date().toISOString() }
           this.progress.done++
           this.persist()
+          if (this.cancelRequested) break
         }
       } finally {
+        this.cancelled = this.cancelRequested
         this.checking = false
+        this.cancelRequested = false
         this.clearSelection()
       }
     },
