@@ -412,9 +412,7 @@ export const useAppStore = defineStore('app', {
       this.progress = { done: 0, total: this.data.sites.length }
       try {
         for (const s of [...this.data.sites]) {
-          const r = await api.checkSite(s.url)
-          s.status = r.status
-          s.lastCheck = new Date().toISOString()
+          await this.checkSiteWithVerify(s)
           this.progress.done++
           this.persist()
           if (this.cancelRequested) break
@@ -426,14 +424,21 @@ export const useAppStore = defineStore('app', {
       }
     },
 
+    async checkSiteWithVerify(s: Site) {
+      let r = await api.checkSite(s.url)
+      if (r.status === 'dead') {
+        r = await api.verifySiteWebview(s.url)
+      }
+      s.status = r.status
+      s.lastCheck = new Date().toISOString()
+    },
+
     async checkOne(id: string) {
       if (this.checking) return
       this.cancelled = false
       const s = this.data.sites.find(x => x.id === id)
       if (!s) return
-      const r = await api.checkSite(s.url)
-      s.status = r.status
-      s.lastCheck = new Date().toISOString()
+      await this.checkSiteWithVerify(s)
       this.persist()
     },
 
@@ -448,7 +453,7 @@ export const useAppStore = defineStore('app', {
       try {
         for (const id of ids) {
           const s = this.data.sites.find(x => x.id === id)
-          if (s) { const r = await api.checkSite(s.url); s.status = r.status; s.lastCheck = new Date().toISOString() }
+          if (s) await this.checkSiteWithVerify(s)
           this.progress.done++
           this.persist()
           if (this.cancelRequested) break

@@ -6,6 +6,7 @@ vi.mock('../api', () => ({
   loadData: vi.fn().mockResolvedValue(undefined),
   checkConnectivity: vi.fn().mockResolvedValue(true),
   checkSite: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
+  verifySiteWebview: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
   getDataLocation: vi.fn().mockResolvedValue({ dir: 'C:\\data', isFallback: false }),
   getSettings: vi.fn().mockResolvedValue({ theme: 'system', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] }),
   setSettings: vi.fn().mockResolvedValue(undefined),
@@ -226,6 +227,7 @@ describe('app store', () => {
     s.data = baseData
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
     vi.mocked(api.checkSite).mockResolvedValue({ status: 'dead', usedUrl: 'https://x.dev' })
+    vi.mocked(api.verifySiteWebview).mockResolvedValue({ status: 'dead', usedUrl: 'https://x.dev' })
     await s.checkAll()
     expect(s.data.sites.every(x => x.status === 'dead')).toBe(true)
     expect(s.progress.done).toBe(s.progress.total)
@@ -471,5 +473,32 @@ describe('app store', () => {
     s.checking = true
     await s.checkOne('a')
     expect(api.checkSite).not.toHaveBeenCalled()
+  })
+
+  it('checkAll verifies dead sites via webview', async () => {
+    const s = useAppStore()
+    s.data = baseData // a:ok, b:dead, c:unknown
+    vi.mocked(api.checkSite).mockResolvedValue({ status: 'dead', usedUrl: 'x' })
+    vi.mocked(api.verifySiteWebview).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
+    await s.checkAll()
+    expect(s.data.sites.every(x => x.status === 'ok')).toBe(true)
+    expect(api.verifySiteWebview).toHaveBeenCalledTimes(3)
+  })
+
+  it('checkAll does not verify already-ok sites', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    vi.mocked(api.checkSite).mockImplementation(async (url) =>
+      url.includes('a') ? { status: 'ok', usedUrl: url } : { status: 'dead', usedUrl: url })
+    await s.checkAll()
+    expect(api.verifySiteWebview).toHaveBeenCalledTimes(2) // 只复核 b、c
+  })
+
+  it('checkOne resets cancelled after a cancelled batch', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.cancelled = true
+    await s.checkOne('a')
+    expect(s.cancelled).toBe(false)
   })
 })
