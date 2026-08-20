@@ -428,6 +428,7 @@ export const useAppStore = defineStore('app', {
 
     async checkOne(id: string) {
       if (this.checking) return
+      this.cancelled = false
       const s = this.data.sites.find(x => x.id === id)
       if (!s) return
       const r = await api.checkSite(s.url)
