@@ -55,7 +55,7 @@ pub async fn check_connectivity() -> bool {
     c.get("https://example.com").send().await.is_ok()
 }
 
-fn variants(url: &str) -> Vec<String> {
+pub(crate) fn variants(url: &str) -> Vec<String> {
     let full = normalize_url(url);
     let mut v = vec![full.clone()];
     if let Ok(u) = url::Url::parse(&full) {

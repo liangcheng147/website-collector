@@ -48,6 +48,11 @@ pub async fn check_connectivity_cmd() -> bool {
 }
 
 #[tauri::command]
+pub async fn verify_site_webview_cmd(app: tauri::AppHandle, url: String) -> check::CheckResult {
+    crate::verify::verify_site(&app, &url).await
+}
+
+#[tauri::command]
 pub fn export_md_to_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
     let data = data::load_data(&active_data_dir(&app));
     md::export_md_to_path(&data, std::path::Path::new(&path))
