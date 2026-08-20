@@ -69,7 +69,9 @@ fn variants(url: &str) -> Vec<String> {
     v
 }
 
-pub async fn check_site(url: &str) -> CheckResult {
+const RETRY_DELAY: Duration = Duration::from_secs(1);
+
+async fn check_site_attempt(url: &str) -> CheckResult {
     let c = client();
     let full = normalize_url(url);
     // 1. 原 URL 双协议
@@ -88,6 +90,15 @@ pub async fn check_site(url: &str) -> CheckResult {
         }
     }
     CheckResult { status: "dead".into(), used_url: full }
+}
+
+pub async fn check_site(url: &str) -> CheckResult {
+    let r = check_site_attempt(url).await;
+    if r.status == "dead" {
+        tokio::time::sleep(RETRY_DELAY).await;
+        return check_site_attempt(url).await;
+    }
+    r
 }
 
 #[cfg(test)]
@@ -282,5 +293,36 @@ mod tests {
             check_site(url).await
         });
         assert_eq!(res.status, "dead");
+    }
+
+    #[test]
+    fn retries_after_transient_failure() {
+        // 第一次探测全部失败（临时故障），1 秒后自动重试成功 → 应判 ok
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            use std::io::{Read, Write};
+            // 第 1 次连接（首次尝试 http）→ 404；第 2 次（首次尝试 https）→ 404（TLS 读到明文 → 失败）；
+            // 第 3 次（重试 http）→ 200。
+            let mut n = 0;
+            for _ in 0..3 {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    n += 1;
+                    let mut buf = [0u8; 4096];
+                    let _ = stream.read(&mut buf);
+                    let (status, body) = if n >= 3 { ("200 OK", "ok") } else { ("404 Not Found", "nf") };
+                    let resp = format!(
+                        "HTTP/1.1 {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        status, body.len(), body
+                    );
+                    let _ = stream.write_all(resp.as_bytes());
+                }
+            }
+        });
+        let url = format!("http://{}", addr);
+        let res = tokio::runtime::Runtime::new().unwrap().block_on(async {
+            check_site(&url).await
+        });
+        assert_eq!(res.status, "ok");
     }
 }
