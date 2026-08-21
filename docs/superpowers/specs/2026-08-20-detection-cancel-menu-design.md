@@ -1,7 +1,7 @@
 # 检测增强与交互修复（右键菜单 + 取消检测 + 检测方法升级）
 
 - 日期：2026-08-20
-- 状态：已确认
+- 状态：已实现
 - 关联：`src/components/ContextMenu.vue`、`src/components/SiteTable.vue`、`src/components/CategoryNode.vue`、`src/components/TopBar.vue`、`src/components/StatusBar.vue`、`src/store/app.ts`、`src-tauri/src/check.rs`、`src-tauri/src/commands.rs`、`src-tauri/src/lib.rs`、`src-tauri/Cargo.toml`
 
 ## 问题背景
