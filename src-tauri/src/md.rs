@@ -18,6 +18,21 @@ pub fn export_to_md(data: &AppData) -> String {
     out
 }
 
+fn parse_list_item(body: &str) -> Option<(String, String)> {
+    if let Some(open) = body.find('[') {
+        if let Some(rel) = body[open..].find("](") {
+            let close = open + rel;
+            let name = body[open + 1..close].trim().to_string();
+            let rest = &body[close + 2..];
+            if let Some(end) = rest.find(')') {
+                let url = rest[..end].trim().to_string();
+                return Some((name, url));
+            }
+        }
+    }
+    Some((body.to_string(), String::new()))
+}
+
 fn site_line(s: &Site) -> String {
     let mark = match (s.status.as_str(), &s.last_check) {
         ("ok", Some(d)) => format!(" ✅ {}", d),
@@ -48,10 +63,9 @@ pub fn import_from_md(text: &str) -> AppData {
             flat.push(FlatCat { name, parent });
             heading_stack.push((depth, idx));
             last_site = None;
-        } else if let Some((name, rest)) = line.split_once('\t') {
-            let name = name.trim().to_string();
-            let url = rest.split('\t').next().unwrap_or("").trim().to_string();
-            if !url.is_empty() {
+        } else if let Some(body) = line.strip_prefix(['-', '*', '+']).map(|b| b.trim()) {
+            if let Some((name, url)) = parse_list_item(body) {
+                if !url.is_empty() {
                 let category_id = heading_stack.last().map(|&(_, i)| format!("c{}", i));
                 sites.push(Site {
                     id: format!("s{}", site_seq),
@@ -61,6 +75,7 @@ pub fn import_from_md(text: &str) -> AppData {
                 });
                 site_seq += 1;
                 last_site = Some(sites.len() - 1);
+            }
             }
         } else if let Some(note_text) = line.strip_prefix('>') {
             let note = note_text.trim();
@@ -130,7 +145,7 @@ use crate::data::{self, AppData, Category, Site};
 
     #[test]
     fn import_ignores_status_and_tags() {
-        let text = "# 开发工具\n## 前端\nReact\thttps://react.dev\t✅ 2026-08-15\n> React 官方文档与教程站\nVue\thttps://vuejs.org\t❌ 2026-08-15\n";
+        let text = "# 开发工具\n## 前端\n- [React](https://react.dev) ✅ 2026-08-15\n> React 官方文档与教程站\n- [Vue](https://vuejs.org) ❌ 2026-08-15\n";
         let data = import_from_md(text);
         assert_eq!(data.categories.len(), 1);
         assert_eq!(data.categories[0].children.len(), 1);
@@ -160,7 +175,7 @@ use crate::data::{self, AppData, Category, Site};
 
     #[test]
     fn import_note_binding_stops_at_heading() {
-        let text = "# 开发\nA\thttps://a.dev\n> A 的备注\n# 资讯\n> 游离备注不应被读入\nB\thttps://b.dev\n";
+        let text = "# 开发\n- [A](https://a.dev)\n> A 的备注\n# 资讯\n> 游离备注不应被读入\n- [B](https://b.dev)\n";
         let data = import_from_md(text);
         assert_eq!(data.sites[0].note, "A 的备注");
         assert_eq!(data.sites[1].note, "");
@@ -187,7 +202,7 @@ use crate::data::{self, AppData, Category, Site};
         data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "".into() });
         data::save_data(&d, &data).unwrap();
         let in_path = d.join("in.md");
-        std::fs::write(&in_path, "# 新分类\nX\thttps://x.dev\n").unwrap();
+        std::fs::write(&in_path, "# 新分类\n- [X](https://x.dev)\n").unwrap();
         let back = import_md_from_path(&d, &in_path, "overwrite").unwrap();
         assert_eq!(back.sites.len(), 1);
         assert_eq!(back.sites[0].name, "X");
