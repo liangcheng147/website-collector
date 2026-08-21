@@ -144,6 +144,27 @@ use crate::data::{self, AppData, Category, Site};
     }
 
     #[test]
+    fn export_import_note_roundtrip() {
+        let data = AppData {
+            version: 1,
+            categories: vec![Category {
+                id: "c1".into(), name: "开发工具".into(), children: vec![],
+            }],
+            sites: vec![Site {
+                id: "s1".into(), name: "React".into(), url: "https://react.dev".into(),
+                category_id: Some("c1".into()), tags: vec![],
+                status: "ok".into(), last_check: Some("2026-08-15".into()),
+                note: "React 官方文档与教程站".into(),
+            }],
+            recycle_bin: vec![], tags: vec![],
+        };
+        let md = export_to_md(&data);
+        let back = import_from_md(&md);
+        assert_eq!(back.sites.len(), 1);
+        assert_eq!(back.sites[0].note, "React 官方文档与教程站", "导出的两格缩进备注应能原样导回");
+    }
+
+    #[test]
     fn import_ignores_status_and_tags() {
         let text = "# 开发工具\n## 前端\n- [React](https://react.dev) ✅ 2026-08-15\n> React 官方文档与教程站\n- [Vue](https://vuejs.org) ❌ 2026-08-15\n";
         let data = import_from_md(text);
