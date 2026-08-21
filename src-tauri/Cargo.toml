@@ -1,6 +1,6 @@
 [package]
 name = "website-collector"
-version = "0.1.1"
+version = "0.1.2"
 description = "网站收藏管家 - 本地网站收藏与可用性检测"
 authors = ["bjb"]
 edition = "2021"
