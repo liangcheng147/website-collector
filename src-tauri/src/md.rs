@@ -8,7 +8,7 @@ pub fn export_to_md(data: &AppData) -> String {
             for s in data.sites.iter().filter(|s| s.category_id.as_deref() == Some(&c.id)) {
                 out.push_str(&site_line(s));
                 let note = s.note.trim().replace('\t', " ").replace('\n', " ").replace('\r', " ");
-                if !note.is_empty() { out.push_str(&format!("> {}\n", note)); }
+                if !note.is_empty() { out.push_str(&format!("  > {}\n", note)); }
             }
             walk(&c.children, data, out, depth + 1);
             out.push('\n');
@@ -20,15 +20,11 @@ pub fn export_to_md(data: &AppData) -> String {
 
 fn site_line(s: &Site) -> String {
     let mark = match (s.status.as_str(), &s.last_check) {
-        ("ok", Some(d)) => format!("✅ {}", d),
-        ("dead", Some(d)) => format!("❌ {}", d),
+        ("ok", Some(d)) => format!(" ✅ {}", d),
+        ("dead", Some(d)) => format!(" ❌ {}", d),
         _ => String::new(),
     };
-    if mark.is_empty() {
-        format!("{}\t{}\n", s.name, s.url)
-    } else {
-        format!("{}\t{}\t{}\n", s.name, s.url, mark)
-    }
+    format!("- [{}]({}){}\n", s.name, s.url, mark)
 }
 
 pub fn import_from_md(text: &str) -> AppData {
@@ -127,8 +123,8 @@ use crate::data::{self, AppData, Category, Site};
         let md = export_to_md(&data);
         assert!(md.contains("# 开发工具"));
         assert!(md.contains("## 前端"));
-        assert!(md.contains("React\thttps://react.dev\t✅ 2026-08-15"));
-        assert!(md.contains("> React 官方文档与教程站"));
+        assert!(md.contains("- [React](https://react.dev) ✅ 2026-08-15"));
+        assert!(md.contains("  > React 官方文档与教程站"));
         assert!(!md.contains("框架"), "标签不应出现在 md 中");
     }
 
@@ -158,7 +154,7 @@ use crate::data::{self, AppData, Category, Site};
             recycle_bin: vec![], tags: vec![],
         };
         let md = export_to_md(&data);
-        assert!(md.contains("> 多 列 换行 备注"));
+        assert!(md.contains("  > 多 列 换行 备注"));
         assert!(!md.contains("> 多\t列"), "备注中的 tab 已被替换为空格");
     }
 
