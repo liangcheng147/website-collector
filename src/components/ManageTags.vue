@@ -80,6 +80,6 @@ function doBatch() {
       <p class="muted">按所选分类范围（含其子分类）批量应用；选「全部网站」则作用于全部。</p>
     </div>
   </div>
-  <PromptModal v-if="renaming" :title="'重命名标签'" :initial="renaming" hint="修改后所有网站的该标签同步更新。" @confirm="doRename" @close="renaming = null" />
-  <PromptModal v-if="merging" :title="'合并标签'" :initial="sel.selected.value[0]" hint="所选标签合并为目标标签：网站上的标签统一替换，被合并的标签自动消失。" @confirm="doMerge" @close="merging = false" />
+    <Transition name="mask"><PromptModal v-if="renaming" :title="'重命名标签'" :initial="renaming" hint="修改后所有网站的该标签同步更新。" @confirm="doRename" @close="renaming = null" /></Transition>
+    <Transition name="mask"><PromptModal v-if="merging" :title="'合并标签'" :initial="sel.selected.value[0]" hint="所选标签合并为目标标签：网站上的标签统一替换，被合并的标签自动消失。" @confirm="doMerge" @close="merging = false" /></Transition>
 </template>

@@ -10,7 +10,7 @@ const menu = ref<{ x: number; y: number } | null>(null)
 const hoverId = ref<string | null>(null)
 const emit = defineEmits(['edit', 'check-site', 'move', 'tag'])
 
-function heart(s: string) { return s === 'ok' ? '♥♥♥' : s === 'dead' ? '♥' : '♥?' }
+function statusLabel(s: string) { return s === 'ok' ? '正常' : s === 'dead' ? '失效' : '待检测' }
 
 function onRight(e: MouseEvent, siteId: string) {
   if (!store.selectedIds.includes(siteId)) { store.clearSelection(); store.toggleSelect(siteId) }
@@ -104,12 +104,15 @@ function onRowDragOver(e: DragEvent) {
           </td>
           <td class="muted">{{ getCategoryName(s.categoryId) }}</td>
           <td><span v-for="t in s.tags" :key="t" class="chip">{{ t }}</span></td>
-          <td :class="{ ok: s.status === 'ok', dead: s.status === 'dead', pending: s.status === 'unknown' }">{{ heart(s.status) }}</td>
+          <td><span class="status" :class="{ ok: s.status === 'ok', dead: s.status === 'dead', pending: s.status === 'unknown' }"><span class="dot"></span>{{ statusLabel(s.status) }}</span></td>
           <td class="muted">{{ s.note }}</td>
         </tr>
       </tbody>
     </table>
-    <div v-if="store.filteredSites.length === 0" class="empty">◇ 还没有网站</div>
+    <div v-if="store.filteredSites.length === 0" class="empty">
+      <b>还没有网站</b>
+      <span class="hint">点击右上角「添加」开始归集你的链接</span>
+    </div>
     <ContextMenu v-if="menu" :x="menu.x" :y="menu.y" @action="onAction" @close="menu = null" />
   </div>
 </template>

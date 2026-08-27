@@ -53,13 +53,15 @@ function doDelete(mode: string) {
       <div v-if="!catList.length" class="empty">暂无分类</div>
     </div>
   </div>
-  <ConfirmModal
-    v-if="delMode"
-    title="删除分类"
-    :message="`删除所选 ${sel.selected.value.length} 个分类，其中网站如何处理？`"
-    :options="[{ value: 'move', label: '网站移入未分类' }, { value: 'delete', label: '连同网站删除', danger: true }]"
-    hint="「连同网站删除」会把这些分类下所有网站移入回收站，可在回收站恢复。"
-    @choose="doDelete"
-    @close="delMode = false"
-  />
+  <Transition name="mask">
+    <ConfirmModal
+      v-if="delMode"
+      title="删除分类"
+      :message="`删除所选 ${sel.selected.value.length} 个分类，其中网站如何处理？`"
+      :options="[{ value: 'move', label: '网站移入未分类' }, { value: 'delete', label: '连同网站删除', danger: true }]"
+      hint="「连同网站删除」会把这些分类下所有网站移入回收站，可在回收站恢复。"
+      @choose="doDelete"
+      @close="delMode = false"
+    />
+  </Transition>
 </template>

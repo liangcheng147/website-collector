@@ -79,6 +79,6 @@ function onTagDrop(e: DragEvent, t: string) {
     <template v-if="!isCollapsed('系统')">
       <div class="row trash" :class="{ active: store.view.kind === 'recycle' }" @click="setView('recycle')">🗑 回收站 <span class="cnt">{{ store.trashedSites.length }}</span></div>
     </template>
-    <AddCategoryModal v-if="showAdd" :parent-id="null" @created="setView('category', $event); showAdd = false" @close="showAdd = false" />
+    <Transition name="mask"><AddCategoryModal v-if="showAdd" :parent-id="null" @created="setView('category', $event); showAdd = false" @close="showAdd = false" /></Transition>
   </aside>
 </template>

@@ -67,6 +67,6 @@ function save() {
         </div>
       </div>
     </div>
-    <AddCategoryModal v-if="showAddCat" :parent-id="pendingCat" @created="onCatCreated" @close="showAddCat = false" />
+    <Transition name="mask"><AddCategoryModal v-if="showAddCat" :parent-id="pendingCat" @created="onCatCreated" @close="showAddCat = false" /></Transition>
   </ModalMask>
 </template>

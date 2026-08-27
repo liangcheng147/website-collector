@@ -414,13 +414,13 @@ export const useAppStore = defineStore('app', {
         for (const s of [...this.data.sites]) {
           await this.checkSiteWithVerify(s)
           this.progress.done++
-          this.persist()
           if (this.cancelRequested) break
         }
       } finally {
         this.cancelled = this.cancelRequested
         this.checking = false
         this.cancelRequested = false
+        await this.persist()
       }
     },
 
@@ -455,13 +455,13 @@ export const useAppStore = defineStore('app', {
           const s = this.data.sites.find(x => x.id === id)
           if (s) await this.checkSiteWithVerify(s)
           this.progress.done++
-          this.persist()
           if (this.cancelRequested) break
         }
       } finally {
         this.cancelled = this.cancelRequested
         this.checking = false
         this.cancelRequested = false
+        await this.persist()
         this.clearSelection()
       }
     },

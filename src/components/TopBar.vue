@@ -1,13 +1,22 @@
 <script setup lang="ts">
+import { ref, watch, onUnmounted } from 'vue'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
 const emit = defineEmits(['check-all', 'cancel-check', 'add', 'import-export', 'settings', 'manage'])
+
+const q = ref(store.search)
+let timer: ReturnType<typeof setTimeout> | undefined
+watch(q, (v) => {
+  if (timer) clearTimeout(timer)
+  timer = setTimeout(() => { store.search = v }, 180)
+})
+onUnmounted(() => { if (timer) clearTimeout(timer) })
 </script>
 
 <template>
   <header class="topbar">
     <span class="logo"><span class="lg-ic">GJ</span>归集</span>
-    <input class="search" v-model="store.search" placeholder="搜索名称 / 链接 / 标签…" />
+    <input class="search" v-model="q" placeholder="搜索名称 / 链接 / 标签…" />
     <select v-model="store.selectedTag" class="btn">
       <option :value="null">标签筛选 ▾</option>
       <option v-for="t in store.data.tags" :key="t" :value="t">{{ t }}</option>

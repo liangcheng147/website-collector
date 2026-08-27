@@ -57,11 +57,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
       </template>
     </div>
     <StatusBar />
-    <AddEditModal v-if="modal === 'add'" :editing="editing" :default-category-id="modalDefaultCategoryId" @close="modal = ''" />
-    <ImportExportModal v-if="modal === 'import'" @close="modal = ''" />
-    <SettingsModal v-if="modal === 'settings'" @close="modal = ''" />
-    <PickCategoryModal v-if="pickIds.length" :site-ids="pickIds" @close="pickIds = []" />
-    <AddTagsModal v-if="tagIds.length" :site-ids="tagIds" @close="tagIds = []" />
+    <Transition name="mask"><AddEditModal v-if="modal === 'add'" :editing="editing" :default-category-id="modalDefaultCategoryId" @close="modal = ''" /></Transition>
+    <Transition name="mask"><ImportExportModal v-if="modal === 'import'" @close="modal = ''" /></Transition>
+    <Transition name="mask"><SettingsModal v-if="modal === 'settings'" @close="modal = ''" /></Transition>
+    <Transition name="mask"><PickCategoryModal v-if="pickIds.length" :site-ids="pickIds" @close="pickIds = []" /></Transition>
+    <Transition name="mask"><AddTagsModal v-if="tagIds.length" :site-ids="tagIds" @close="tagIds = []" /></Transition>
   </div>
 </template>
 

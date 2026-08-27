@@ -42,6 +42,9 @@ function del() { store.permanentlyDeleteSites([...sel.selected.value]); sel.clea
         </tr>
       </tbody>
     </table>
-    <div v-if="store.trashedSites.length === 0" class="empty">回收站为空</div>
+    <div v-if="store.trashedSites.length === 0" class="empty">
+      <b>回收站为空</b>
+      <span class="hint">已删除的网站会暂时存放在这里</span>
+    </div>
   </div>
 </template>
