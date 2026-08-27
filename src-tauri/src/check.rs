@@ -35,9 +35,9 @@ pub fn root_url(raw: &str) -> String {
     let u = normalize_url(raw);
     let parsed = url::Url::parse(&u).unwrap_or_else(|_| url::Url::parse("https://invalid").unwrap());
     let mut b = parsed.clone();
-    let _ = b.set_path("");
-    let _ = b.set_query(None);
-    let _ = b.set_fragment(None);
+    b.set_path("");
+    b.set_query(None);
+    b.set_fragment(None);
     b.to_string().trim_end_matches('/').to_string()
 }
 
@@ -169,7 +169,7 @@ mod tests {
                     if reader.read_line(&mut line).unwrap_or(0) == 0 { break; }
                     if line.trim().is_empty() { break; }
                     if line.to_ascii_lowercase().starts_with("user-agent:") {
-                        ua = line.splitn(2, ':').nth(1).map(|s| s.trim().to_string()).unwrap_or_default();
+                        ua = line.split_once(':').map(|(_, v)| v.trim().to_string()).unwrap_or_default();
                     }
                 }
                 let (status, body) = if ua.contains("Mozilla/5.0") {

@@ -26,7 +26,7 @@ const getCategoryName = (id: string | null) => {
   return cat ? cat.name : '未分类'
 }
 
-function onRowDblClick(site: any) { emit('edit', site) }
+function onRowDblClick(site: Site) { emit('edit', site) }
 function onAction(kind: string) {
   const ids = [...store.selectedIds]
   menu.value = null

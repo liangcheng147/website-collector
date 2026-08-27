@@ -20,6 +20,7 @@ CI（`.github/workflows/release.yml`）只跑 `npm test`，不跑 `cargo test`�
 - 应用窗口是**无边框 + 透明**（`tauri.conf.json` 中 `decorations: false`、`transparent: true`），标题栏是前端手写的（`api.ts` 里的 `minimize_window` / `toggle_maximize_window` / `close_window`）。改窗口/拖拽相关样式要注意透明背景的坑。
 - 数据存在系统数据目录下的 JSON 文件，经由 Rust 读写（`save_data` / `load_data`）。没有后端服务或数据库，不要假设有网络 API。
 - 链接存活检测：`check_site_cmd` 用 reqwest 探测，对返回 dead 的站点再用 `verify_site_webview_cmd` 在 WebView 里复核（见 `store/app.ts` 的 `checkAll`）。离线时 `check_connectivity_cmd` 返回 false，会中止检测而不误标。
+- 本机（Windows + VS BuildTools 18）编译 Rust 时链接器缺 `legacy_stdio_definitions.lib`：它只存在于 MSVC 的 `lib\onecore\x64` 而非桌面 `lib\x64`，且 `LIB` 环境变量默认不含该路径，导致 `cargo build`/`cargo clippy`/`cargo test` 报 LNK1181。跑 `cargo` 前先把 `C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.51.36231\lib\onecore\x64` 加进 `LIB` 环境变量（或在 VS 开发者提示符里运行）。CI 云端机器不受影响。
 
 ## 架构速记
 

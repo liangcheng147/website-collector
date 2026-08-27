@@ -7,7 +7,7 @@ pub fn export_to_md(data: &AppData) -> String {
             out.push_str(&format!("{} {}\n", "#".repeat(depth), c.name));
             for s in data.sites.iter().filter(|s| s.category_id.as_deref() == Some(&c.id)) {
                 out.push_str(&site_line(s));
-                let note = s.note.trim().replace('\t', " ").replace('\n', " ").replace('\r', " ");
+                let note = s.note.trim().replace(['\t', '\n', '\r'], " ");
                 if !note.is_empty() { out.push_str(&format!("  > {}\n", note)); }
             }
             walk(&c.children, data, out, depth + 1);

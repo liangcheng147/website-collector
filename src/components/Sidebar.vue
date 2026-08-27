@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAppStore } from '../store/app'
+import type { View } from '../types'
 import CategoryNode from './CategoryNode.vue'
 import AddCategoryModal from './AddCategoryModal.vue'
 const store = useAppStore()
 const showAdd = ref(false)
-function setView(kind: any, id?: string) { store.view = { kind, id } }
+function setView(kind: View['kind'], id?: string) { store.view = { kind, id } }
 function onAllMenu(e: MouseEvent) { e.preventDefault(); showAdd.value = true }
 function isCollapsed(g: string) { return store.settings.sidebarCollapsed.includes(g) }
 function toggleGroup(g: string) {

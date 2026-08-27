@@ -3,8 +3,9 @@ import { ref } from 'vue'
 import ModalMask from './ModalMask.vue'
 import AddCategoryModal from './AddCategoryModal.vue'
 import { useAppStore } from '../store/app'
+import type { Site } from '../types'
 const store = useAppStore()
-const props = defineProps<{ editing?: any; defaultCategoryId?: string | null }>()
+const props = defineProps<{ editing?: Site | null; defaultCategoryId?: string | null }>()
 const emit = defineEmits(['close'])
 const name = ref(props.editing?.name ?? '')
 const url = ref(props.editing?.url ?? '')
@@ -16,8 +17,9 @@ const showAddCat = ref(false)
 const pendingCat = ref<string | null>(null)
 const NEW_CAT = '__new_cat__'
 let lastCat: string | null = categoryId.value
-function onCatChange(e: any) {
-  if (e.target.value === NEW_CAT) {
+function onCatChange(e: Event) {
+  const target = e.target as HTMLSelectElement
+  if (target.value === NEW_CAT) {
     pendingCat.value = lastCat
     showAddCat.value = true
     categoryId.value = null

@@ -5,11 +5,12 @@ import ContextMenu from './ContextMenu.vue'
 import PromptModal from './PromptModal.vue'
 import ConfirmModal from './ConfirmModal.vue'
 import AddCategoryModal from './AddCategoryModal.vue'
+import type { Category, View } from '../types'
 const store = useAppStore()
-const props = defineProps<{ cat: any; depth: number }>()
+const props = defineProps<{ cat: Category; depth: number }>()
 const menu = ref<{ x: number; y: number } | null>(null)
-const renameCat = ref<any | null>(null)
-const delCat = ref<any | null>(null)
+const renameCat = ref<Category | null>(null)
+const delCat = ref<Category | null>(null)
 const addCat = ref(false)
 const dragOver = ref(false)
 
@@ -19,16 +20,21 @@ function menuItems() {
   items.push({ kind: 'delete', label: '删除分类', danger: true })
   return items
 }
-function setView(kind: any, id?: string) { store.view = { kind, id } }
+function setView(kind: View['kind'], id?: string) { store.view = { kind, id } }
 function onCatMenu(e: MouseEvent) { menu.value = { x: e.clientX, y: e.clientY } }
-function onAction(kind: string, cat: any) {
+function onAction(kind: string, cat: Category) {
   menu.value = null
   if (kind === 'rename') renameCat.value = cat
   else if (kind === 'add-sub') addCat.value = true
   else if (kind === 'delete') delCat.value = cat
 }
-function doRename(name: string) { store.renameCategory(renameCat.value.id, name); renameCat.value = null }
+function doRename(name: string) {
+  if (!renameCat.value) return
+  store.renameCategory(renameCat.value.id, name)
+  renameCat.value = null
+}
 function doDelete(mode: string) {
+  if (!delCat.value) return
   store.deleteCategory(delCat.value.id, mode === 'delete' ? 'delete-sites' : 'move-to-uncategorized')
   delCat.value = null
 }

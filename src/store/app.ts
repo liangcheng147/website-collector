@@ -2,6 +2,9 @@ import { defineStore } from 'pinia'
 import type { AppData, Site, TrashedSite, View, Category, Settings } from '../types'
 import * as api from '../api'
 
+const FLASH_DURATION_MS = 2500
+const MAX_CATEGORY_DEPTH = 2
+
 function collectCategoryIds(cats: Category[], rootId: string): string[] {
   const out: string[] = []
   const walk = (list: Category[]) => {
@@ -60,7 +63,7 @@ export const useAppStore = defineStore('app', {
     trashedSites(state): TrashedSite[] { return state.data.recycleBin },
     flatCategories(): { id: string; name: string; depth: number }[] {
       const out: { id: string; name: string; depth: number }[] = []
-      const walk = (list: any[], depth: number) => {
+      const walk = (list: Category[], depth: number) => {
         for (const c of list) { out.push({ id: c.id, name: c.name, depth }); walk(c.children, depth + 1) }
       }
       walk(this.data.categories, 0)
@@ -69,7 +72,7 @@ export const useAppStore = defineStore('app', {
     categoryCounts(state): Record<string, number> {
       const counts: Record<string, number> = {}
       const parentOf = new Map<string, string | null>()
-      const walk = (list: any[], parentId: string | null) => {
+      const walk = (list: Category[], parentId: string | null) => {
         for (const c of list) { parentOf.set(c.id, parentId); walk(c.children, c.id) }
       }
       walk(state.data.categories, null)
@@ -93,7 +96,7 @@ export const useAppStore = defineStore('app', {
     setData(d: AppData) { this.data = d; this.persist() },
     flash(msg: string) {
       this.flashMsg = msg
-      setTimeout(() => { this.flashMsg = '' }, 2500)
+      setTimeout(() => { this.flashMsg = '' }, FLASH_DURATION_MS)
     },
     applyAppearance() {
       if (typeof document === 'undefined') return
@@ -204,10 +207,10 @@ export const useAppStore = defineStore('app', {
     },
 
     addCategory(name: string, parentId: string | null): string {
-      const node = { id: this.id_gen(), name, children: [] as any[] }
+      const node: Category = { id: this.id_gen(), name, children: [] }
       if (parentId == null) this.data.categories.push(node)
       else {
-        const walk = (list: any[]): boolean => {
+        const walk = (list: Category[]): boolean => {
           for (const c of list) {
             if (c.id === parentId) { c.children.push(node); return true }
             if (walk(c.children)) return true
@@ -221,7 +224,7 @@ export const useAppStore = defineStore('app', {
     },
 
     renameCategory(id: string, name: string) {
-      const walk = (list: any[]): boolean => {
+      const walk = (list: Category[]): boolean => {
         for (const c of list) {
           if (c.id === id) { c.name = name; return true }
           if (walk(c.children)) return true
@@ -234,15 +237,15 @@ export const useAppStore = defineStore('app', {
 
     deleteCategory(id: string, mode: 'move-to-uncategorized' | 'delete-sites') {
       const ids = new Set<string>()
-      const collect = (c: any) => { ids.add(c.id); c.children.forEach(collect) }
-      const find = (list: any[]): boolean => {
+      const collect = (c: Category) => { ids.add(c.id); c.children.forEach(collect) }
+      const find = (list: Category[]): boolean => {
         for (const c of list) {
           if (c.id === id) { collect(c); removeNode(list, c); return true }
           if (find(c.children)) return true
         }
         return false
       }
-      const removeNode = (list: any[], target: any) => { const i = list.indexOf(target); if (i >= 0) list.splice(i, 1) }
+      const removeNode = (list: Category[], target: Category) => { const i = list.indexOf(target); if (i >= 0) list.splice(i, 1) }
       find(this.data.categories)
       if (mode === 'move-to-uncategorized') {
         this.data.sites.forEach(s => { if (s.categoryId && ids.has(s.categoryId)) s.categoryId = null })
@@ -255,15 +258,15 @@ export const useAppStore = defineStore('app', {
 
     deleteCategories(ids: string[], mode: 'move-to-uncategorized' | 'delete-sites') {
       const affected = new Set<string>()
-      const collectSubtree = (c: any) => { affected.add(c.id); c.children.forEach(collectSubtree) }
-      const walk = (list: any[]) => {
+      const collectSubtree = (c: Category) => { affected.add(c.id); c.children.forEach(collectSubtree) }
+      const walk = (list: Category[]) => {
         for (const c of list) {
           if (ids.includes(c.id)) collectSubtree(c)
           else walk(c.children)
         }
       }
       walk(this.data.categories)
-      const prune = (list: any[]) => {
+      const prune = (list: Category[]) => {
         const kept = list.filter(c => !affected.has(c.id))
         kept.forEach(c => prune(c.children))
         list.length = 0
@@ -287,28 +290,30 @@ export const useAppStore = defineStore('app', {
 
     moveCategory(id: string, targetParentId: string | null) {
       if (id === targetParentId) return
-      let node: any = null
-      let from: any[] = []
-      const find = (list: any[]): boolean => {
+      const find = (list: Category[]): { node: Category; from: Category[] } | null => {
         for (const c of list) {
-          if (c.id === id) { node = c; from = list; return true }
-          if (find(c.children)) return true
+          if (c.id === id) return { node: c, from: list }
+          const hit = find(c.children)
+          if (hit) return hit
         }
-        return false
+        return null
       }
-      if (!find(this.data.categories) || !node) return
+      const hit = find(this.data.categories)
+      if (!hit) return
+      const node = hit.node
+      const from = hit.from
       if (targetParentId != null) {
-        const isDescendant = (c: any): boolean => c.id === targetParentId || c.children.some(isDescendant)
+        const isDescendant = (c: Category): boolean => c.id === targetParentId || c.children.some(isDescendant)
         if (node.children.some(isDescendant)) return
         const targetDepth = this.flatCategories.find(f => f.id === targetParentId)?.depth ?? 0
-        if (targetDepth >= 2) return
+        if (targetDepth >= MAX_CATEGORY_DEPTH) return
       }
       const idx = from.indexOf(node)
       if (idx >= 0) from.splice(idx, 1)
       if (targetParentId == null) {
         this.data.categories.push(node)
       } else {
-        const walk = (list: any[]): boolean => {
+        const walk = (list: Category[]): boolean => {
           for (const c of list) {
             if (c.id === targetParentId) { c.children.push(node); return true }
             if (walk(c.children)) return true
