@@ -54,8 +54,8 @@ function onTagDrop(e: DragEvent, t: string) {
     <div class="sidebar-scroll">
       <div class="group-label" @click="toggleGroup('分类')">分类 <span class="caret">{{ isCollapsed('分类') ? '▶' : '▼' }}</span>
         <span class="group-actions">
-          <button class="mini" @click.stop="store.expandAllCategories()">展开全部</button>
-          <button class="mini" @click.stop="store.collapseAllCategories()">收起全部</button>
+          <button class="group-btn" type="button" title="展开全部" @click.stop="store.expandAllCategories()">⤢</button>
+          <button class="group-btn" type="button" title="收起全部" @click.stop="store.collapseAllCategories()">⤡</button>
         </span>
       </div>
       <template v-if="!isCollapsed('分类')">
@@ -69,19 +69,21 @@ function onTagDrop(e: DragEvent, t: string) {
     <div class="sidebar-fixed">
       <div class="group-label">视图</div>
       <div class="row dead" :class="{ active: store.view.kind === 'dead' }" @click="setView('dead')">⚠ 失效 <span class="cnt">{{ store.deadCount }}</span></div>
-      <div class="group-label">标签</div>
-      <div class="tag-scroll">
-        <div v-for="t in store.data.tags" :key="t" class="row"
-          :class="{ active: store.view.kind === 'tag' && store.view.id === t, 'drop-over': tagDrop === t }"
-          @click="setView('tag', t)"
-          draggable="true"
-          @dragstart="onTagDragStart($event, t)"
-          @dragover="onTagDragOver($event, t)"
-          @dragleave="tagDrop = null"
-          @drop="onTagDrop($event, t)">
-          # {{ t }}
+      <div class="group-label" @click="toggleGroup('标签')">标签 <span class="caret">{{ isCollapsed('标签') ? '▶' : '▼' }}</span></div>
+      <template v-if="!isCollapsed('标签')">
+        <div class="tag-scroll">
+          <div v-for="t in store.data.tags" :key="t" class="row"
+            :class="{ active: store.view.kind === 'tag' && store.view.id === t, 'drop-over': tagDrop === t }"
+            @click="setView('tag', t)"
+            draggable="true"
+            @dragstart="onTagDragStart($event, t)"
+            @dragover="onTagDragOver($event, t)"
+            @dragleave="tagDrop = null"
+            @drop="onTagDrop($event, t)">
+            # {{ t }}
+          </div>
         </div>
-      </div>
+      </template>
       <div class="group-label">系统</div>
       <div class="row trash" :class="{ active: store.view.kind === 'recycle' }" @click="setView('recycle')">🗑 回收站 <span class="cnt">{{ store.trashedSites.length }}</span></div>
     </div>

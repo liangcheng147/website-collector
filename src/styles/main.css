@@ -58,9 +58,10 @@ html.win-maximized .app { border-radius:0; }
 .sidebar-scroll { flex: 1 1 auto; overflow: auto; min-height: 0; }
 .sidebar-fixed { flex: 0 0 auto; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 6px; }
 .sidebar .tag-scroll { max-height: 180px; overflow: auto; }
-.sidebar .group-actions { margin-left: auto; display: inline-flex; gap: 6px; }
-.sidebar .mini { font-size: 11px; padding: 1px 6px; border-radius: 6px; cursor: pointer; color: var(--text-2); background: transparent; border: 1px solid var(--border-2); }
-.sidebar .mini:hover { color: var(--primary); border-color: var(--primary); }
+.sidebar .group-actions { margin-left:auto; display:inline-flex; gap:6px; opacity:0; transition:opacity .15s var(--ease); }
+.sidebar .group-label:hover .group-actions { opacity:1; }
+.sidebar .group-btn { font-size:12px; line-height:1; width:22px; height:22px; padding:0; border-radius:6px; color:var(--text-2); background:transparent; border:1px solid var(--border-2); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:color .15s var(--ease), border-color .15s var(--ease); }
+.sidebar .group-btn:hover { color:var(--primary); border-color:var(--primary); }
 .sidebar .group-label { font-size:11px; color:var(--text-2); font-weight:700; margin:10px 8px 4px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; user-select:none; }
 .sidebar .group-label .caret { font-size:10px; color:var(--text-2); }
 .sidebar .row { padding:5px 10px; border-radius:var(--radius); cursor:pointer; font-size:13px; color:var(--text); transition:background .15s var(--ease), color .15s var(--ease); }
@@ -230,7 +231,7 @@ input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
 .tag-input input { border: none; outline: none; flex: 1; min-width: 80px; font-size: 13px; padding: 2px; }
 .tag-input .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--primary-t); color: var(--primary); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
 .tag-input .chip-x { border: none; background: none; color: inherit; cursor: pointer; font-size: 13px; line-height: 1; }
-.tag-input .tag-opts { position: absolute; z-index: 20; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); margin-top: 2px; max-height: 160px; overflow: auto; left: 0; right: 0; }
+.tag-input .tag-opts { position: fixed; z-index: 1000; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); margin-top: 2px; max-height: 160px; overflow: auto; }
 .tag-input .opt { display: block; width: 100%; text-align: left; border: none; background: none; padding: 6px 10px; cursor: pointer; font-size: 13px; }
 .tag-input .opt:hover { background: var(--hover); }
 
