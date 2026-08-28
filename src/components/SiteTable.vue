@@ -17,7 +17,18 @@ function onRight(e: MouseEvent, siteId: string) {
   menu.value = { x: e.clientX, y: e.clientY }
 }
 function onRowDots(e: MouseEvent, siteId: string) { onRight(e, siteId) }
-function onKey(e: KeyboardEvent) { if (e.key === 'Escape') menu.value = null }
+function onKey(e: KeyboardEvent) {
+  if (e.key === 'Escape') { menu.value = null; return }
+  const t = e.target as HTMLElement | null
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key.toLowerCase() === 'a') { e.preventDefault(); store.selectAllVisible(); return }
+  }
+  if (e.key === 'Delete') { e.preventDefault(); store.deleteSelectedToRecycle(); return }
+  if (e.key === 'ArrowDown') { e.preventDefault(); store.selectRelative('down'); return }
+  if (e.key === 'ArrowUp') { e.preventDefault(); store.selectRelative('up'); return }
+  if (e.key === 'Enter') { const id = store.selectedIds[0]; if (id) { const s = store.data.sites.find(x => x.id === id); if (s) emit('edit', s) } }
+}
 onMounted(() => document.addEventListener('keydown', onKey))
 onUnmounted(() => document.removeEventListener('keydown', onKey))
 const getCategoryName = (id: string | null) => {

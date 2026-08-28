@@ -29,6 +29,7 @@ export const useAppStore = defineStore('app', {
     search: '',
     selectedTag: null as string | null,
     selectedIds: [] as string[],
+    activeId: null as string | null,
     lastSelectedId: null as string | null,
     checking: false,
     cancelled: false,
@@ -434,6 +435,20 @@ export const useAppStore = defineStore('app', {
     },
     clearSelection() { this.selectedIds = [] },
     deleteSelected() { this.deleteSites([...this.selectedIds]) },
+
+    selectRelative(dir: 'up' | 'down') {
+      const list = this.filteredSites
+      if (!list.length) return
+      const ids = list.map(s => s.id)
+      let idx = this.activeId ? ids.indexOf(this.activeId) : -1
+      idx = dir === 'down' ? Math.min(idx + 1, ids.length - 1) : Math.max(idx - 1, 0)
+      this.activeId = ids[idx]
+      this.selectOne(this.activeId)
+    },
+    deleteSelectedToRecycle() {
+      this.deleteSites([...this.selectedIds])
+      this.clearSelection()
+    },
 
     toggleSort(key: 'name' | 'url' | 'status') {
       if (this.sortKey !== key) { this.sortKey = key; this.sortDir = 'asc' }
