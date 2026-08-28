@@ -10,7 +10,7 @@ function make(model: string[] = []) {
 function lastEmit(w: ReturnType<typeof make>): unknown[] | undefined {
   const ev = w.emitted('update:modelValue')
   if (!ev || ev.length === 0) return undefined
-  return ev[ev.length - 1] as unknown[]
+  return ev[ev.length - 1][0] as unknown[]
 }
 
 it('selects an existing tag from dropdown', async () => {
