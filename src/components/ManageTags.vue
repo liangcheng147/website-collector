@@ -63,9 +63,9 @@ function doBatch() {
     </div>
     <div class="manage-card">
       <h4>批量加/去标签</h4>
-      <div class="mode-row">
-        <label><input type="radio" :checked="!removeMode" @change="removeMode = false" /> 批量添加</label>
-        <label style="margin-left:10px"><input type="radio" :checked="removeMode" @change="removeMode = true" /> 批量去除</label>
+      <div class="segctrl" role="group" aria-label="批量模式">
+        <button type="button" :class="{ active: !removeMode }" @click="removeMode = false">批量添加</button>
+        <button type="button" :class="{ active: removeMode }" @click="removeMode = true">批量去除</button>
       </div>
       <label>标签（空格分隔）</label>
       <input v-model="scopeTags" placeholder="标签1 标签2" />

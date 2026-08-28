@@ -91,9 +91,10 @@ async function confirmJsonImport() {
               <button class="btn" @click="importMd">导入 MD</button>
               <button class="btn" @click="pickJson">导入 JSON</button>
             </div>
-            <div class="mode-row">
-              <label><input type="radio" v-model="mode" value="merge" /> 合并导入</label>
-              <label style="margin-left:10px"><input type="radio" v-model="mode" value="overwrite" /> 覆盖导入（自动备份 .bak）</label>
+            <label>导入方式</label>
+            <div class="segctrl" role="group" aria-label="导入方式">
+              <button type="button" :class="{ active: mode === 'merge' }" @click="mode = 'merge'">合并导入</button>
+              <button type="button" :class="{ active: mode === 'overwrite' }" @click="mode = 'overwrite'">覆盖导入（自动备份 .bak）</button>
             </div>
           </div>
           <div class="help">

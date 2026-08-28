@@ -7,7 +7,9 @@ function onMaskClick(e: MouseEvent) { if (downOnMask.value && e.target === e.cur
 </script>
 
 <template>
-  <div class="modal-mask" @mousedown="onMaskDown" @click="onMaskClick">
-    <slot />
-  </div>
+  <Teleport to="body">
+    <div class="modal-mask" @mousedown="onMaskDown" @click="onMaskClick">
+      <slot />
+    </div>
+  </Teleport>
 </template>

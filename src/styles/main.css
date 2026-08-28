@@ -143,8 +143,12 @@ html.win-maximized .app { border-radius:0; }
 .modal .help code { display:block; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px; margin:6px 0; font-size:12px; font-family:var(--mono); color:var(--text); }
 .grid2x2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
 .grid2x2 button.btn { width:100%; }
-.mode-row { margin:12px 0; font-size:13px; }
-.mode-row label { display:inline; margin:0; font-weight:400; color:var(--text); }
+.segctrl { display:inline-flex; border:1px solid var(--border-2); border-radius:var(--radius); overflow:hidden; background:var(--panel); }
+.segctrl button { appearance:none; -webkit-appearance:none; border:none; background:transparent; color:var(--text); font-family:var(--font); font-size:13px; padding:7px 16px; cursor:pointer; transition:background .14s var(--ease), color .14s var(--ease); }
+.segctrl button + button { border-left:1px solid var(--border-2); }
+.segctrl button:hover:not(.active) { background:var(--hover); }
+.segctrl button.active { background:var(--primary-w); color:#fff; font-weight:600; }
+html[data-theme="dark"] .segctrl button.active { background:var(--primary-w); color:#06201C; }
 
 .btn:disabled { opacity: .5; cursor: default; }
 .ctx { position:fixed; z-index:100; background:var(--panel); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow-md); padding:5px; min-width:160px; animation:ctxIn .14s var(--ease) both; }
@@ -181,6 +185,8 @@ html[data-theme="dark"] .btn.primary { background:var(--primary); border-color:v
 html[data-theme="dark"] .btn.primary:hover { background:var(--primary-w); }
 html[data-theme="dark"] .titlebar .mark { color:#0B0D12; }
 html[data-theme="dark"] .modal-mask { background:rgba(0,0,0,.6); }
+html[data-theme="dark"] .open-btn { color:#06201C; }
+html[data-theme="dark"] .cb.checked::after { border-color:#06201C; }
 
 /* ---- 设置弹窗分区 ---- */
 .seg { display:flex; gap:6px; margin-bottom:14px; }
