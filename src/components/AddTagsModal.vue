@@ -25,7 +25,7 @@ function confirm() {
         </div>
         <div class="help">
           <label>说明</label>
-          <p class="muted">标签以空格分隔，多个标签可一次添加，批量应用到选中的网站。</p>
+          <p class="muted">输入标签后回车或逗号即可添加；多个可用空格分隔，批量应用到选中的网站。</p>
         </div>
       </div>
     </div>

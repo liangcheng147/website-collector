@@ -18,7 +18,9 @@ it('selects an existing tag from dropdown', async () => {
   const input = w.find('input')
   await input.trigger('focus')
   await input.setValue('框')
-  await w.find('.opt').trigger('mousedown')
+  const opt = document.body.querySelector('.opt') as HTMLElement
+  expect(opt).not.toBeNull()
+  await opt.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
   expect(lastEmit(w)).toEqual(['框架'])
 })
 

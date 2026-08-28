@@ -231,9 +231,9 @@ input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
 .tag-input input { border: none; outline: none; flex: 1; min-width: 80px; font-size: 13px; padding: 2px; }
 .tag-input .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--primary-t); color: var(--primary); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
 .tag-input .chip-x { border: none; background: none; color: inherit; cursor: pointer; font-size: 13px; line-height: 1; }
-.tag-input .tag-opts { position: fixed; z-index: 1000; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); margin-top: 2px; max-height: 160px; overflow: auto; }
-.tag-input .opt { display: block; width: 100%; text-align: left; border: none; background: none; padding: 6px 10px; cursor: pointer; font-size: 13px; }
-.tag-input .opt:hover { background: var(--hover); }
+.tag-opts { position: fixed; z-index: 1000; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); margin-top: 2px; max-height: 160px; overflow: auto; }
+.tag-opts .opt { display: block; width: 100%; text-align: left; border: none; background: none; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+.tag-opts .opt:hover { background: var(--hover); }
 
 .site-table th.sortable { cursor: pointer; user-select: none; }
 .site-table th.sortable:hover { color: var(--primary); }
