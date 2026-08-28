@@ -4,6 +4,7 @@ import * as api from '../api'
 
 const FLASH_DURATION_MS = 2500
 const MAX_CATEGORY_DEPTH = 2
+export const UNCATEGORIZED_ID = '__uncategorized__'
 
 function collectAllIds(cats: Category[], acc: string[] = []): string[] {
   for (const c of cats) { acc.push(c.id); collectAllIds(c.children, acc) }
@@ -47,8 +48,11 @@ export const useAppStore = defineStore('app', {
       let list = [...state.data.sites]
       if (state.view.kind === 'dead') list = list.filter(s => s.status === 'dead')
       else if (state.view.kind === 'category' && state.view.id) {
-        const ids = new Set(collectCategoryIds(state.data.categories, state.view.id))
-        list = list.filter(s => s.categoryId && ids.has(s.categoryId))
+        if (state.view.id === UNCATEGORIZED_ID) list = list.filter(s => !s.categoryId)
+        else {
+          const ids = new Set(collectCategoryIds(state.data.categories, state.view.id))
+          list = list.filter(s => s.categoryId && ids.has(s.categoryId))
+        }
       } else if (state.view.kind === 'tag' && state.view.id) {
         list = list.filter(s => s.tags.includes(state.view.id!))
       }
@@ -72,6 +76,7 @@ export const useAppStore = defineStore('app', {
       return list
     },
     deadCount(state) { return state.data.sites.filter(s => s.status === 'dead').length },
+    uncategorizedCount(state) { return state.data.sites.filter(s => !s.categoryId).length },
     lastCheckTime(state) {
       const times = state.data.sites.map(s => s.lastCheck).filter(Boolean) as string[]
       return times.length ? new Date(Math.max(...times.map(t => +new Date(t)))).toLocaleString() : '—'

@@ -1,6 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useAppStore } from './app'
+import { useAppStore, UNCATEGORIZED_ID } from './app'
 vi.mock('../api', () => ({
   saveData: vi.fn().mockResolvedValue(undefined),
   loadData: vi.fn().mockResolvedValue(undefined),
@@ -70,6 +70,24 @@ describe('app store', () => {
     // c1 下无直属站点，但包含子分类 c2（也无站点），这里调整数据让 c2 下有站点
     s.data.sites[0].categoryId = 'c2'
     expect(s.filteredSites).toHaveLength(3)
+  })
+
+  it('uncategorized view returns only sites without a category', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.sites[0].categoryId = null
+    s.view = { kind: 'category', id: UNCATEGORIZED_ID }
+    expect(s.filteredSites.map(x => x.id)).toEqual(['a'])
+    s.data.sites[1].categoryId = null
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'b'])
+  })
+
+  it('uncategorizedCount counts sites without a category', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.sites[1].categoryId = null
+    s.data.sites[2].categoryId = null
+    expect(s.uncategorizedCount).toBe(2)
   })
 
   it('tag view filters by tag', () => {

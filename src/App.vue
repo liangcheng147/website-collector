@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
-import { useAppStore } from './store/app'
+import { useAppStore, UNCATEGORIZED_ID } from './store/app'
 import TitleBar from './components/TitleBar.vue'
 import TopBar from './components/TopBar.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -24,7 +24,7 @@ const tagIds = ref<string[]>([])
 const manage = ref(false)
 function openAdd() {
   editing.value = undefined
-  modalDefaultCategoryId.value = store.view.kind === 'category' ? (store.view.id ?? null) : null
+  modalDefaultCategoryId.value = store.view.kind === 'category' && store.view.id && store.view.id !== UNCATEGORIZED_ID ? store.view.id : null
   modal.value = 'add'
 }
 function openEdit(site?: Site) { if (!site) return; editing.value = site; modal.value = 'add' }

@@ -50,7 +50,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: ${{ github.ref_name }}
           releaseBody: |
-            ## 归集 v0.1.4
+            ## 归集 v0.1.5
 
             本地优先的网站收藏桌面应用（Tauri 2 + Vue 3 + Rust）。
 
@@ -62,10 +62,11 @@ jobs:
             - 表头点击排序、回收站二次确认等体验优化
             - 弹窗定位居中（Teleport 到 body），导入/管理改为分段开关样式
             - 修复暗色模式下分段开关、按钮、复选框的文字对比度
+            - 侧栏新增「未分类」视图：无分类站点集中展示并带计数，内部拖拽归类 / 删除 / 加标签 / 检测等操作与正常分类一致；可拖拽站点到该视图解除分类
 
             ### 安装
-            - `归集_0.1.4_x64-setup.exe`：NSIS 安装包
-            - `归集_0.1.4_x64_zh-CN.msi`：MSI 安装包
+            - `归集_0.1.5_x64-setup.exe`：NSIS 安装包
+            - `归集_0.1.5_x64_zh-CN.msi`：MSI 安装包
 
             > 本版本由 GitHub Actions 自动构建并生成。
           releaseDraft: true

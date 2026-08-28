@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAppStore } from '../store/app'
+import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
 import type { View } from '../types'
 import CategoryNode from './CategoryNode.vue'
 import AddCategoryModal from './AddCategoryModal.vue'
@@ -27,6 +27,20 @@ function onAllDrop(e: DragEvent) {
   allDrop.value = false
   const catId = e.dataTransfer?.getData('application/x-cat-id')
   if (catId) store.moveCategory(catId, null)
+}
+const uncatDrop = ref(false)
+function onUncatDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types.includes('application/x-site-id')) {
+    e.preventDefault()
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+    uncatDrop.value = true
+  }
+}
+function onUncatDrop(e: DragEvent) {
+  e.preventDefault()
+  uncatDrop.value = false
+  const siteId = e.dataTransfer?.getData('application/x-site-id')
+  if (siteId) store.moveSites([siteId], null)
 }
 const tagDrop = ref<string | null>(null)
 function onTagDragStart(e: DragEvent, t: string) {
@@ -64,6 +78,9 @@ function onTagDrop(e: DragEvent, t: string) {
           全部 <span class="cnt">{{ store.data.sites.length }}</span>
         </div>
         <CategoryNode v-for="c in store.data.categories" :key="c.id" :cat="c" :depth="0" />
+        <div class="row" :class="{ active: store.view.kind === 'category' && store.view.id === UNCATEGORIZED_ID, 'drop-over': uncatDrop }" @click="setView('category', UNCATEGORIZED_ID)" @dragover="onUncatDragOver" @dragleave="uncatDrop = false" @drop="onUncatDrop">
+          未分类 <span class="cnt">{{ store.uncategorizedCount }}</span>
+        </div>
       </template>
     </div>
     <div class="sidebar-fixed">
