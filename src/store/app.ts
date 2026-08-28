@@ -5,8 +5,12 @@ import * as api from '../api'
 const FLASH_DURATION_MS = 2500
 const MAX_CATEGORY_DEPTH = 2
 
-function collectCategoryIds(cats: Category[], rootId: string): string[] {
-  const out: string[] = []
+function collectAllIds(cats: Category[], acc: string[] = []): string[] {
+  for (const c of cats) { acc.push(c.id); collectAllIds(c.children, acc) }
+  return acc
+}
+
+function collectCategoryIds(cats: Category[], rootId: string): string[] {  const out: string[] = []
   const walk = (list: Category[]) => {
     for (const c of list) {
       if (c.id === rootId) { collect(c, out); return }
@@ -130,6 +134,12 @@ export const useAppStore = defineStore('app', {
       } else {
         this.settings.collapsedCategories.splice(idx, 1)
       }
+    },
+    expandAllCategories() {
+      this.settings.collapsedCategories = []
+    },
+    collapseAllCategories() {
+      this.settings.collapsedCategories = collectAllIds(this.data.categories)
     },
     async refreshTags() {
       const set = new Set<string>()

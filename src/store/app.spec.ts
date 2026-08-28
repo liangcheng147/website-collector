@@ -501,4 +501,24 @@ describe('app store', () => {
     await s.checkOne('a')
     expect(s.cancelled).toBe(false)
   })
+
+  it('collapseAllCategories collapses every category', () => {
+    const s = useAppStore()
+    s.data.categories = [
+      { id: 'a', name: 'A', children: [{ id: 'a1', name: 'A1', children: [] }] },
+      { id: 'b', name: 'B', children: [] },
+    ]
+    s.expandAllCategories()
+    expect(s.settings.collapsedCategories).toEqual([])
+    s.collapseAllCategories()
+    expect(s.settings.collapsedCategories.sort()).toEqual(['a', 'a1', 'b'])
+  })
+
+  it('expandAllCategories clears collapsed set', () => {
+    const s = useAppStore()
+    s.data.categories = [{ id: 'x', name: 'X', children: [] }]
+    s.settings.collapsedCategories = ['x']
+    s.expandAllCategories()
+    expect(s.settings.collapsedCategories).toEqual([])
+  })
 })
