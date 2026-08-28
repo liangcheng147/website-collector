@@ -131,9 +131,9 @@ html.win-maximized .app { border-radius:0; }
 .mask-enter-from, .mask-leave-to { opacity:0; }
 .mask-enter-active .modal, .mask-leave-active .modal { transition:transform .2s var(--ease), opacity .18s var(--ease); }
 .mask-enter-from .modal, .mask-leave-to .modal { transform:translateY(10px) scale(.98); opacity:0; }
-.modal { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); padding:18px 20px; width:min(440px,92%); max-height:calc(100% - 32px); overflow:auto; }
+.modal { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); padding:18px 20px; width:min(520px,92%); max-height:calc(100% - 32px); overflow:auto; }
 .modal h3 { margin-bottom:12px; color:var(--text); font-size:16px; font-weight:700; }
-.modal label { display:block; margin:10px 0 4px; font-size:12px; color:var(--text-2); font-weight:600; }
+.modal label { display:block; margin:14px 0 5px; font-size:12px; color:var(--text-2); font-weight:600; }
 .modal input, .modal select, .modal textarea { width:100%; }
 .modal .muted { font-size:12px; color:var(--text-2); }
 .modal .err { color:var(--danger-txt); font-size:12px; margin-top:10px; background:var(--danger-bg); border:1px solid var(--danger-bd); border-radius:var(--radius); padding:6px 10px; }
