@@ -522,11 +522,25 @@ describe('app store', () => {
     expect(s.settings.collapsedCategories).toEqual([])
   })
 
-  it('validateSite rejects empty name/url and bad url', () => {
+  it('    validateSite rejects empty name/url and bad url', () => {
     const s = useAppStore()
     expect(s.validateSite('', 'https://a.dev')).toMatch(/名称/)
     expect(s.validateSite('站点', '')).toMatch(/链接/)
     expect(s.validateSite('站点', 'not-a-url')).toMatch(/链接/)
     expect(s.validateSite('站点', 'https://a.dev')).toBeNull()
+  })
+
+  it('toggleSort cycles and orders filteredSites', () => {
+    const s = useAppStore()
+    s.data.sites = [
+      { id: '1', name: 'Banana', url: 'https://b.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+      { id: '2', name: 'Apple', url: 'https://a.dev', categoryId: null, tags: [], status: 'dead', lastCheck: null, note: '' },
+    ]
+    s.toggleSort('name')
+    expect(s.sortKey).toBe('name'); expect(s.sortDir).toBe('asc')
+    expect(s.filteredSites.map(x => x.name)).toEqual(['Apple', 'Banana'])
+    s.toggleSort('name')
+    expect(s.sortDir).toBe('desc')
+    expect(s.filteredSites.map(x => x.name)).toEqual(['Banana', 'Apple'])
   })
 })

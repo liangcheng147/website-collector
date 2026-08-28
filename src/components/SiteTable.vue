@@ -77,7 +77,12 @@ function onRowDragOver(e: DragEvent) {
       <thead>
         <tr>
           <th><span class="cb" :class="{ checked: allSelected }" @click="store.selectAllVisible()"></span></th>
-          <th>名称</th><th>链接</th><th>分类</th><th>标签</th><th>生命</th><th>备注</th>
+          <th @click="store.toggleSort('name')" class="sortable">名称 <span v-if="store.sortKey==='name'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
+          <th @click="store.toggleSort('url')" class="sortable">链接 <span v-if="store.sortKey==='url'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
+          <th>分类</th>
+          <th>标签</th>
+          <th @click="store.toggleSort('status')" class="sortable">生命 <span v-if="store.sortKey==='status'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
+          <th>备注</th>
         </tr>
       </thead>
       <tbody>

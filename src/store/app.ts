@@ -38,6 +38,8 @@ export const useAppStore = defineStore('app', {
     flashMsg: '',
     location: { dir: '', isFallback: false },
     settings: { theme: 'system', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] } as Settings,
+    sortKey: null as 'name' | 'url' | 'status' | null,
+    sortDir: 'asc' as 'asc' | 'desc',
   }),
   getters: {
     filteredSites(state): Site[] {
@@ -57,6 +59,15 @@ export const useAppStore = defineStore('app', {
           s.tags.some(t => t.toLowerCase().includes(q)))
       }
       if (state.selectedTag) list = list.filter(s => s.tags.includes(state.selectedTag!))
+      const sortKey = state.sortKey
+      if (sortKey) {
+        const dir = state.sortDir === 'asc' ? 1 : -1
+        list = [...list].sort((a, b) => {
+          const av = sortKey === 'status' ? a.status : (a as any)[sortKey]
+          const bv = sortKey === 'status' ? b.status : (b as any)[sortKey]
+          return av < bv ? -1 * dir : av > bv ? 1 * dir : 0
+        })
+      }
       return list
     },
     deadCount(state) { return state.data.sites.filter(s => s.status === 'dead').length },
@@ -423,6 +434,12 @@ export const useAppStore = defineStore('app', {
     },
     clearSelection() { this.selectedIds = [] },
     deleteSelected() { this.deleteSites([...this.selectedIds]) },
+
+    toggleSort(key: 'name' | 'url' | 'status') {
+      if (this.sortKey !== key) { this.sortKey = key; this.sortDir = 'asc' }
+      else if (this.sortDir === 'asc') this.sortDir = 'desc'
+      else { this.sortKey = null; this.sortDir = 'asc' }
+    },
 
     cancelCheck() { this.cancelRequested = true },
 

@@ -233,3 +233,6 @@ input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
 .tag-input .tag-opts { position: absolute; z-index: 20; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); margin-top: 2px; max-height: 160px; overflow: auto; left: 0; right: 0; }
 .tag-input .opt { display: block; width: 100%; text-align: left; border: none; background: none; padding: 6px 10px; cursor: pointer; font-size: 13px; }
 .tag-input .opt:hover { background: var(--hover); }
+
+.site-table th.sortable { cursor: pointer; user-select: none; }
+.site-table th.sortable:hover { color: var(--primary); }
