@@ -164,11 +164,12 @@ html.win-maximized .app { border-radius:0; }
 /* ---- 暗色主题 ---- */
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg:#16181D; --panel:#1F2329;
-  --primary:#6B8AFF; --primary-w:#4A6CF7; --primary-t:#232A45;
-  --text:#E4E6EB; --text-2:#9AA0AE; --border:#2A2D36; --border-2:#343846; --hover:#23262E;
+  --bg:#0B1413; --panel:#12201E;
+  --primary:#2DD4BF; --primary-w:#14B8A6; --primary-t:#10302C;
+  --accent:#FB923C; --accent-on:#1A0E05;
+  --text:#E6F0EE; --text-2:#93ADA8; --border:#1E3330; --border-2:#294742; --hover:#162624;
   --ok:#4ADE80; --ok-txt:#5BE38C; --pending:#FBBF24; --pending-txt:#FBC74A; --danger:#F87171; --danger-txt:#F88383; --danger-bg:#2A1D1D; --danger-bd:#4A2A2A;
-  --hover:#262A33; --ring:0 0 0 3px rgba(107,138,255,.32);
+  --ring:0 0 0 3px rgba(45,212,191,.32);
 }
 html[data-theme="dark"] button:not(.primary) { background:var(--bg); }
 html[data-theme="dark"] input, html[data-theme="dark"] select, html[data-theme="dark"] textarea { background:var(--bg); }
