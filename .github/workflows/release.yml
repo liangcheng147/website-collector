@@ -50,7 +50,22 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: ${{ github.ref_name }}
           releaseBody: |
-            自动构建的发布版本，由 GitHub Actions 生成。
+            ## 归集 v0.1.3
+
+            本地优先的网站收藏桌面应用（Tauri 2 + Vue 3 + Rust）。
+
+            ### 本版本更新
+            - 全新青绿色高级感主题（浅色 / 深色），替代原靛蓝配色
+            - 站点列表、管理页、侧栏等界面重新打磨，修复悬停列宽重排 / 管理页间距 / 标签下拉错位
+            - 可复用标签选择器（chip + 补全 + 新建 + 去重）
+            - 列表键盘流（上下移动 / 全选 / 删除 / 打开）
+            - 表头点击排序、回收站二次确认等体验优化
+
+            ### 安装
+            - `归集_0.1.3_x64-setup.exe`：NSIS 安装包
+            - `归集_0.1.3_x64_zh-CN.msi`：MSI 安装包
+
+            > 本版本由 GitHub Actions 自动构建并生成。
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
