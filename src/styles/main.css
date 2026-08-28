@@ -203,8 +203,9 @@ input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
 .manage-tabs { display:flex; gap:6px; margin-left:8px; }
 .manage-tabs .btn.active { background:var(--primary-t); color:var(--primary); border-color:var(--primary-t); font-weight:600; }
 .manage-content { flex:1; min-height:0; overflow:auto; padding:14px; }
-.manage-cols { display:grid; grid-template-columns:280px 1fr; gap:14px; align-items:start; }
-.manage-card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px; box-shadow:var(--shadow); min-width: 0; }
+.manage-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+.manage-card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; box-shadow:var(--shadow); min-width:0; }
+.manage-card input, .manage-card select, .manage-card textarea { width:100%; }
 .manage-card h4 { margin-bottom:10px; font-size:14px; }
 .manage-card label { display:block; margin-bottom:4px; font-size:12px; color:var(--text-2); }
 .cat-head, .cat-row { display:flex; align-items:center; padding:6px 8px; font-size:13px; }

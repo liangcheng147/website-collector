@@ -26,18 +26,6 @@ function doDelete(mode: string) {
 <template>
   <div class="manage-cols">
     <div class="manage-card">
-      <h4>批量添加分类</h4>
-      <label>父分类</label>
-      <select v-model="parentId">
-        <option :value="null">（顶级分类）</option>
-        <option v-for="c in store.flatCategories.filter(c => c.depth < 2)" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
-      </select>
-      <label>分类名称</label>
-      <input v-model="name" placeholder="分类名" @keydown.enter="add" />
-      <div class="actions"><button class="btn primary" @click="add">添加</button></div>
-      <p class="muted">逐个输入，可连续添加多个。</p>
-    </div>
-    <div class="manage-card">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <h4>分类列表</h4>
         <button class="btn danger" :disabled="!sel.selected.value.length" @click="delMode = true">🗑 批量删除所选</button>
@@ -51,6 +39,18 @@ function doDelete(mode: string) {
         <span class="cnt-col muted">{{ c.count }}</span>
       </div>
       <div v-if="!catList.length" class="empty">暂无分类</div>
+    </div>
+    <div class="manage-card">
+      <h4>批量添加分类</h4>
+      <label>父分类</label>
+      <select v-model="parentId">
+        <option :value="null">（顶级分类）</option>
+        <option v-for="c in store.flatCategories.filter(c => c.depth < 2)" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
+      </select>
+      <label>分类名称</label>
+      <input v-model="name" placeholder="分类名" @keydown.enter="add" />
+      <div class="actions"><button class="btn primary" @click="add">添加</button></div>
+      <p class="muted">逐个输入，可连续添加多个。</p>
     </div>
   </div>
   <Transition name="mask">
