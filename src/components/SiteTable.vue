@@ -110,8 +110,10 @@ function onRowDragOver(e: DragEvent) {
       </tbody>
     </table>
     <div v-if="store.filteredSites.length === 0" class="empty">
-      <b>还没有网站</b>
-      <span class="hint">点击右上角「添加」开始归集你的链接</span>
+      <b v-if="store.data.sites.length === 0">还没有网站</b>
+      <b v-else>当前筛选没有结果</b>
+      <span class="hint" v-if="store.data.sites.length === 0">点击右上角「添加」开始归集你的链接</span>
+      <span class="hint" v-else>试着切换分类、标签或清空搜索</span>
     </div>
     <ContextMenu v-if="menu" :x="menu.x" :y="menu.y" @action="onAction" @close="menu = null" />
   </div>
