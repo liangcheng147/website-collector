@@ -64,7 +64,7 @@ function onRowDragOver(e: DragEvent) {
 
 <template>
   <div class="table-wrap">
-    <div v-if="store.selectedIds.length" class="batchbar">
+    <div v-if="store.selectedIds.length" class="batchbar sticky-bar">
       <b>已选 {{ store.selectedIds.length }} 项</b>
       <button v-if="store.checking" class="btn danger" @click="store.cancelCheck()">■ 取消检测</button>
       <button v-else class="btn" @click="emit('check-site', [...store.selectedIds])">■ 检测所选</button>
