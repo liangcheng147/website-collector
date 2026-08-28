@@ -1,12 +1,13 @@
 :root {
-  --bg:#F6F7F9; --panel:#FFFFFF;
-  --primary:#3B5BDB; --primary-w:#2F4AC4; --primary-t:#EBF0FF;
-  --text:#1B1E24; --text-2:#6A7280; --border:#E7E9EE; --border-2:#D5DAE3; --hover:#EFF2F7;
+  --bg:#F6F9F8; --panel:#FFFFFF;
+  --primary:#0D9488; --primary-w:#0F766E; --primary-t:#CCFBF1;
+  --accent:#EA580C; --accent-on:#FFFFFF;
+  --text:#0F2E2A; --text-2:#5B7A76; --border:#D8EBE7; --border-2:#C3DED9; --hover:#EEF5F3;
   --ok:#15A34A; --ok-txt:#14833E; --pending:#E08A00; --pending-txt:#A8660A; --danger:#DC2626; --danger-txt:#C02424;
   --danger-bg:#FDF1F1; --danger-bd:#F2C9C9;
-  --radius:7px; --radius-lg:12px; --radius-pill:999px;
-  --shadow:0 1px 2px rgba(20,30,60,.05); --shadow-md:0 8px 24px rgba(20,30,60,.10);
-  --ring:0 0 0 3px rgba(59,91,219,.30);
+  --radius:8px; --radius-lg:14px; --radius-pill:999px;
+  --shadow:0 1px 2px rgba(13,60,55,.05); --shadow-md:0 14px 40px rgba(13,60,55,.12);
+  --ring:0 0 0 3px rgba(13,148,136,.30);
   --font:"Geist Variable","Segoe UI",-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
   --mono:"Geist Variable Mono",Consolas,"Cascadia Mono",monospace;
   --ease:cubic-bezier(.2,.7,.3,1);
