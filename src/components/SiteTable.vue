@@ -16,7 +16,6 @@ function onRight(e: MouseEvent, siteId: string) {
   if (!store.selectedIds.includes(siteId)) { store.clearSelection(); store.toggleSelect(siteId) }
   menu.value = { x: e.clientX, y: e.clientY }
 }
-function onRowDots(e: MouseEvent, siteId: string) { onRight(e, siteId) }
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') { menu.value = null; return }
   const t = e.target as HTMLElement | null
@@ -113,7 +112,7 @@ function onRowDragOver(e: DragEvent) {
             :class="{ 'name-dead': s.status === 'dead' }"
             draggable="true"
             @dragstart="onSiteDragStart($event, s.id)"
-          ><span v-if="hoverId === s.id" class="dots" @click.stop="onRowDots($event, s.id)">⋯</span> {{ s.name }}</td>
+          >{{ s.name }}</td>
           <td class="muted link-cell">
             <span class="link-text">{{ s.url }}</span>
             <span v-if="hoverId === s.id" class="open-btn" title="打开链接" @click.stop="api.openLink(s.url)">⧉</span>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 const props = defineProps<{ modelValue: string[]; available: string[] }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string[]): void }>()
 const text = ref('')
@@ -37,6 +37,22 @@ function onKey(e: KeyboardEvent) {
   }
 }
 function onFocus() { open.value = true; positionDropdown() }
+function reposition() { if (open.value) positionDropdown() }
+watch([() => props.modelValue, filtered], reposition, { flush: 'post' })
+function onScrollOrResize() { reposition() }
+watch(open, (v) => {
+  if (v) {
+    window.addEventListener('scroll', onScrollOrResize, true)
+    window.addEventListener('resize', onScrollOrResize)
+  } else {
+    window.removeEventListener('scroll', onScrollOrResize, true)
+    window.removeEventListener('resize', onScrollOrResize)
+  }
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScrollOrResize, true)
+  window.removeEventListener('resize', onScrollOrResize)
+})
 function remove(tag: string) { emit('update:modelValue', props.modelValue.filter(x => x !== tag)) }
 </script>
 

@@ -111,8 +111,7 @@ html.win-maximized .app { border-radius:0; }
 .status.dead { color:var(--danger-txt); } .status.dead .dot { background:var(--danger); --s-bg:rgba(220,38,38,.14); }
 .status.pending { color:var(--pending-txt); } .status.pending .dot { background:var(--pending); --s-bg:rgba(224,138,0,.16); animation:sPulse 1.3s var(--ease) infinite; }
 @keyframes sPulse { 0%,100%{ opacity:1 } 50%{ opacity:.35 } }
-.dots { cursor:pointer; color:var(--text-2); font-weight:700; letter-spacing:1px; user-select:none; transition:color .15s var(--ease); }
-.dots:hover { color:var(--primary); }
+.site-table tr:hover td:nth-child(2), .site-table tr.row-selected td:nth-child(2) { color: var(--primary); }
 .cb { position:relative; display:inline-block; width:15px; height:15px; border:1.5px solid var(--border-2); border-radius:5px; background:#fff; cursor:pointer; vertical-align:middle; transition:background .15s var(--ease), border-color .15s var(--ease); }
 .cb.checked { background:var(--primary); border-color:var(--primary); }
 .cb.checked::after { content:""; position:absolute; left:4.5px; top:1.5px; width:3.5px; height:7px; border:solid #fff; border-width:0 1.5px 1.5px 0; transform:rotate(45deg); }
@@ -207,7 +206,9 @@ input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
 .manage-card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; box-shadow:var(--shadow); min-width:0; }
 .manage-card input, .manage-card select, .manage-card textarea { width:100%; }
 .manage-card h4 { margin-bottom:10px; font-size:14px; }
-.manage-card label { display:block; margin-bottom:4px; font-size:12px; color:var(--text-2); }
+.manage-card label { display:block; margin:10px 0 6px; font-size:12px; color:var(--text-2); }
+.manage-card .actions { margin-top:14px; }
+.manage-card p.muted { margin-top:10px; }
 .cat-head, .cat-row { display:flex; align-items:center; padding:6px 8px; font-size:13px; }
 .cat-head { background:var(--bg); border-radius:var(--radius); color:var(--text-2); font-size:12px; font-weight:600; margin-bottom:4px; }
 .cat-row { border-bottom:1px solid var(--border); cursor:pointer; }
