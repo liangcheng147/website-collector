@@ -521,4 +521,12 @@ describe('app store', () => {
     s.expandAllCategories()
     expect(s.settings.collapsedCategories).toEqual([])
   })
+
+  it('validateSite rejects empty name/url and bad url', () => {
+    const s = useAppStore()
+    expect(s.validateSite('', 'https://a.dev')).toMatch(/名称/)
+    expect(s.validateSite('站点', '')).toMatch(/链接/)
+    expect(s.validateSite('站点', 'not-a-url')).toMatch(/链接/)
+    expect(s.validateSite('站点', 'https://a.dev')).toBeNull()
+  })
 })

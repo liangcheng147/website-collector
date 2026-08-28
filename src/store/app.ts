@@ -387,6 +387,14 @@ export const useAppStore = defineStore('app', {
       this.refreshTags()
     },
 
+    validateSite(name: string, url: string): string | null {
+      if (!name.trim()) return '请填写名称'
+      const u = url.trim()
+      if (!u) return '请填写链接'
+      if (!/^https?:\/\/.+/.test(u)) return '链接格式应为 http(s)://...'
+      return null
+    },
+
     toggleSelect(id: string) {
       const i = this.selectedIds.indexOf(id)
       if (i >= 0) this.selectedIds.splice(i, 1)
