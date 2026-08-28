@@ -51,35 +51,42 @@ function onTagDrop(e: DragEvent, t: string) {
 
 <template>
   <aside class="sidebar">
-    <div class="group-label" @click="toggleGroup('分类')">分类 <span class="caret">{{ isCollapsed('分类') ? '▶' : '▼' }}</span></div>
-    <template v-if="!isCollapsed('分类')">
-      <div class="row" :class="{ active: store.view.kind === 'all', 'drop-over': allDrop }" @click="setView('all')" @contextmenu.prevent="onAllMenu"
-        @dragover="onAllDragOver" @dragleave="allDrop = false" @drop="onAllDrop">
-        全部 <span class="cnt">{{ store.data.sites.length }}</span>
+    <div class="sidebar-scroll">
+      <div class="group-label" @click="toggleGroup('分类')">分类 <span class="caret">{{ isCollapsed('分类') ? '▶' : '▼' }}</span>
+        <span class="group-actions">
+          <button class="group-btn" type="button" title="展开全部" @click.stop="store.expandAllCategories()">⤢</button>
+          <button class="group-btn" type="button" title="收起全部" @click.stop="store.collapseAllCategories()">⤡</button>
+        </span>
       </div>
-      <CategoryNode v-for="c in store.data.categories" :key="c.id" :cat="c" :depth="0" />
-    </template>
-    <div class="group-label" @click="toggleGroup('视图')">视图 <span class="caret">{{ isCollapsed('视图') ? '▶' : '▼' }}</span></div>
-    <template v-if="!isCollapsed('视图')">
+      <template v-if="!isCollapsed('分类')">
+        <div class="row" :class="{ active: store.view.kind === 'all', 'drop-over': allDrop }" @click="setView('all')" @contextmenu.prevent="onAllMenu"
+          @dragover="onAllDragOver" @dragleave="allDrop = false" @drop="onAllDrop">
+          全部 <span class="cnt">{{ store.data.sites.length }}</span>
+        </div>
+        <CategoryNode v-for="c in store.data.categories" :key="c.id" :cat="c" :depth="0" />
+      </template>
+    </div>
+    <div class="sidebar-fixed">
+      <div class="group-label">视图</div>
       <div class="row dead" :class="{ active: store.view.kind === 'dead' }" @click="setView('dead')">⚠ 失效 <span class="cnt">{{ store.deadCount }}</span></div>
-    </template>
-    <div class="group-label" @click="toggleGroup('标签')">标签 <span class="caret">{{ isCollapsed('标签') ? '▶' : '▼' }}</span></div>
-    <template v-if="!isCollapsed('标签')">
-      <div v-for="t in store.data.tags" :key="t" class="row"
-        :class="{ active: store.view.kind === 'tag' && store.view.id === t, 'drop-over': tagDrop === t }"
-        @click="setView('tag', t)"
-        draggable="true"
-        @dragstart="onTagDragStart($event, t)"
-        @dragover="onTagDragOver($event, t)"
-        @dragleave="tagDrop = null"
-        @drop="onTagDrop($event, t)">
-        # {{ t }}
-      </div>
-    </template>
-    <div class="group-label" @click="toggleGroup('系统')">系统 <span class="caret">{{ isCollapsed('系统') ? '▶' : '▼' }}</span></div>
-    <template v-if="!isCollapsed('系统')">
+      <div class="group-label" @click="toggleGroup('标签')">标签 <span class="caret">{{ isCollapsed('标签') ? '▶' : '▼' }}</span></div>
+      <template v-if="!isCollapsed('标签')">
+        <div class="tag-scroll">
+          <div v-for="t in store.data.tags" :key="t" class="row"
+            :class="{ active: store.view.kind === 'tag' && store.view.id === t, 'drop-over': tagDrop === t }"
+            @click="setView('tag', t)"
+            draggable="true"
+            @dragstart="onTagDragStart($event, t)"
+            @dragover="onTagDragOver($event, t)"
+            @dragleave="tagDrop = null"
+            @drop="onTagDrop($event, t)">
+            # {{ t }}
+          </div>
+        </div>
+      </template>
+      <div class="group-label">系统</div>
       <div class="row trash" :class="{ active: store.view.kind === 'recycle' }" @click="setView('recycle')">🗑 回收站 <span class="cnt">{{ store.trashedSites.length }}</span></div>
-    </template>
+    </div>
     <Transition name="mask"><AddCategoryModal v-if="showAdd" :parent-id="null" @created="setView('category', $event); showAdd = false" @close="showAdd = false" /></Transition>
   </aside>
 </template>

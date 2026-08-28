@@ -5,8 +5,12 @@ import * as api from '../api'
 const FLASH_DURATION_MS = 2500
 const MAX_CATEGORY_DEPTH = 2
 
-function collectCategoryIds(cats: Category[], rootId: string): string[] {
-  const out: string[] = []
+function collectAllIds(cats: Category[], acc: string[] = []): string[] {
+  for (const c of cats) { acc.push(c.id); collectAllIds(c.children, acc) }
+  return acc
+}
+
+function collectCategoryIds(cats: Category[], rootId: string): string[] {  const out: string[] = []
   const walk = (list: Category[]) => {
     for (const c of list) {
       if (c.id === rootId) { collect(c, out); return }
@@ -25,6 +29,7 @@ export const useAppStore = defineStore('app', {
     search: '',
     selectedTag: null as string | null,
     selectedIds: [] as string[],
+    activeId: null as string | null,
     lastSelectedId: null as string | null,
     checking: false,
     cancelled: false,
@@ -34,6 +39,8 @@ export const useAppStore = defineStore('app', {
     flashMsg: '',
     location: { dir: '', isFallback: false },
     settings: { theme: 'system', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] } as Settings,
+    sortKey: null as 'name' | 'url' | 'status' | null,
+    sortDir: 'asc' as 'asc' | 'desc',
   }),
   getters: {
     filteredSites(state): Site[] {
@@ -53,6 +60,15 @@ export const useAppStore = defineStore('app', {
           s.tags.some(t => t.toLowerCase().includes(q)))
       }
       if (state.selectedTag) list = list.filter(s => s.tags.includes(state.selectedTag!))
+      const sortKey = state.sortKey
+      if (sortKey) {
+        const dir = state.sortDir === 'asc' ? 1 : -1
+        list = [...list].sort((a, b) => {
+          const av = sortKey === 'status' ? a.status : (a as any)[sortKey]
+          const bv = sortKey === 'status' ? b.status : (b as any)[sortKey]
+          return av < bv ? -1 * dir : av > bv ? 1 * dir : 0
+        })
+      }
       return list
     },
     deadCount(state) { return state.data.sites.filter(s => s.status === 'dead').length },
@@ -130,6 +146,12 @@ export const useAppStore = defineStore('app', {
       } else {
         this.settings.collapsedCategories.splice(idx, 1)
       }
+    },
+    expandAllCategories() {
+      this.settings.collapsedCategories = []
+    },
+    collapseAllCategories() {
+      this.settings.collapsedCategories = collectAllIds(this.data.categories)
     },
     async refreshTags() {
       const set = new Set<string>()
@@ -377,6 +399,14 @@ export const useAppStore = defineStore('app', {
       this.refreshTags()
     },
 
+    validateSite(name: string, url: string): string | null {
+      if (!name.trim()) return '请填写名称'
+      const u = url.trim()
+      if (!u) return '请填写链接'
+      if (!/^https?:\/\/.+/.test(u)) return '链接格式应为 http(s)://...'
+      return null
+    },
+
     toggleSelect(id: string) {
       const i = this.selectedIds.indexOf(id)
       if (i >= 0) this.selectedIds.splice(i, 1)
@@ -405,6 +435,26 @@ export const useAppStore = defineStore('app', {
     },
     clearSelection() { this.selectedIds = [] },
     deleteSelected() { this.deleteSites([...this.selectedIds]) },
+
+    selectRelative(dir: 'up' | 'down') {
+      const list = this.filteredSites
+      if (!list.length) return
+      const ids = list.map(s => s.id)
+      let idx = this.activeId ? ids.indexOf(this.activeId) : -1
+      idx = dir === 'down' ? Math.min(idx + 1, ids.length - 1) : Math.max(idx - 1, 0)
+      this.activeId = ids[idx]
+      this.selectOne(this.activeId)
+    },
+    deleteSelectedToRecycle() {
+      this.deleteSites([...this.selectedIds])
+      this.clearSelection()
+    },
+
+    toggleSort(key: 'name' | 'url' | 'status') {
+      if (this.sortKey !== key) { this.sortKey = key; this.sortDir = 'asc' }
+      else if (this.sortDir === 'asc') this.sortDir = 'desc'
+      else { this.sortKey = null; this.sortDir = 'asc' }
+    },
 
     cancelCheck() { this.cancelRequested = true },
 

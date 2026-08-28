@@ -501,4 +501,62 @@ describe('app store', () => {
     await s.checkOne('a')
     expect(s.cancelled).toBe(false)
   })
+
+  it('collapseAllCategories collapses every category', () => {
+    const s = useAppStore()
+    s.data.categories = [
+      { id: 'a', name: 'A', children: [{ id: 'a1', name: 'A1', children: [] }] },
+      { id: 'b', name: 'B', children: [] },
+    ]
+    s.expandAllCategories()
+    expect(s.settings.collapsedCategories).toEqual([])
+    s.collapseAllCategories()
+    expect(s.settings.collapsedCategories.sort()).toEqual(['a', 'a1', 'b'])
+  })
+
+  it('expandAllCategories clears collapsed set', () => {
+    const s = useAppStore()
+    s.data.categories = [{ id: 'x', name: 'X', children: [] }]
+    s.settings.collapsedCategories = ['x']
+    s.expandAllCategories()
+    expect(s.settings.collapsedCategories).toEqual([])
+  })
+
+  it('    validateSite rejects empty name/url and bad url', () => {
+    const s = useAppStore()
+    expect(s.validateSite('', 'https://a.dev')).toMatch(/名称/)
+    expect(s.validateSite('站点', '')).toMatch(/链接/)
+    expect(s.validateSite('站点', 'not-a-url')).toMatch(/链接/)
+    expect(s.validateSite('站点', 'https://a.dev')).toBeNull()
+  })
+
+  it('selectRelative moves active selection by arrow and Delete moves to recycle', () => {
+  const s = useAppStore()
+  s.data.sites = [
+    { id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+    { id: '2', name: 'B', url: 'https://b.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+    { id: '3', name: 'C', url: 'https://c.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+  ]
+  s.view = { kind: 'all' }
+  s.selectRelative('down')        // active -> 1
+  s.selectRelative('down')        // active -> 2
+  expect(s.activeId).toBe('2')
+  s.deleteSelectedToRecycle()     // moves [2] to recycle
+  expect(s.data.sites.map(x => x.id)).toEqual(['1', '3'])
+  expect(s.trashedSites.some(x => x.site.id === '2')).toBe(true)
+})
+
+  it('toggleSort cycles and orders filteredSites', () => {
+    const s = useAppStore()
+    s.data.sites = [
+      { id: '1', name: 'Banana', url: 'https://b.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+      { id: '2', name: 'Apple', url: 'https://a.dev', categoryId: null, tags: [], status: 'dead', lastCheck: null, note: '' },
+    ]
+    s.toggleSort('name')
+    expect(s.sortKey).toBe('name'); expect(s.sortDir).toBe('asc')
+    expect(s.filteredSites.map(x => x.name)).toEqual(['Apple', 'Banana'])
+    s.toggleSort('name')
+    expect(s.sortDir).toBe('desc')
+    expect(s.filteredSites.map(x => x.name)).toEqual(['Banana', 'Apple'])
+  })
 })

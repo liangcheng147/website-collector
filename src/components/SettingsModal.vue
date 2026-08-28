@@ -20,7 +20,7 @@ async function openDir() {
 
 <template>
   <ModalMask @close="emit('close')">
-    <div class="modal" style="width:min(480px,92%)">
+    <div class="modal">
       <h3>设置</h3>
       <div class="seg">
         <button class="btn" :class="{ active: section === 'theme' }" @click="section = 'theme'">主题</button>

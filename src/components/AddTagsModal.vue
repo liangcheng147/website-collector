@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import ModalMask from './ModalMask.vue'
+import TagInput from './TagInput.vue'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
 const props = defineProps<{ siteIds: string[] }>()
 const emit = defineEmits(['close'])
-const tags = ref('')
+const tags = ref<string[]>([])
 function confirm() {
-  const list = tags.value.split(/[#\s，,]+/).filter(Boolean)
-  if (list.length) store.addTagsToSites(props.siteIds, list)
+  if (tags.value.length) store.addTagsToSites(props.siteIds, tags.value)
   emit('close')
 }
 </script>
@@ -19,13 +19,13 @@ function confirm() {
       <h3>添加标签（{{ props.siteIds.length }} 项）</h3>
       <div class="modal-cols">
         <div>
-          <label>新标签（空格分隔）</label>
-          <input v-model="tags" placeholder="新标签，空格分隔" />
+          <label>标签</label>
+          <TagInput :model-value="tags" :available="store.data.tags" @update:model-value="tags = $event" />
           <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="confirm">添加</button></div>
         </div>
         <div class="help">
           <label>说明</label>
-          <p class="muted">标签以空格分隔，多个标签可一次添加，批量应用到选中的网站。</p>
+          <p class="muted">输入标签后回车或逗号即可添加；多个可用空格分隔，批量应用到选中的网站。</p>
         </div>
       </div>
     </div>
