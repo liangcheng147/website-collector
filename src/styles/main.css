@@ -93,7 +93,7 @@ html.win-maximized .app { border-radius:0; }
 
 .site-table { width:100%; border-collapse:collapse; }
 .site-table th { text-align:left; padding:7px 10px; color:var(--text-2); border-bottom:1px solid var(--border); font-size:12px; font-weight:600; }
-.site-table td { padding:7px 10px; border-bottom:1px solid var(--border); font-size:13px; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.site-table td { padding:6px 10px; border-bottom:1px solid var(--border); font-size:13px; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .site-table tr { transition:background .15s var(--ease); }
 .site-table tr:hover { background:var(--hover); }
 .site-table tr.row-selected, .site-table tr.row-selected:hover { background:var(--primary-t); }

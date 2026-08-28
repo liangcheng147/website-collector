@@ -92,7 +92,7 @@ function onRowDragOver(e: DragEvent) {
           <th @click="store.toggleSort('url')" class="sortable">链接 <span v-if="store.sortKey==='url'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
           <th>分类</th>
           <th>标签</th>
-          <th @click="store.toggleSort('status')" class="sortable">生命 <span v-if="store.sortKey==='status'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
+          <th @click="store.toggleSort('status')" class="sortable">状态 <span v-if="store.sortKey==='status'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
           <th>备注</th>
         </tr>
       </thead>
@@ -121,7 +121,7 @@ function onRowDragOver(e: DragEvent) {
           <td class="muted">{{ getCategoryName(s.categoryId) }}</td>
           <td><span v-for="t in s.tags" :key="t" class="chip">{{ t }}</span></td>
           <td><span class="status" :class="{ ok: s.status === 'ok', dead: s.status === 'dead', pending: s.status === 'unknown' }"><span class="dot"></span>{{ statusLabel(s.status) }}</span></td>
-          <td class="muted">{{ s.note }}</td>
+          <td class="muted" :title="s.note">{{ s.note || '—' }}</td>
         </tr>
       </tbody>
     </table>
