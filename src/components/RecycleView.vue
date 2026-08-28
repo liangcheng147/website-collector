@@ -9,15 +9,17 @@ const store = useAppStore()
 const list = () => store.trashedSites.map((t: TrashedSite) => t.site.id)
 const sel = useSelection(list)
 function restore() { store.restoreSites([...sel.selected.value]); sel.clear() }
-function del() { store.permanentlyDeleteSites([...sel.selected.value]); sel.clear() }
 const confirm = ref<null | 'delete-selected' | 'empty'>(null)
 const selIds = () => [...sel.selected.value]
 function askDelete() { if (selIds().length) confirm.value = 'delete-selected' }
 function askEmpty() { if (store.trashedSites.length) confirm.value = 'empty' }
 function onChoose(v: string) {
-  if (confirm.value === 'delete-selected' && v === 'ok') del()
-  else if (confirm.value === 'empty' && v === 'ok') store.emptyRecycle()
-  sel.clear(); confirm.value = null
+  if (v === 'ok') {
+    if (confirm.value === 'delete-selected') store.permanentlyDeleteSites(selIds())
+    else if (confirm.value === 'empty') store.emptyRecycle()
+    sel.clear()
+  }
+  confirm.value = null
 }
 </script>
 
