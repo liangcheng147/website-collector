@@ -41,13 +41,17 @@ function remove(tag: string) { emit('update:modelValue', props.modelValue.filter
 </script>
 
 <template>
-  <div class="tag-input">
-    <span v-for="t in modelValue" :key="t" class="chip">{{ t }}<button class="chip-x" type="button" @click="remove(t)">×</button></span>
-    <input ref="inputEl" v-model="text" @focus="onFocus" @blur="open = false" @keydown="onKey" placeholder="选择或输入后回车新建" />
-    <Teleport to="body">
-      <div v-if="open && filtered.length" class="tag-opts" :style="dropStyle">
-        <button v-for="t in filtered" :key="t" type="button" class="opt" @mousedown.prevent="add(t)">{{ t }}</button>
-      </div>
-    </Teleport>
+  <div class="tag-input-wrap">
+    <div class="tag-chips">
+      <span v-for="t in modelValue" :key="t" class="chip">{{ t }}<button class="chip-x" type="button" @click="remove(t)">×</button></span>
+    </div>
+    <div class="tag-field">
+      <input ref="inputEl" v-model="text" @focus="onFocus" @blur="open = false" @keydown="onKey" placeholder="输入新建标签，回车添加" />
+      <Teleport to="body">
+        <div v-if="open && filtered.length" class="tag-opts" :style="dropStyle">
+          <button v-for="t in filtered" :key="t" type="button" class="opt" @mousedown.prevent="add(t)">{{ t }}</button>
+        </div>
+      </Teleport>
+    </div>
   </div>
 </template>
