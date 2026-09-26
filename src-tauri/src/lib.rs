@@ -28,6 +28,7 @@ pub fn run() {
             commands::get_data_file_path,
             commands::check_site_cmd,
             commands::check_connectivity_cmd,
+            commands::fetch_site_title_cmd,
             commands::verify_site_webview_cmd,
             commands::export_md_to_file,
             commands::export_json_to_file,

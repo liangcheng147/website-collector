@@ -48,6 +48,11 @@ pub async fn check_connectivity_cmd() -> bool {
 }
 
 #[tauri::command]
+pub async fn fetch_site_title_cmd(url: String) -> Result<String, String> {
+    crate::check::fetch_site_title(&url).await
+}
+
+#[tauri::command]
 pub async fn verify_site_webview_cmd(app: tauri::AppHandle, url: String) -> check::CheckResult {
     crate::verify::verify_site(&app, &url).await
 }

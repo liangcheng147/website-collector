@@ -5,6 +5,7 @@ import AddCategoryModal from './AddCategoryModal.vue'
 import { useAppStore } from '../store/app'
 import type { Site } from '../types'
 import TagInput from './TagInput.vue'
+import * as api from '../api'
 const store = useAppStore()
 const props = defineProps<{ editing?: Site | null; defaultCategoryId?: string | null }>()
 const emit = defineEmits(['close'])
@@ -17,6 +18,8 @@ const categoryId = ref(props.editing?.categoryId ?? props.defaultCategoryId ?? n
 const dup = ref(false)
 const showAddCat = ref(false)
 const pendingCat = ref<string | null>(null)
+const titleError = ref('')
+const fetchingTitle = ref(false)
 const NEW_CAT = '__new_cat__'
 let lastCat: string | null = categoryId.value
 function onCatChange(e: Event) {
@@ -32,6 +35,22 @@ function onCatChange(e: Event) {
 function onCatCreated(id: string) {
   categoryId.value = id
   showAddCat.value = false
+}
+
+async function fetchTitle() {
+  if (!url.value.trim()) return
+  fetchingTitle.value = true
+  titleError.value = ''
+  try {
+    const title = await api.fetchSiteTitle(url.value.trim())
+    if (!name.value.trim()) {
+      name.value = title
+    }
+  } catch {
+    titleError.value = '无法获取标题，请手动输入或点击重试'
+  } finally {
+    fetchingTitle.value = false
+  }
 }
 
 function save() {
@@ -60,7 +79,14 @@ function save() {
       <div class="modal-cols">
         <div>
           <label>名称</label><input v-model="name" placeholder="网站名称" />
-          <label>链接</label><input v-model="url" placeholder="https://..." />
+          <label>链接</label>
+          <div class="url-row">
+            <input v-model="url" placeholder="https://..." @blur="fetchTitle" />
+            <button type="button" class="btn small" @click="fetchTitle" :disabled="fetchingTitle">
+              {{ fetchingTitle ? '...' : '获取名称' }}
+            </button>
+          </div>
+          <p v-if="titleError" class="err">⚠ {{ titleError }}</p>
           <label>分类</label>
           <select v-model="categoryId" @change="onCatChange">
             <option :value="null">未分类</option>

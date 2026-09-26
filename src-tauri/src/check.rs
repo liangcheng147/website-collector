@@ -92,6 +92,41 @@ async fn check_site_attempt(url: &str) -> CheckResult {
     CheckResult { status: "dead".into(), used_url: full }
 }
 
+pub async fn fetch_site_title(url: &str) -> Result<String, String> {
+    let c = client();
+    let full = normalize_url(url);
+    let resp = c.get(&full).send().await.map_err(|e| e.to_string())?;
+    let body = resp.text().await.map_err(|e| e.to_string())?;
+
+    let lower = body.to_lowercase();
+    let title_start = lower.find("<title>").ok_or("no title tag")? + 7;
+    let title_end = lower.find("</title>").ok_or("no closing title")?;
+    let raw = &body[title_start..title_end];
+
+    let cleaned = raw.trim().replace('\n', " ").replace('\r', "");
+    let cleaned = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
+    let cleaned = html_decode_simple(&cleaned);
+
+    if cleaned.is_empty() || cleaned.to_lowercase() == "loading..." {
+        let domain = url::Url::parse(&full)
+            .ok()
+            .and_then(|u| u.host_str().map(|h| h.to_string()))
+            .unwrap_or_else(|| full.clone());
+        return Ok(domain);
+    }
+
+    Ok(cleaned)
+}
+
+fn html_decode_simple(input: &str) -> String {
+    input.replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&nbsp;", " ")
+}
+
 pub async fn check_site(url: &str) -> CheckResult {
     let r = check_site_attempt(url).await;
     if r.status == "dead" {
@@ -293,6 +328,26 @@ mod tests {
             check_site(url).await
         });
         assert_eq!(res.status, "dead");
+    }
+
+    #[test]
+    fn fetch_title_extracts_title_tag() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            use std::io::{Read, Write};
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buf = [0u8; 4096];
+                let _ = stream.read(&mut buf);
+                let body = "<html><head><title>My Site &amp; Co</title></head><body></body></html>";
+                let resp = format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body);
+                let _ = stream.write_all(resp.as_bytes());
+            }
+        });
+        let url = format!("http://{}/", addr);
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let title = rt.block_on(super::fetch_site_title(&url)).unwrap();
+        assert_eq!(title, "My Site & Co");
     }
 
     #[test]
