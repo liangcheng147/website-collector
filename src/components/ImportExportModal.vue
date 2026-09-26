@@ -40,6 +40,27 @@ async function importMd() {
 }
 
 // JSON 导入两段式：先选文件，再应用内确认覆盖，确认后才执行导入
+async function exportHtml() {
+  const { save } = await import('@tauri-apps/plugin-dialog')
+  const path = await save({ defaultPath: `书签_${dateStr()}.html`, filters: [{ name: 'HTML', extensions: ['html', 'htm'] }] })
+  if (!path) return
+  try { await api.exportBookmarksHtmlToFile(String(path)); store.flash('已导出 HTML 书签'); emit('close') }
+  catch (e) { msg.value = '导出失败：' + e }
+}
+
+async function importHtml() {
+  const { open } = await import('@tauri-apps/plugin-dialog')
+  const path = await open({ filters: [{ name: 'HTML', extensions: ['html', 'htm'] }, { name: 'All', extensions: ['*'] }] })
+  if (!path) return
+  try {
+    const text = await api.readTextFile(String(path))
+    const data = await api.importBookmarksHtml(text)
+    store.setData(data)
+    store.flash('已合并导入 HTML 书签')
+    emit('close')
+  } catch (e) { msg.value = '导入失败：' + e }
+}
+
 async function pickJson() {
   const { open } = await import('@tauri-apps/plugin-dialog')
   const path = await open({ filters: [{ name: 'JSON', extensions: ['json'] }] })
@@ -85,10 +106,12 @@ async function confirmJsonImport() {
             <div class="grid2x2">
               <button class="btn primary" @click="exportMd">导出 MD</button>
               <button class="btn primary" @click="exportJson">导出 JSON</button>
+              <button class="btn primary" @click="exportHtml">导出 HTML</button>
             </div>
             <label>导入</label>
             <div class="grid2x2">
               <button class="btn" @click="importMd">导入 MD</button>
+              <button class="btn" @click="importHtml">导入 HTML</button>
               <button class="btn" @click="pickJson">导入 JSON</button>
             </div>
             <label>导入方式</label>

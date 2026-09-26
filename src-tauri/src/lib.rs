@@ -1,4 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod bookmarks_html;
 mod check;
 mod commands;
 mod config;
@@ -32,6 +33,9 @@ pub fn run() {
             commands::export_json_to_file,
             commands::import_md_from_file,
             commands::import_json_from_file,
+            commands::import_bookmarks_html,
+            commands::export_bookmarks_html_to_file,
+            commands::read_text_file,
             commands::minimize_window,
             commands::toggle_maximize_window,
             commands::close_window,

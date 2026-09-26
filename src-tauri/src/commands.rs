@@ -1,4 +1,4 @@
-use crate::{check, config, data, md, settings};
+use crate::{bookmarks_html, check, config, data, md, settings};
 use tauri::Manager;
 
 fn exe_dir() -> std::path::PathBuf {
@@ -72,6 +72,29 @@ pub fn import_md_from_file(app: tauri::AppHandle, path: String, mode: String) ->
 #[tauri::command]
 pub fn import_json_from_file(app: tauri::AppHandle, path: String) -> Result<data::AppData, String> {
     data::import_json_from_path(&active_data_dir(&app), std::path::Path::new(&path))
+}
+
+#[tauri::command]
+pub fn import_bookmarks_html(app: tauri::AppHandle, html: String) -> Result<data::AppData, String> {
+    let parsed = bookmarks_html::parse_bookmarks_html(&html)?;
+    let mut current = data::load_data(&active_data_dir(&app));
+    let incoming = bookmarks_html::to_app_data(&parsed, &current);
+    data::merge_into(&mut current, &incoming);
+    data::save_data(&active_data_dir(&app), &current)?;
+    Ok(current)
+}
+
+#[tauri::command]
+pub fn export_bookmarks_html_to_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let data = data::load_data(&active_data_dir(&app));
+    let export_data = data::AppData { recycle_bin: vec![], ..data };
+    let html = bookmarks_html::export_bookmarks_html(&export_data);
+    std::fs::write(&path, html).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn read_text_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
 #[derive(serde::Serialize)]
