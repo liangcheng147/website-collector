@@ -5,7 +5,12 @@ const store = useAppStore()
 
 <template>
   <footer class="statusbar">
-    <span>共 {{ store.data.sites.length }} 个网站</span>
+    <span>
+      共 {{ store.data.sites.length }} 个
+      <template v-if="store.filteredSites.length !== store.data.sites.length">
+        · 当前 {{ store.filteredSites.length }} 个
+      </template>
+    </span>
     <span class="bad">失效 {{ store.deadCount }}</span>
     <span>未检测 {{ store.data.sites.filter(s => s.status === 'unknown').length }}</span>
     <span>上次检测 {{ store.lastCheckTime }}</span>

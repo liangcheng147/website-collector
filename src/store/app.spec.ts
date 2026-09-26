@@ -72,6 +72,18 @@ describe('app store', () => {
     expect(s.filteredSites).toHaveLength(3)
   })
 
+  it('filtered count differs from total when filtering by category', () => {
+    const s = useAppStore()
+    s.data = makeData()
+    s.data.sites[1].categoryId = 'c2' // b 挂到 c1 的子分类 c2
+    s.data.sites[2].categoryId = null // c 移出 c1 子树
+    s.view = { kind: 'category', id: 'c1' }
+    // c1 子树包含 a（直属）和 b（经子分类 c2），c 已移出
+    expect(s.filteredSites.length).to.be.lessThan(s.data.sites.length)
+    expect(s.filteredSites.length).to.be.greaterThan(0)
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'b'])
+  })
+
   it('uncategorized view returns only sites without a category', () => {
     const s = useAppStore()
     s.data = baseData
