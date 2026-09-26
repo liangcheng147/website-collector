@@ -209,6 +209,23 @@ describe('app store', () => {
     expect(s.trashedSites).toHaveLength(0)
   })
 
+  it('moveSites updates multiple sites at once (multi-select drag)', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.moveSites(['a', 'b'], 'c2')
+    expect(s.data.sites.find(x => x.id === 'a')!.categoryId).toBe('c2')
+    expect(s.data.sites.find(x => x.id === 'b')!.categoryId).toBe('c2')
+    expect(s.data.sites.find(x => x.id === 'c')!.categoryId).toBe('c1') // untouched
+  })
+
+  it('moveSites to null makes sites uncategorized (drag to uncategorized)', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.moveSites(['a', 'b'], null)
+    expect(s.data.sites.find(x => x.id === 'a')!.categoryId).toBeNull()
+    expect(s.data.sites.find(x => x.id === 'b')!.categoryId).toBeNull()
+  })
+
   it('permanentlyDeleteSites removes from recycle bin only', () => {
     const s = useAppStore()
     s.data = baseData
