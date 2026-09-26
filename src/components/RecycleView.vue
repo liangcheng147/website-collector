@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Trash2 } from 'lucide-vue-next'
 import { useAppStore } from '../store/app'
 import { useSelection } from '../composables/useSelection'
 import ConfirmModal from './ConfirmModal.vue'
@@ -55,7 +56,8 @@ function onChoose(v: string) {
         </tr>
       </tbody>
     </table>
-    <div v-if="store.trashedSites.length === 0" class="empty">
+    <div v-if="store.trashedSites.length === 0" class="empty-state">
+      <Trash2 :size="48" :stroke-width="1.5" class="empty-icon" />
       <b>回收站为空</b>
       <span class="hint">已删除的网站会暂时存放在这里</span>
     </div>

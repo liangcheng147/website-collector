@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useAppStore } from '../store/app'
+import { FolderOpen } from 'lucide-vue-next'
+import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
 import type { Site } from '../types'
 import * as api from '../api'
 import ContextMenu from './ContextMenu.vue'
@@ -129,8 +130,11 @@ function onRowDragOver(e: DragEvent) {
         </tr>
       </tbody>
     </table>
-    <div v-if="store.filteredSites.length === 0" class="empty">
+    <div v-if="store.filteredSites.length === 0" class="empty-state">
+      <FolderOpen :size="48" :stroke-width="1.5" class="empty-icon" />
       <b v-if="store.data.sites.length === 0">还没有网站</b>
+      <b v-else-if="store.view.kind === 'category' && store.view.id === UNCATEGORIZED_ID">所有站点都已分类</b>
+      <b v-else-if="store.view.kind === 'category'">该分类下暂无站点</b>
       <b v-else>当前筛选没有结果</b>
       <span class="hint" v-if="store.data.sites.length === 0">点击右上角「添加」开始归集你的链接</span>
       <span class="hint" v-else>试着切换分类、标签或清空搜索</span>
