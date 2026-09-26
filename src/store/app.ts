@@ -11,6 +11,19 @@ function collectAllIds(cats: Category[], acc: string[] = []): string[] {
   return acc
 }
 
+function getCategoryDisplayName(cats: Category[], id: string | null): string {
+  if (!id) return ''
+  const walk = (list: Category[]): string | null => {
+    for (const c of list) {
+      if (c.id === id) return c.name
+      const hit = walk(c.children)
+      if (hit) return hit
+    }
+    return null
+  }
+  return walk(cats) ?? ''
+}
+
 function collectCategoryIds(cats: Category[], rootId: string): string[] {  const out: string[] = []
   const walk = (list: Category[]) => {
     for (const c of list) {
@@ -40,7 +53,7 @@ export const useAppStore = defineStore('app', {
     flashMsg: '',
     location: { dir: '', isFallback: false },
     settings: { theme: 'system', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] } as Settings,
-    sortKey: null as 'name' | 'url' | 'status' | null,
+    sortKey: null as 'name' | 'url' | 'status' | 'category' | 'note' | 'lastCheck' | null,
     sortDir: 'asc' as 'asc' | 'desc',
   }),
   getters: {
@@ -68,9 +81,22 @@ export const useAppStore = defineStore('app', {
       if (sortKey) {
         const dir = state.sortDir === 'asc' ? 1 : -1
         list = [...list].sort((a, b) => {
-          const av = sortKey === 'status' ? a.status : (a as any)[sortKey]
-          const bv = sortKey === 'status' ? b.status : (b as any)[sortKey]
-          return av < bv ? -1 * dir : av > bv ? 1 * dir : 0
+          let av: string, bv: string
+          if (sortKey === 'category') {
+            av = getCategoryDisplayName(state.data.categories, a.categoryId)
+            bv = getCategoryDisplayName(state.data.categories, b.categoryId)
+          } else if (sortKey === 'lastCheck') {
+            av = a.lastCheck ?? ''
+            bv = b.lastCheck ?? ''
+          } else {
+            av = ((a as any)[sortKey] ?? '').toString()
+            bv = ((b as any)[sortKey] ?? '').toString()
+          }
+          if (sortKey === 'status') {
+            const order: Record<string, number> = { unknown: 0, ok: 1, dead: 2 }
+            return (order[av] - order[bv]) * dir
+          }
+          return av.localeCompare(bv, 'zh') * dir
         })
       }
       return list
@@ -467,7 +493,7 @@ export const useAppStore = defineStore('app', {
       this.clearSelection()
     },
 
-    toggleSort(key: 'name' | 'url' | 'status') {
+    toggleSort(key: 'name' | 'url' | 'status' | 'category' | 'note' | 'lastCheck') {
       if (this.sortKey !== key) { this.sortKey = key; this.sortDir = 'asc' }
       else if (this.sortDir === 'asc') this.sortDir = 'desc'
       else { this.sortKey = null; this.sortDir = 'asc' }

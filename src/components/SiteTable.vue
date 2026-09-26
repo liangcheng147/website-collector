@@ -92,10 +92,11 @@ function onRowDragOver(e: DragEvent) {
           <th><span class="cb" :class="{ checked: allSelected }" @click="store.selectAllVisible()"></span></th>
           <th @click="store.toggleSort('name')" class="sortable">名称 <span v-if="store.sortKey==='name'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
           <th @click="store.toggleSort('url')" class="sortable">链接 <span v-if="store.sortKey==='url'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
-          <th>分类</th>
+          <th @click="store.toggleSort('category')" class="sortable">分类 <span v-if="store.sortKey==='category'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
           <th>标签</th>
           <th @click="store.toggleSort('status')" class="sortable">状态 <span v-if="store.sortKey==='status'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
-          <th>备注</th>
+          <th @click="store.toggleSort('lastCheck')" class="sortable">检测时间 <span v-if="store.sortKey==='lastCheck'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
+          <th @click="store.toggleSort('note')" class="sortable">备注 <span v-if="store.sortKey==='note'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
         </tr>
       </thead>
       <tbody>
@@ -123,6 +124,7 @@ function onRowDragOver(e: DragEvent) {
           <td class="muted">{{ getCategoryName(s.categoryId) }}</td>
           <td><span v-for="t in s.tags" :key="t" class="chip">{{ t }}</span></td>
           <td><span class="status" :class="{ ok: s.status === 'ok', dead: s.status === 'dead', pending: s.status === 'unknown' }"><span class="dot"></span>{{ statusLabel(s.status) }}</span></td>
+          <td class="muted">{{ s.lastCheck ? new Date(s.lastCheck).toLocaleDateString() : '—' }}</td>
           <td class="muted" :title="s.note">{{ s.note || '—' }}</td>
         </tr>
       </tbody>

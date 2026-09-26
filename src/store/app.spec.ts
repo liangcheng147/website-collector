@@ -612,4 +612,34 @@ describe('app store', () => {
     expect(s.sortDir).toBe('desc')
     expect(s.filteredSites.map(x => x.name)).toEqual(['Banana', 'Apple'])
   })
+
+  it('sorts by category display name with pinyin', () => {
+    const s = useAppStore()
+    s.data = {
+      version: 1,
+      categories: [{ id: 'c1', name: '开发', children: [{ id: 'c2', name: '前端', children: [] }] }],
+      sites: [
+        { id: 'a', name: 'A', url: 'https://a.dev', categoryId: 'c2', tags: [], status: 'unknown', lastCheck: null, note: '' },
+        { id: 'b', name: 'B', url: 'https://b.dev', categoryId: 'c1', tags: [], status: 'unknown', lastCheck: null, note: '' },
+      ],
+      recycleBin: [],
+      tags: [],
+    }
+    s.toggleSort('category')
+    // 开发 < 前端 (k < q in pinyin)
+    expect(s.filteredSites[0].id).to.equal('b')
+    expect(s.filteredSites[1].id).to.equal('a')
+  })
+
+  it('sorts by lastCheck with nulls following direction', () => {
+    const s = useAppStore()
+    s.data = makeData()
+    s.data.sites[0].lastCheck = '2026-01-01T00:00:00Z'
+    s.data.sites[1].lastCheck = null
+    s.data.sites[2].lastCheck = '2026-06-01T00:00:00Z'
+    s.toggleSort('lastCheck')
+    // asc: null first (oldest), then 2026-01, then 2026-06
+    expect(s.filteredSites[0].lastCheck).to.equal(null)
+    expect(s.filteredSites[2].lastCheck).to.equal('2026-06-01T00:00:00Z')
+  })
 })
