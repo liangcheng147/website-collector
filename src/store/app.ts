@@ -169,6 +169,10 @@ export const useAppStore = defineStore('app', {
       return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7)
     },
 
+    normalizeUrlForCompare(url: string): string {
+      return url.toLowerCase().replace(/\/+$/, '')
+    },
+
     isDuplicateUrl(url: string) {
       return this.data.sites.some(s => s.url === url)
     },

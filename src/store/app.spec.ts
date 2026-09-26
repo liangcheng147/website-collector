@@ -564,6 +564,13 @@ describe('app store', () => {
   expect(s.trashedSites.some(x => x.site.id === '2')).toBe(true)
 })
 
+  it('normalizeUrlForCompare lowercases and strips trailing slash', () => {
+    const s = useAppStore()
+    expect(s.normalizeUrlForCompare('https://GitHub.com/')).to.equal('https://github.com')
+    expect(s.normalizeUrlForCompare('https://example.com')).to.equal('https://example.com')
+    expect(s.normalizeUrlForCompare('https://Example.COM/path/')).to.equal('https://example.com/path')
+  })
+
   it('toggleSort cycles and orders filteredSites', () => {
     const s = useAppStore()
     s.data.sites = [
