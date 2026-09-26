@@ -49,7 +49,12 @@ pub fn save_data(app_data_dir: &Path, data: &AppData) -> Result<(), String> {
     let path = data_file_path(app_data_dir);
     if let Some(parent) = path.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
     let json = serde_json::to_string_pretty(data).map_err(|e| e.to_string())?;
-    fs::write(&path, json).map_err(|e| e.to_string())
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, &json).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &path).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        e.to_string()
+    })
 }
 
 pub fn backup_data_file(app_data_dir: &Path) -> Result<(), String> {
@@ -155,7 +160,19 @@ mod tests {
 assert_eq!(loaded.sites[0].name, "React");
     }
 
-#[test]
+    #[test]
+    fn atomic_save_no_tmp_leftover() {
+        let d = tmp_dir("atomic");
+        let data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        save_data(&d, &data).unwrap();
+        let loaded = load_data(&d);
+        assert_eq!(loaded.version, 1);
+        let tmp = data_file_path(&d).with_extension("json.tmp");
+        assert!(!tmp.exists(), "atomic write should clean up .tmp file");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
     fn corrupt_file_backs_up_and_returns_empty() {
         let d = tmp_dir("corrupt");
         let p = data_file_path(&d);
