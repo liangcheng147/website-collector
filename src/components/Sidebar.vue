@@ -39,8 +39,10 @@ function onUncatDragOver(e: DragEvent) {
 function onUncatDrop(e: DragEvent) {
   e.preventDefault()
   uncatDrop.value = false
-  const siteId = e.dataTransfer?.getData('application/x-site-id')
-  if (siteId) store.moveSites([siteId], null)
+  const raw = e.dataTransfer?.getData('application/x-site-id')
+  if (raw) {
+    store.moveSites(raw.split(','), null)
+  }
 }
 const tagDrop = ref<string | null>(null)
 function onTagDragStart(e: DragEvent, t: string) {
@@ -58,8 +60,10 @@ function onTagDragOver(e: DragEvent, t: string) {
 function onTagDrop(e: DragEvent, t: string) {
   e.preventDefault()
   tagDrop.value = null
-  const siteId = e.dataTransfer?.getData('application/x-site-id')
-  if (siteId) store.addTagsToSites([siteId], [t])
+  const raw = e.dataTransfer?.getData('application/x-site-id')
+  if (raw) {
+    store.addTagsToSites(raw.split(','), [t])
+  }
 }
 </script>
 

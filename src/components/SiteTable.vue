@@ -57,7 +57,10 @@ function onRowClick(e: MouseEvent, site: Site) {
 }
 function onSiteDragStart(e: DragEvent, id: string) {
   if (!e.dataTransfer) return
-  e.dataTransfer.setData('application/x-site-id', id)
+  const ids = store.selectedIds.includes(id) && store.selectedIds.length > 1
+    ? store.selectedIds.join(',')
+    : id
+  e.dataTransfer.setData('application/x-site-id', ids)
   e.dataTransfer.effectAllowed = 'move'
 }
 function onRowDrop(e: DragEvent, site: Site) {
