@@ -571,6 +571,34 @@ describe('app store', () => {
     expect(s.normalizeUrlForCompare('https://Example.COM/path/')).to.equal('https://example.com/path')
   })
 
+  it('isDuplicateUrl excludes given id', () => {
+    const s = useAppStore()
+    s.data = makeData()
+    expect(s.isDuplicateUrl('https://a.dev', 'a')).to.equal(false)
+    expect(s.isDuplicateUrl('https://a.dev', 'z')).to.equal(true)
+  })
+
+  it('isDuplicateUrl normalizes case and trailing slash', () => {
+    const s = useAppStore()
+    s.data = makeData()
+    expect(s.isDuplicateUrl('https://A.dev/', 'z')).to.equal(true)
+  })
+
+  it('restoreSite skips when URL conflicts', () => {
+    const s = useAppStore()
+    s.data = makeData()
+    s.data.recycleBin = [{ site: s.data.sites.find(x => x.id === 'a')!, deletedAt: new Date().toISOString() }]
+    s.data.sites = s.data.sites.filter(x => x.id !== 'a')
+    s.data.sites.push({
+      id: 'dup', name: 'Duplicate', url: 'https://a.dev',
+      categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: ''
+    })
+    s.persist = async () => {}
+    s.restoreSite('a')
+    expect(s.data.sites.find(x => x.id === 'a')).to.equal(undefined)
+    expect(s.data.recycleBin.find(x => x.site.id === 'a')).to.equal(undefined)
+  })
+
   it('toggleSort cycles and orders filteredSites', () => {
     const s = useAppStore()
     s.data.sites = [

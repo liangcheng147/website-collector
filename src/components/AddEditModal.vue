@@ -38,8 +38,13 @@ function save() {
   validationMsg.value = ''
   const err = store.validateSite(name.value, url.value)
   if (err) { validationMsg.value = err; return }
-  if (props.editing) store.updateSite(props.editing.id, { name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value })
-  else {
+  if (props.editing) {
+    if (store.isDuplicateUrl(url.value, props.editing.id)) {
+      validationMsg.value = '该链接已存在'
+      return
+    }
+    store.updateSite(props.editing.id, { name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value })
+  } else {
     dup.value = store.isDuplicateUrl(url.value)
     if (dup.value) return
     store.addSite({ name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value })

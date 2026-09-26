@@ -173,8 +173,11 @@ export const useAppStore = defineStore('app', {
       return url.toLowerCase().replace(/\/+$/, '')
     },
 
-    isDuplicateUrl(url: string) {
-      return this.data.sites.some(s => s.url === url)
+    isDuplicateUrl(url: string, excludeId?: string): boolean {
+      const norm = this.normalizeUrlForCompare(url)
+      return this.data.sites.some(s =>
+        s.id !== excludeId && this.normalizeUrlForCompare(s.url) === norm
+      )
     },
 
     addSite(input: { name: string; url: string; categoryId: string | null; tags: string[]; note: string }) {
@@ -205,18 +208,23 @@ export const useAppStore = defineStore('app', {
     restoreSite(siteId: string) {
       const idx = this.data.recycleBin.findIndex(t => t.site.id === siteId)
       if (idx >= 0) {
-        this.data.sites.push(this.data.recycleBin[idx].site)
+        const site = this.data.recycleBin[idx].site
         this.data.recycleBin.splice(idx, 1)
+        if (this.isDuplicateUrl(site.url, site.id)) return
+        this.data.sites.push(site)
         this.persist()
       }
     },
 
     restoreSites(siteIds: string[]) {
       const set = new Set(siteIds)
-      const restored = this.data.recycleBin.filter(t => set.has(t.site.id)).map(t => t.site)
-      if (!restored.length) return
+      const candidates = this.data.recycleBin.filter(t => set.has(t.site.id))
+      if (!candidates.length) return
       this.data.recycleBin = this.data.recycleBin.filter(t => !set.has(t.site.id))
-      this.data.sites.push(...restored)
+      for (const t of candidates) {
+        if (this.isDuplicateUrl(t.site.url, t.site.id)) continue
+        this.data.sites.push(t.site)
+      }
       this.persist()
     },
 
