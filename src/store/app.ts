@@ -442,11 +442,12 @@ export const useAppStore = defineStore('app', {
       this.refreshTags()
     },
 
-    validateSite(name: string, url: string): string | null {
+    validateSite(name: string, url: string, note?: string): string | null {
       if (!name.trim()) return '请填写名称'
       const u = url.trim()
       if (!u) return '请填写链接'
       if (!/^https?:\/\/.+/.test(u)) return '链接格式应为 http(s)://...'
+      if (note && note.length > 200) return '备注不能超过 200 字'
       return null
     },
 

@@ -36,7 +36,7 @@ function onCatCreated(id: string) {
 
 function save() {
   validationMsg.value = ''
-  const err = store.validateSite(name.value, url.value)
+  const err = store.validateSite(name.value, url.value, note.value)
   if (err) { validationMsg.value = err; return }
   if (props.editing) {
     if (store.isDuplicateUrl(url.value, props.editing.id)) {
@@ -69,7 +69,9 @@ function save() {
           </select>
           <label>标签</label>
           <TagInput :model-value="tags" :available="store.data.tags" @update:model-value="tags = $event" />
-          <label>备注（50 字以内）</label><textarea v-model="note" maxlength="50" style="height:52px;resize:none" placeholder="网站简介" />
+          <label>备注（200 字以内）</label>
+          <textarea v-model="note" maxlength="200" style="height:52px;resize:none" placeholder="网站简介" @keydown.enter.prevent></textarea>
+          <span class="char-count">{{ note.length }}/200</span>
           <p v-if="dup" class="err">⚠ 链接已存在</p>
           <p v-if="validationMsg" class="err">⚠ {{ validationMsg }}</p>
           <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="save">保存</button></div>

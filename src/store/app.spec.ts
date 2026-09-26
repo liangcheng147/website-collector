@@ -560,6 +560,20 @@ describe('app store', () => {
     expect(s.validateSite('站点', 'https://a.dev')).toBeNull()
   })
 
+  it('validateSite allows note up to 200 chars', () => {
+    const s = useAppStore()
+    const note = '好'.repeat(200)
+    const result = s.validateSite('Test', 'https://test.dev', note)
+    expect(result).to.equal(null)
+  })
+
+  it('validateSite rejects note over 200 chars', () => {
+    const s = useAppStore()
+    const note = '好'.repeat(201)
+    const result = s.validateSite('Test', 'https://test.dev', note)
+    expect(result).to.equal('备注不能超过 200 字')
+  })
+
   it('selectRelative moves active selection by arrow and Delete moves to recycle', () => {
   const s = useAppStore()
   s.data.sites = [
