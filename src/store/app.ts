@@ -508,13 +508,20 @@ export const useAppStore = defineStore('app', {
       if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
       this.connectivityError = false
       this.checking = true
-      this.progress = { done: 0, total: this.data.sites.length }
+      const sites = [...this.data.sites]
+      this.progress = { done: 0, total: sites.length }
       try {
-        for (const s of [...this.data.sites]) {
-          await this.checkSiteWithVerify(s)
-          this.progress.done++
-          if (this.cancelRequested) break
+        const CONCURRENCY = 5
+        let idx = 0
+        const worker = async () => {
+          while (idx < sites.length && !this.cancelRequested) {
+            const s = sites[idx++]
+            await this.checkSiteWithVerify(s)
+            this.progress.done++
+          }
         }
+        const workers = Array.from({ length: Math.min(CONCURRENCY, sites.length) }, () => worker())
+        await Promise.all(workers)
       } finally {
         this.cancelled = this.cancelRequested
         this.checking = false
@@ -550,12 +557,19 @@ export const useAppStore = defineStore('app', {
       const ids = [...this.selectedIds]
       this.progress = { done: 0, total: ids.length }
       try {
-        for (const id of ids) {
-          const s = this.data.sites.find(x => x.id === id)
-          if (s) await this.checkSiteWithVerify(s)
-          this.progress.done++
-          if (this.cancelRequested) break
+        const CONCURRENCY = 5
+        let idx = 0
+        const sitesMap = new Map(this.data.sites.map(s => [s.id, s]))
+        const worker = async () => {
+          while (idx < ids.length && !this.cancelRequested) {
+            const id = ids[idx++]
+            const s = sitesMap.get(id)
+            if (s) await this.checkSiteWithVerify(s)
+            this.progress.done++
+          }
         }
+        const workers = Array.from({ length: Math.min(CONCURRENCY, ids.length) }, () => worker())
+        await Promise.all(workers)
       } finally {
         this.cancelled = this.cancelRequested
         this.checking = false

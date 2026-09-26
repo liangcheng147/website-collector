@@ -264,6 +264,51 @@ describe('app store', () => {
     expect(s.checking).toBe(false)
   })
 
+  it('checkAll processes all sites and tracks progress', async () => {
+    const s = useAppStore()
+    s.data = {
+      version: 1,
+      categories: [],
+      sites: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(id => ({
+        id, name: id.toUpperCase(), url: `https://${id}.dev`, categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '',
+      })),
+      recycleBin: [],
+      tags: [],
+    }
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    let callCount = 0
+    let active = 0
+    let maxActive = 0
+    vi.mocked(api.checkSite).mockImplementation(async () => {
+      callCount++
+      active++
+      maxActive = Math.max(maxActive, active)
+      await Promise.resolve()
+      active--
+      return { status: 'ok', usedUrl: 'https://x.dev' }
+    })
+    vi.mocked(api.verifySiteWebview).mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' })
+    await s.checkAll()
+    expect(callCount).toBe(8)
+    expect(maxActive).toBe(5) // 并发上限 5 个 worker
+    expect(s.progress.done).toBe(8)
+    expect(s.progress.total).toBe(8)
+    expect(s.checking).toBe(false)
+  })
+
+  it('checkSelected checks only selected sites and clears selection', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    vi.mocked(api.checkSite).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
+    s.selectedIds = ['a', 'c']
+    await s.checkSelected()
+    expect(api.checkSite).toHaveBeenCalledTimes(2)
+    expect(s.data.sites.find(x => x.id === 'b')!.status).toBe('dead') // 未选中的 b 保持原状态
+    expect(s.progress.done).toBe(2)
+    expect(s.selectedIds).toEqual([])
+  })
+
   it('checkAll skips when already checking', async () => {
     const s = useAppStore()
     s.data = baseData
@@ -476,23 +521,29 @@ describe('app store', () => {
     expect(s.data.sites.every(x => !x.tags.includes('框架'))).toBe(true)
   })
 
-  it('cancelCheck stops checkAll after current site', async () => {
+  it('cancelCheck stops checkAll after in-flight sites', async () => {
     const s = useAppStore()
-    s.data = baseData
+    s.data = {
+      version: 1,
+      categories: [],
+      sites: ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(id => ({
+        id, name: id.toUpperCase(), url: `https://${id}.dev`, categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '',
+      })),
+      recycleBin: [],
+      tags: [],
+    }
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
     const resolvers: ((v: any) => void)[] = []
     vi.mocked(api.checkSite).mockImplementation(() => new Promise<any>(res => resolvers.push(res)))
     const promise = s.checkAll()
     for (let i = 0; i < 10; i++) await Promise.resolve()
-    expect(resolvers.length).toBe(1)
-    resolvers[0]({ status: 'ok', usedUrl: 'x' })
-    for (let i = 0; i < 10; i++) await Promise.resolve()
+    expect(resolvers.length).toBe(5) // 5 个 worker 同时在检，剩余 2 个未开始
     s.cancelCheck()
-    resolvers[1]({ status: 'dead', usedUrl: 'x' })
+    resolvers.forEach(r => r({ status: 'ok', usedUrl: 'x' }))
     await promise
-    expect(api.checkSite).toHaveBeenCalledTimes(2) // 只测到 b 就停
-    expect(s.data.sites.filter(x => x.lastCheck).length).toBe(2) // a、b 结果保留
-    expect(s.progress.done).toBe(2)
+    expect(api.checkSite).toHaveBeenCalledTimes(5) // f、g 不再发起
+    expect(s.data.sites.filter(x => x.lastCheck).length).toBe(5) // 在检的结果保留
+    expect(s.progress.done).toBe(5)
     expect(s.checking).toBe(false)
     expect(s.cancelled).toBe(true)
   })
