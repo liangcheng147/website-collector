@@ -5,5 +5,6 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     globals: true,
+    exclude: ["e2e/**", "node_modules/**"],
   },
 });
