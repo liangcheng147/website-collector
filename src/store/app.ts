@@ -542,6 +542,8 @@ export const useAppStore = defineStore('app', {
     async checkOne(id: string) {
       if (this.checking) return
       this.cancelled = false
+      if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
+      this.connectivityError = false
       const s = this.data.sites.find(x => x.id === id)
       if (!s) return
       await this.checkSiteWithVerify(s)

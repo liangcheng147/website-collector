@@ -556,6 +556,16 @@ describe('app store', () => {
     expect(api.checkSite).not.toHaveBeenCalled()
   })
 
+  it('checkOne aborts when offline', async () => {
+    const s = useAppStore()
+    s.data = makeData()
+    s.data.sites.forEach(x => x.status = 'unknown') // baseData 状态不全是 unknown，先归位再验证未误标
+    vi.mocked(api.checkConnectivity).mockResolvedValueOnce(false) // 用 once 避免污染后续测试的默认实现
+    await s.checkOne('a')
+    expect(s.connectivityError).to.equal(true)
+    expect(s.data.sites.find(x => x.id === 'a')?.status).to.equal('unknown')
+  })
+
   it('checkAll verifies dead sites via webview', async () => {
     const s = useAppStore()
     s.data = baseData // a:ok, b:dead, c:unknown
