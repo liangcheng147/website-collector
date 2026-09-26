@@ -50,23 +50,34 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: ${{ github.ref_name }}
           releaseBody: |
-            ## 归集 v0.1.5
+            ## SiteCollector v0.2.0
 
             本地优先的网站收藏桌面应用（Tauri 2 + Vue 3 + Rust）。
 
-            ### 本版本更新
-            - 全新青绿色高级感主题（浅色 / 深色），替代原靛蓝配色
-            - 站点列表、管理页、侧栏等界面重新打磨，修复悬停列宽重排 / 管理页间距 / 标签下拉错位
-            - 可复用标签选择器（chip + 补全 + 新建 + 去重）
-            - 列表键盘流（上下移动 / 全选 / 删除 / 打开）
-            - 表头点击排序、回收站二次确认等体验优化
-            - 弹窗定位居中（Teleport 到 body），导入/管理改为分段开关样式
-            - 修复暗色模式下分段开关、按钮、复选框的文字对比度
-            - 侧栏新增「未分类」视图：无分类站点集中展示并带计数，内部拖拽归类 / 删除 / 加标签 / 检测等操作与正常分类一致；可拖拽站点到该视图解除分类
+            ### 新功能
+            - 多选拖拽：选中多个站点后拖拽其中一个，全部移动到目标分类
+            - 浏览器书签导入/导出：支持 Netscape HTML 格式，与 Chrome/Firefox/Edge 互通
+            - URL 自动获取标题：输入链接后自动抓取网页标题填入名称（支持手动重试）
+            - 并发检测：5 个站点同时检测，速度提升约 5 倍
+            - 编辑时 URL 去重：防止编辑后与其他站点链接冲突
+            - 排序扩展：新增按分类名、备注、检测时间排序（中文拼音排序）
+            - 筛选结果计数：状态栏显示"共 X 个 · 当前 Y 个"
+            - 空状态引导：空列表/空回收站/无筛选结果时显示友好图标和提示
+            - 备注字数放宽：50 字 → 200 字，带字数统计
+
+            ### Bug 修复
+            - checkOne 离线预检：右键单个检测时若网络断开则中止，不误标失效
+            - 原子写入：数据文件写入使用 tmp+rename，防止崩溃时损坏 JSON
+            - 版本号对齐：统一 package.json / Cargo.toml / tauri.conf.json 版本为 0.2.0
+
+            ### 其他
+            - 安装目录改为英文 `C:\Program Files\SiteCollector`
+            - 新增 Playwright E2E 测试（30 个端到端测试场景）
+            - 新增 StatusBar / RecycleView / AddEditModal 组件测试
 
             ### 安装
-            - `归集_0.1.5_x64-setup.exe`：NSIS 安装包
-            - `归集_0.1.5_x64_zh-CN.msi`：MSI 安装包
+            - `SiteCollector_0.2.0_x64-setup.exe`：NSIS 安装包
+            - `SiteCollector_0.2.0_x64_en-US.msi`：MSI 安装包
 
             > 本版本由 GitHub Actions 自动构建并生成。
           releaseDraft: true
