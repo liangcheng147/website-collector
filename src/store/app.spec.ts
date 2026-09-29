@@ -155,14 +155,14 @@ describe('app store', () => {
     const s = useAppStore()
     await s.updateSettings({ zoom: 150 })
     expect(s.settings.zoom).toBe(150)
-    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', zoom: 150, sidebarCollapsed: [], collapsedCategories: [] })
+    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', palette: 'teal', zoom: 150, sidebarCollapsed: [], collapsedCategories: [] })
   })
 
   it('init loads settings', async () => {
     vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', zoom: 130, sidebarCollapsed: [], collapsedCategories: [] })
     const s = useAppStore()
     await s.init()
-    expect(s.settings).toEqual({ theme: 'dark', zoom: 130, sidebarCollapsed: [], collapsedCategories: [] })
+    expect(s.settings).toEqual({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [] })
   })
 
   it('init keeps defaults when getSettings omits collapsedCategories', async () => {
