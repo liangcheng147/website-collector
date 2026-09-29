@@ -285,3 +285,42 @@ html[data-palette="slate"][data-theme="dark"] { --primary:#64748B; --primary-w:#
 html[data-palette="stone"][data-theme="dark"] { --primary:#78716C; --primary-w:#A8A29E; --primary-t:#292524; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(120,113,108,.32); }
 html[data-palette="sky"][data-theme="dark"] { --primary:#38BDF8; --primary-w:#7DD3FC; --primary-t:#0C4A6E; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(56,189,248,.32); }
 html[data-palette="plum"][data-theme="dark"] { --primary:#C026D3; --primary-w:#E879F9; --primary-t:#3B0764; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(192,38,211,.32); }
+
+/* ---- 配色选择器 ---- */
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+.palette-swatch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color .15s, transform .15s;
+}
+.palette-swatch:hover { border-color: var(--primary); }
+.palette-swatch.active {
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+  transform: scale(1.03);
+}
+.palette-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--swatch-color);
+  flex-shrink: 0;
+}
+.palette-name {
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
