@@ -159,7 +159,7 @@ describe('app store', () => {
   })
 
   it('init loads settings', async () => {
-    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', zoom: 130, sidebarCollapsed: [], collapsedCategories: [] })
+    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [] })
     const s = useAppStore()
     await s.init()
     expect(s.settings).toEqual({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [] })
