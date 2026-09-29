@@ -169,6 +169,8 @@ export const useAppStore = defineStore('app', {
     async updateSettings(patch: Partial<Settings>) {
       this.settings = { ...this.settings, ...patch }
       this.applyAppearance()
+      if (patch.theme) try { localStorage.setItem('site-collector-theme', patch.theme) } catch (e) {}
+      if (patch.palette) try { localStorage.setItem('site-collector-palette', patch.palette) } catch (e) {}
       try { await api.setSettings(this.settings) } catch (e) { this.flash('设置保存失败：' + e) }
     },
     toggleCategoryCollapse(id: string) {
