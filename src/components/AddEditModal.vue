@@ -87,6 +87,8 @@ function save() {
             </button>
           </div>
           <p v-if="titleError" class="err">⚠ {{ titleError }}</p>
+        </div>
+        <div>
           <label>分类</label>
           <select v-model="categoryId" @change="onCatChange">
             <option :value="null">未分类</option>
@@ -95,18 +97,14 @@ function save() {
           </select>
           <label>标签</label>
           <TagInput :model-value="tags" :available="store.data.tags" @update:model-value="tags = $event" />
-          <label>备注（200 字以内）</label>
-          <textarea v-model="note" maxlength="200" style="height:52px;resize:none" placeholder="网站简介" @keydown.enter.prevent></textarea>
-          <span class="char-count">{{ note.length }}/200</span>
-          <p v-if="dup" class="err">⚠ 链接已存在</p>
-          <p v-if="validationMsg" class="err">⚠ {{ validationMsg }}</p>
-          <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="save">保存</button></div>
-        </div>
-        <div class="help">
-          <label>快捷操作</label>
-          <p class="muted">下拉选择「＋ 新建分类…」会弹出新建分类弹窗，创建后自动选中新分类，表单内容保留。</p>
         </div>
       </div>
+      <label>备注（200 字以内）</label>
+      <textarea v-model="note" maxlength="200" style="height:80px;resize:none" placeholder="网站简介" @keydown.enter.prevent></textarea>
+      <span class="char-count">{{ note.length }}/200</span>
+      <p v-if="dup" class="err">⚠ 链接已存在</p>
+      <p v-if="validationMsg" class="err">⚠ {{ validationMsg }}</p>
+      <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="save">保存</button></div>
     </div>
     <Transition name="mask"><AddCategoryModal v-if="showAddCat" :parent-id="pendingCat" @created="onCatCreated" @close="showAddCat = false" /></Transition>
   </ModalMask>

@@ -6,14 +6,17 @@ use std::path::{Path, PathBuf};
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     #[serde(default)] pub theme: String,
+    #[serde(default = "default_palette")] pub palette: String,
     #[serde(default)] pub zoom: u32,
     #[serde(default)] pub sidebar_collapsed: Vec<String>,
     #[serde(default)] pub collapsed_categories: Vec<String>,
 }
 
+fn default_palette() -> String { "teal".into() }
+
 impl Settings {
     pub fn defaults() -> Self {
-        Settings { theme: "system".into(), zoom: 100, sidebar_collapsed: vec![], collapsed_categories: vec![] }
+        Settings { theme: "system".into(), palette: "teal".into(), zoom: 100, sidebar_collapsed: vec![], collapsed_categories: vec![] }
     }
 }
 
@@ -115,6 +118,24 @@ mod tests {
         save_settings(&d, &s).unwrap();
         let loaded = load_settings(&d);
         assert_eq!(loaded.collapsed_categories, vec!["c1".to_string(), "c2".to_string()]);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn palette_roundtrip() {
+        let d = tmp_dir("palette_roundtrip");
+        let mut s = Settings::defaults();
+        s.palette = "ocean".into();
+        save_settings(&d, &s).unwrap();
+        assert_eq!(load_settings(&d).palette, "ocean");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn missing_palette_defaults_teal() {
+        let d = tmp_dir("palette_missing");
+        fs::write(settings_file_path(&d), r#"{"theme":"dark","zoom":110}"#).unwrap();
+        assert_eq!(load_settings(&d).palette, "teal");
         let _ = fs::remove_dir_all(&d);
     }
 }

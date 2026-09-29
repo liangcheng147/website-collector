@@ -7,6 +7,7 @@ export interface Site {
 }
 export interface Settings {
   theme: 'system' | 'light' | 'dark'
+  palette: string
   zoom: number
   sidebarCollapsed: string[]
   collapsedCategories: string[]

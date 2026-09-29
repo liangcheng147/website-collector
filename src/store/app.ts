@@ -52,7 +52,7 @@ export const useAppStore = defineStore('app', {
     connectivityError: false,
     flashMsg: '',
     location: { dir: '', isFallback: false },
-    settings: { theme: 'system', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] } as Settings,
+    settings: { theme: 'system', palette: 'teal', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] } as Settings,
     sortKey: null as 'name' | 'url' | 'status' | 'category' | 'note' | 'lastCheck' | null,
     sortDir: 'asc' as 'asc' | 'desc',
   }),
@@ -150,6 +150,7 @@ export const useAppStore = defineStore('app', {
       const s = this.settings
       const dark = s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
       document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      document.documentElement.dataset.palette = s.palette || 'teal'
 
       const app = document.querySelector('.app') as HTMLElement | null
       if (!app) return

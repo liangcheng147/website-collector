@@ -12,6 +12,24 @@ onMounted(async () => { filePath.value = await api.getDataFilePath() })
 function setTheme(t: string) {
   store.updateSettings({ theme: (['system', 'light', 'dark'].includes(t) ? t : 'system') as 'system' | 'light' | 'dark' })
 }
+const palettes = [
+  { id: 'teal', color: '#0D9488', name: '青绿' },
+  { id: 'ocean', color: '#2563EB', name: '海洋' },
+  { id: 'indigo', color: '#4F46E5', name: '靛青' },
+  { id: 'violet', color: '#7C3AED', name: '紫罗兰' },
+  { id: 'rose', color: '#E11D48', name: '玫瑰' },
+  { id: 'amber', color: '#D97706', name: '琥珀' },
+  { id: 'emerald', color: '#059669', name: '翡翠' },
+  { id: 'slate', color: '#475569', name: '石墨' },
+  { id: 'stone', color: '#57534E', name: '砂岩' },
+  { id: 'sky', color: '#0284C7', name: '天空' },
+  { id: 'plum', color: '#A21CAF', name: '梅紫' },
+] as const
+
+function setPalette(id: string) {
+  store.updateSettings({ palette: id })
+}
+
 function onZoom(e: Event) { store.updateSettings({ zoom: Number((e.target as HTMLInputElement).value) }) }
 async function openDir() {
   try { await api.openDataDir(); msg.value = '已打开数据目录' } catch (e) { msg.value = '打开失败：' + e }
@@ -36,6 +54,21 @@ async function openDir() {
           <option value="dark">暗色</option>
         </select>
         <p class="muted">跟随系统：启动时读取系统主题，运行中不实时切换。</p>
+        <label style="margin-top:14px">配色方案</label>
+        <div class="palette-grid">
+          <button
+            v-for="p in palettes"
+            :key="p.id"
+            class="palette-swatch"
+            :class="{ active: store.settings.palette === p.id }"
+            :style="{ '--swatch-color': p.color }"
+            :title="p.name"
+            @click="setPalette(p.id)"
+          >
+            <span class="palette-dot"></span>
+            <span class="palette-name">{{ p.name }}</span>
+          </button>
+        </div>
       </template>
 
       <template v-else-if="section === 'display'">

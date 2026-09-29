@@ -258,3 +258,69 @@ input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
 
 .site-table th.sortable { cursor: pointer; user-select: none; }
 .site-table th.sortable:hover { color: var(--primary); }
+
+/* ---- 配色系统 ---- */
+/* 每套配色定义 6 个变量：--primary, --primary-w, --primary-t, --ok, --pending, --ring */
+/* 亮色版本 */
+
+html[data-palette="ocean"][data-theme="light"] { --primary:#2563EB; --primary-w:#1E40AF; --primary-t:#DBEAFE; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(37,99,235,.30); }
+html[data-palette="indigo"][data-theme="light"] { --primary:#4F46E5; --primary-w:#3730A3; --primary-t:#E0E7FF; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(79,70,229,.30); }
+html[data-palette="violet"][data-theme="light"] { --primary:#7C3AED; --primary-w:#6D28D9; --primary-t:#EDE9FE; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(124,58,237,.30); }
+html[data-palette="rose"][data-theme="light"] { --primary:#E11D48; --primary-w:#BE123C; --primary-t:#FFE4E6; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(225,29,72,.30); }
+html[data-palette="amber"][data-theme="light"] { --primary:#D97706; --primary-w:#B45309; --primary-t:#FEF3C7; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(217,119,6,.30); }
+html[data-palette="emerald"][data-theme="light"] { --primary:#059669; --primary-w:#047857; --primary-t:#D1FAE5; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(5,150,105,.30); }
+html[data-palette="slate"][data-theme="light"] { --primary:#475569; --primary-w:#334155; --primary-t:#F1F5F9; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(71,85,105,.30); }
+html[data-palette="stone"][data-theme="light"] { --primary:#57534E; --primary-w:#44403C; --primary-t:#F5F5F4; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(87,83,78,.30); }
+html[data-palette="sky"][data-theme="light"] { --primary:#0284C7; --primary-w:#0369A1; --primary-t:#E0F2FE; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(2,132,199,.30); }
+html[data-palette="plum"][data-theme="light"] { --primary:#A21CAF; --primary-w:#86198F; --primary-t:#FAE8FF; --ok:#16A34A; --pending:#D97706; --ring:0 0 0 3px rgba(162,28,175,.30); }
+
+/* 暗色版本 */
+html[data-palette="ocean"][data-theme="dark"] { --primary:#3B82F6; --primary-w:#60A5FA; --primary-t:#1E3A5F; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(59,130,246,.32); }
+html[data-palette="indigo"][data-theme="dark"] { --primary:#6366F1; --primary-w:#818CF8; --primary-t:#312E81; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(99,102,241,.32); }
+html[data-palette="violet"][data-theme="dark"] { --primary:#8B5CF6; --primary-w:#A78BFA; --primary-t:#4C1D95; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(139,92,246,.32); }
+html[data-palette="rose"][data-theme="dark"] { --primary:#F43F5E; --primary-w:#FB7185; --primary-t:#4C1D33; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(244,63,94,.32); }
+html[data-palette="amber"][data-theme="dark"] { --primary:#F59E0B; --primary-w:#FBBF24; --primary-t:#4A3506; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(245,158,11,.32); }
+html[data-palette="emerald"][data-theme="dark"] { --primary:#10B981; --primary-w:#34D399; --primary-t:#064E3B; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(16,185,129,.32); }
+html[data-palette="slate"][data-theme="dark"] { --primary:#64748B; --primary-w:#94A3B8; --primary-t:#1E293B; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(100,116,139,.32); }
+html[data-palette="stone"][data-theme="dark"] { --primary:#78716C; --primary-w:#A8A29E; --primary-t:#292524; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(120,113,108,.32); }
+html[data-palette="sky"][data-theme="dark"] { --primary:#38BDF8; --primary-w:#7DD3FC; --primary-t:#0C4A6E; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(56,189,248,.32); }
+html[data-palette="plum"][data-theme="dark"] { --primary:#C026D3; --primary-w:#E879F9; --primary-t:#3B0764; --ok:#4ADE80; --pending:#FBBF24; --ring:0 0 0 3px rgba(192,38,211,.32); }
+
+/* ---- 配色选择器 ---- */
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+.palette-swatch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color .15s, transform .15s;
+}
+.palette-swatch:hover { border-color: var(--primary); }
+.palette-swatch.active {
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+  transform: scale(1.03);
+}
+.palette-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--swatch-color);
+  flex-shrink: 0;
+}
+.palette-name {
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
