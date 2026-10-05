@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     #[serde(default)] pub theme: String,
@@ -158,6 +158,15 @@ mod tests {
         s.auto_check_update = false;
         save_settings(&d, &s).unwrap();
         assert!(!load_settings(&d).auto_check_update);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn serialized_keys_are_camel_case() {
+        let d = tmp_dir("camel_case_keys");
+        save_settings(&d, &Settings::defaults()).unwrap();
+        let raw = fs::read_to_string(settings_file_path(&d)).unwrap();
+        assert!(raw.contains("\"autoCheckUpdate\""), "settings.json should use camelCase keys, got: {}", raw);
         let _ = fs::remove_dir_all(&d);
     }
 }
