@@ -66,7 +66,7 @@ html.win-maximized .app { border-radius:0; }
 
 .sidebar { background: var(--panel); border-right: 1px solid var(--border); padding: 10px 8px; display: flex; flex-direction: column; min-height: 0; }
 .sidebar-scroll { flex: 1 1 auto; overflow: auto; min-height: 0; }
-.sidebar .group-card { background: var(--panel); border-radius: var(--radius-md); padding: var(--space-2); margin-bottom: var(--space-3); }
+.sidebar .group-card { background: var(--bg); border-radius: var(--radius-md); padding: var(--space-2); margin-bottom: var(--space-3); }
 .sidebar-fixed { flex: 0 0 auto; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 6px; }
 .sidebar .tag-scroll { max-height: 180px; overflow: auto; }
 .sidebar .group-actions { margin-left:auto; display:inline-flex; gap:6px; opacity:0; transition:opacity .15s var(--ease); }
