@@ -1,15 +1,48 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
+import { getVersion } from '@tauri-apps/api/app'
 import ModalMask from './ModalMask.vue'
 import * as api from '../api'
+import * as updater from '../updater'
 import { useAppStore } from '../store/app'
 const emit = defineEmits(['close'])
 const store = useAppStore()
 const filePath = ref('')
 const msg = ref('')
-const section = ref<'theme' | 'display' | 'storage'>('theme')
-onMounted(async () => { filePath.value = await api.getDataFilePath() })
+const section = ref<'theme' | 'display' | 'storage' | 'about'>('theme')
+onMounted(async () => {
+  filePath.value = await api.getDataFilePath()
+  appVersion.value = await getVersion()
+})
+const appVersion = ref('')
+const updateState = ref<'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'error'>('idle')
+const updateInfo = ref<Awaited<ReturnType<typeof updater.checkForUpdate>>>(null)
+const userAgent = navigator.userAgent
+const downloadPct = ref(0)
+const updateMsg = ref('')
+async function checkNow() {
+  updateState.value = 'checking'; updateMsg.value = ''
+  const u = await updater.checkForUpdate()
+  if (u) { updateInfo.value = u; updateState.value = 'available' }
+  else { updateState.value = 'none'; updateMsg.value = '已是最新版本' }
+}
+async function installNow() {
+  if (!updateInfo.value) return
+  updateState.value = 'downloading'; downloadPct.value = 0
+  try {
+    let total = 0
+    await updater.downloadAndInstall(updateInfo.value as updater.Update, (d, t) => {
+      if (t) total = t
+      if (total > 0) downloadPct.value = Math.round((d / total) * 100)
+    })
+    updateState.value = 'ready'
+  } catch (e) { updateState.value = 'error'; updateMsg.value = '下载失败：' + e }
+}
+async function doRelaunch() { await updater.relaunchApp() }
+function toggleAutoCheck(e: Event) {
+  store.updateSettings({ autoCheckUpdate: (e.target as HTMLInputElement).checked })
+}
 function setTheme(t: string) {
   store.updateSettings({ theme: (['system', 'light', 'dark'].includes(t) ? t : 'system') as 'system' | 'light' | 'dark' })
 }
@@ -45,6 +78,7 @@ async function openDir() {
         <button class="btn" :class="{ active: section === 'theme' }" @click="section = 'theme'">主题</button>
         <button class="btn" :class="{ active: section === 'display' }" @click="section = 'display'">显示</button>
         <button class="btn" :class="{ active: section === 'storage' }" @click="section = 'storage'">数据存储</button>
+        <button class="btn" :class="{ active: section === 'about' }" @click="section = 'about'">关于</button>
       </div>
 
       <template v-if="section === 'theme'">
@@ -82,7 +116,7 @@ async function openDir() {
         <p class="muted">整体放大或缩小界面文字与控件，步进 10%。</p>
       </template>
 
-      <template v-else>
+      <template v-else-if="section === 'storage'">
         <div class="modal-cols">
           <div>
             <label>数据文件</label>
@@ -95,6 +129,36 @@ async function openDir() {
             <p v-if="store.location.isFallback" class="muted" style="color:var(--pending-txt)"><AlertTriangle :size="12" /> 当前正使用系统目录（安装位置无写入权限）。</p>
           </div>
         </div>
+      </template>
+
+      <template v-else-if="section === 'about'">
+        <label>软件</label>
+        <p>SiteCollector v{{ appVersion }}</p>
+        <label style="margin-top:14px">链接</label>
+        <p class="muted"><a @click.prevent="api.openLink('https://github.com/liangcheng147/website-collector')">GitHub 仓库</a> · 作者 bjb · MIT License</p>
+        <label style="margin-top:14px">更新</label>
+        <div class="actions" style="justify-content:flex-start">
+          <button class="btn primary" :disabled="updateState === 'checking' || updateState === 'downloading'" @click="checkNow">检查更新</button>
+        </div>
+        <p v-if="updateState === 'checking'" class="muted">检查中…</p>
+        <p v-else-if="updateState === 'none'" class="muted">{{ updateMsg }}</p>
+        <div v-else-if="updateState === 'available' && updateInfo">
+          <p>发现新版本 v{{ updateInfo.version }}</p>
+          <p class="muted" style="white-space:pre-wrap">{{ updateInfo.body }}</p>
+          <button class="btn primary" @click="installNow">下载并安装</button>
+        </div>
+        <div v-else-if="updateState === 'downloading'">
+          <p class="muted">下载中 {{ downloadPct }}%</p>
+          <progress :value="downloadPct" max="100" style="width:100%"></progress>
+        </div>
+        <div v-else-if="updateState === 'ready'">
+          <p>已下载完成，重启后生效。</p>
+          <button class="btn primary" @click="doRelaunch">立即重启</button>
+        </div>
+        <p v-else-if="updateState === 'error'" class="muted">{{ updateMsg }}</p>
+        <label style="margin-top:14px"><input type="checkbox" :checked="store.settings.autoCheckUpdate" @change="toggleAutoCheck" /> 启动时自动检查更新</label>
+        <label style="margin-top:14px">技术信息</label>
+        <p class="muted">{{ userAgent }}</p>
       </template>
 
       <p class="muted">{{ msg }}</p>
