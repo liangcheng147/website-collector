@@ -12,7 +12,7 @@ const store = useAppStore()
         · 当前 {{ store.filteredSites.length }} 个
       </template>
     </span>
-    <span class="bad">失效 {{ store.deadCount }}</span>
+    <span class="statusbar-badge danger">失效 {{ store.deadCount }}</span>
     <span>未检测 {{ store.data.sites.filter(s => s.status === 'unknown').length }}</span>
     <span>上次检测 {{ store.lastCheckTime }}</span>
     <span v-if="store.checking">检测中 {{ store.progress.done }}/{{ store.progress.total }}</span>

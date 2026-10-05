@@ -98,6 +98,8 @@ html.win-maximized .app { border-radius:0; }
 .statusbar .bad { color:var(--danger); font-weight:700; }
 .statusbar .pending-hint { color:var(--pending-txt); font-weight:700; }
 .statusbar .flash-ok { color:var(--ok-txt); font-weight:700; }
+.statusbar-badge { display:inline-flex; align-items:center; padding:1px 8px; border-radius:var(--radius-full); font-weight:600; font-size:12px; }
+.statusbar-badge.danger { background:var(--danger-bg); color:var(--danger); }
 
 .body > * { min-height:0; }
 .content { scroll-behavior:smooth; }
