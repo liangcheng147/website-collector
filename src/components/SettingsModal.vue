@@ -17,24 +17,26 @@ onMounted(async () => {
 })
 const appVersion = ref('')
 const updateState = ref<'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'error'>('idle')
-const updateInfo = ref<Awaited<ReturnType<typeof updater.checkForUpdate>>>(null)
+const updateInfo = ref<updater.Update | null>(null)
 const userAgent = navigator.userAgent
 const downloadPct = ref(0)
+const downloadKnown = ref(false)
 const updateMsg = ref('')
 async function checkNow() {
   updateState.value = 'checking'; updateMsg.value = ''
-  const u = await updater.checkForUpdate()
-  if (u) { updateInfo.value = u; updateState.value = 'available' }
+  const res = await updater.checkForUpdate()
+  if (!res.ok) { updateState.value = 'error'; updateMsg.value = '检查失败：' + res.error; return }
+  if (res.update) { updateInfo.value = res.update; updateState.value = 'available' }
   else { updateState.value = 'none'; updateMsg.value = '已是最新版本' }
 }
 async function installNow() {
   if (!updateInfo.value) return
-  updateState.value = 'downloading'; downloadPct.value = 0
+  updateState.value = 'downloading'; downloadPct.value = 0; downloadKnown.value = false
   try {
-    let total = 0
-    await updater.downloadAndInstall(updateInfo.value as updater.Update, (d, t) => {
-      if (t) total = t
-      if (total > 0) downloadPct.value = Math.round((d / total) * 100)
+    await updater.downloadAndInstall(updateInfo.value as updater.Update, (p) => {
+      if (p.finished) { downloadPct.value = 100; downloadKnown.value = false; return }
+      const total = p.total ?? 0
+      if (total > 0) { downloadKnown.value = true; downloadPct.value = Math.min(100, Math.round((p.downloaded / total) * 100)) }
     })
     updateState.value = 'ready'
   } catch (e) { updateState.value = 'error'; updateMsg.value = '下载失败：' + e }
@@ -148,8 +150,11 @@ async function openDir() {
           <button class="btn primary" @click="installNow">下载并安装</button>
         </div>
         <div v-else-if="updateState === 'downloading'">
-          <p class="muted">下载中 {{ downloadPct }}%</p>
-          <progress :value="downloadPct" max="100" style="width:100%"></progress>
+          <template v-if="downloadKnown">
+            <p class="muted">下载中 {{ downloadPct }}%</p>
+            <progress :value="downloadPct" max="100" style="width:100%"></progress>
+          </template>
+          <p v-else class="muted">下载中…</p>
         </div>
         <div v-else-if="updateState === 'ready'">
           <p>已下载完成，重启后生效。</p>
