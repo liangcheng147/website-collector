@@ -29,6 +29,10 @@ body {
   text-rendering:optimizeLegibility; font-feature-settings:"cv11","ss01","tnum";
 }
 input, textarea, select { user-select:text; -webkit-user-select:text; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 [draggable="true"] { -webkit-user-drag:element; }
 button { font-family:var(--font); font-size:13px; font-weight:500; border:1px solid var(--border-2); background:#fff; border-radius:var(--radius); padding:5px 12px; color:var(--text); cursor:pointer; transition:background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease), transform .08s var(--ease), box-shadow .16s var(--ease); }
 button:hover { background:var(--hover); }
