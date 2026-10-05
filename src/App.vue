@@ -14,6 +14,7 @@ import PickCategoryModal from './components/PickCategoryModal.vue'
 import AddTagsModal from './components/AddTagsModal.vue'
 import ManageView from './components/ManageView.vue'
 import type { Site } from './types'
+import { checkForUpdate } from './updater'
 
 const store = useAppStore()
 const modal = ref<'' | 'add' | 'import' | 'settings'>('')
@@ -38,6 +39,10 @@ function onKey(e: KeyboardEvent) {
 onMounted(async () => {
   document.addEventListener('keydown', onKey)
   await store.init()
+  if (store.settings.autoCheckUpdate) {
+    const u = await checkForUpdate()
+    if (u) store.flash(`发现新版本 v${u.version}，请到设置 → 关于中更新`)
+  }
 })
 onUnmounted(() => document.removeEventListener('keydown', onKey))
 </script>
