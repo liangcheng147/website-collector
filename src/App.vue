@@ -40,8 +40,8 @@ onMounted(async () => {
   document.addEventListener('keydown', onKey)
   await store.init()
   if (store.settings.autoCheckUpdate) {
-    const u = await checkForUpdate()
-    if (u) store.flash(`发现新版本 v${u.version}，请到设置 → 关于中更新`)
+    const res = await checkForUpdate()
+    if (res.ok && res.update) store.flash(`发现新版本 v${res.update.version}，请到设置 → 关于中更新`, 6000)
   }
 })
 onUnmounted(() => document.removeEventListener('keydown', onKey))

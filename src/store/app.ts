@@ -141,9 +141,9 @@ export const useAppStore = defineStore('app', {
     },
     async persist() { await api.saveData(this.data) },
     setData(d: AppData) { this.data = d; this.persist() },
-    flash(msg: string) {
+    flash(msg: string, ms: number = FLASH_DURATION_MS) {
       this.flashMsg = msg
-      setTimeout(() => { this.flashMsg = '' }, FLASH_DURATION_MS)
+      setTimeout(() => { this.flashMsg = '' }, ms)
     },
     applyAppearance() {
       if (typeof document === 'undefined') return
