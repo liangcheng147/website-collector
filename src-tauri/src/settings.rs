@@ -10,13 +10,16 @@ pub struct Settings {
     #[serde(default)] pub zoom: u32,
     #[serde(default)] pub sidebar_collapsed: Vec<String>,
     #[serde(default)] pub collapsed_categories: Vec<String>,
+    #[serde(default = "default_true")] pub auto_check_update: bool,
 }
 
 fn default_palette() -> String { "teal".into() }
 
+fn default_true() -> bool { true }
+
 impl Settings {
     pub fn defaults() -> Self {
-        Settings { theme: "system".into(), palette: "teal".into(), zoom: 100, sidebar_collapsed: vec![], collapsed_categories: vec![] }
+        Settings { theme: "system".into(), palette: "teal".into(), zoom: 100, sidebar_collapsed: vec![], collapsed_categories: vec![], auto_check_update: true }
     }
 }
 
@@ -136,6 +139,25 @@ mod tests {
         let d = tmp_dir("palette_missing");
         fs::write(settings_file_path(&d), r#"{"theme":"dark","zoom":110}"#).unwrap();
         assert_eq!(load_settings(&d).palette, "teal");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn missing_auto_check_update_defaults_true() {
+        let d = tmp_dir("auto_check_missing");
+        fs::write(settings_file_path(&d), r#"{"theme":"dark","zoom":110}"#).unwrap();
+        let s = load_settings(&d);
+        assert!(s.auto_check_update);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn auto_check_update_roundtrip() {
+        let d = tmp_dir("auto_check_roundtrip");
+        let mut s = Settings::defaults();
+        s.auto_check_update = false;
+        save_settings(&d, &s).unwrap();
+        assert!(!load_settings(&d).auto_check_update);
         let _ = fs::remove_dir_all(&d);
     }
 }
