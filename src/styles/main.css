@@ -214,6 +214,8 @@ html[data-theme="dark"] .titlebar .mark { color:#0B0D12; }
 html[data-theme="dark"] .modal-mask { background:rgba(0,0,0,.6); }
 html[data-theme="dark"] .open-btn { color:#06201C; }
 html[data-theme="dark"] .cb.checked::after { border-color:#06201C; }
+html[data-theme="dark"] .btn.primary { box-shadow: 0 0 8px rgba(45,212,191,.3); }
+html[data-theme="dark"] .titlebar .mark { box-shadow: 0 0 8px rgba(45,212,191,.2); }
 
 /* ---- 设置弹窗分区 ---- */
 .seg { display:flex; gap:6px; margin-bottom:14px; }
