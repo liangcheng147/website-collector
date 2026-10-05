@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { Trash2 } from 'lucide-vue-next'
 import { useAppStore } from '../store/app'
 import { useSelection } from '../composables/useSelection'
 import ConfirmModal from './ConfirmModal.vue'
@@ -28,7 +29,7 @@ function doDelete(mode: string) {
     <div class="manage-card">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <h4>分类列表</h4>
-        <button class="btn danger" :disabled="!sel.selected.value.length" @click="delMode = true">🗑 批量删除所选</button>
+        <button class="btn danger" :disabled="!sel.selected.value.length" @click="delMode = true"><Trash2 :size="14" /> 批量删除所选</button>
       </div>
       <div class="cat-head">
         <span class="chk-col"><span class="cb" :class="{ checked: sel.allSelected.value }" @click="sel.selectAll()"></span></span><span class="name-col">分类</span><span class="cnt-col">网站数</span>

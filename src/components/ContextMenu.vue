@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, nextTick } from 'vue'
+import { Play } from 'lucide-vue-next'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
 const emit = defineEmits(['action', 'close'])
@@ -41,7 +42,7 @@ function act(kind: string) { emit('action', kind); store.clearSelection() }
         <button v-for="it in props.items" :key="it.kind" class="ctx-item" :class="{ danger: it.danger }" @click="act(it.kind)">{{ it.label }}</button>
       </template>
       <template v-else>
-        <button class="ctx-item" @click="act('check')">▶ 检测所选</button>
+        <button class="ctx-item" @click="act('check')"><Play :size="14" /> 检测所选</button>
         <button class="ctx-item" @click="act('move')">移动分类…</button>
         <button class="ctx-item" @click="act('tag')">添加标签…</button>
         <button class="ctx-item" @click="act('edit')">编辑</button>

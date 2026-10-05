@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Trash2 } from 'lucide-vue-next'
+import { Trash2, Undo2, X } from 'lucide-vue-next'
 import { useAppStore } from '../store/app'
 import { useSelection } from '../composables/useSelection'
 import ConfirmModal from './ConfirmModal.vue'
@@ -28,9 +28,9 @@ function onChoose(v: string) {
   <div>
     <div v-if="sel.selected.value.length" class="batchbar">
       <b>已选 {{ sel.selected.value.length }} 项</b>
-      <button class="btn" @click="restore">↩ 恢复所选</button>
-      <button class="btn danger" @click="askDelete">✕ 彻底删除所选</button>
-      <button class="btn" style="margin-left:auto" @click="sel.clear()">✕ 取消选择</button>
+      <button class="btn" @click="restore"><Undo2 :size="14" /> 恢复所选</button>
+      <button class="btn danger" @click="askDelete"><X :size="14" /> 彻底删除所选</button>
+      <button class="btn" style="margin-left:auto" @click="sel.clear()"><X :size="14" /> 取消选择</button>
     </div>
     <div v-else class="batchbar">
       <b>回收站 · {{ store.trashedSites.length }} 项</b>

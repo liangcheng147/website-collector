@@ -3,6 +3,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { UnfoldVertical, FoldVertical } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
 import { useAppStore } from '../store/app'
 
@@ -22,7 +23,7 @@ describe('Sidebar', () => {
     const catLabel = w.findAll('.group-label').find(l => l.text().startsWith('分类'))!
     const btns = catLabel.findAll('.group-btn')
     expect(btns).toHaveLength(2)
-    expect(btns[0].text()).toBe('⤢')
-    expect(btns[1].text()).toBe('⤡')
+    expect(btns[0].findComponent(UnfoldVertical).exists()).toBe(true)
+    expect(btns[1].findComponent(FoldVertical).exists()).toBe(true)
   })
 })

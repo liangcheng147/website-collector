@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { AlertTriangle, Trash2, UnfoldVertical, FoldVertical, ChevronRight, ChevronDown } from 'lucide-vue-next'
 import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
 import type { View } from '../types'
 import CategoryNode from './CategoryNode.vue'
@@ -70,10 +71,10 @@ function onTagDrop(e: DragEvent, t: string) {
 <template>
   <aside class="sidebar">
     <div class="sidebar-scroll">
-      <div class="group-label" @click="toggleGroup('分类')">分类 <span class="caret">{{ isCollapsed('分类') ? '▶' : '▼' }}</span>
+      <div class="group-label" @click="toggleGroup('分类')">分类 <span class="caret"><ChevronRight v-if="isCollapsed('分类')" :size="12" /><ChevronDown v-else :size="12" /></span>
         <span class="group-actions">
-          <button class="group-btn" type="button" title="展开全部" @click.stop="store.expandAllCategories()">⤢</button>
-          <button class="group-btn" type="button" title="收起全部" @click.stop="store.collapseAllCategories()">⤡</button>
+          <button class="group-btn" type="button" title="展开全部" @click.stop="store.expandAllCategories()"><UnfoldVertical :size="12" /></button>
+          <button class="group-btn" type="button" title="收起全部" @click.stop="store.collapseAllCategories()"><FoldVertical :size="12" /></button>
         </span>
       </div>
       <template v-if="!isCollapsed('分类')">
@@ -89,8 +90,8 @@ function onTagDrop(e: DragEvent, t: string) {
     </div>
     <div class="sidebar-fixed">
       <div class="group-label">视图</div>
-      <div class="row dead" :class="{ active: store.view.kind === 'dead' }" @click="setView('dead')">⚠ 失效 <span class="cnt">{{ store.deadCount }}</span></div>
-      <div class="group-label" @click="toggleGroup('标签')">标签 <span class="caret">{{ isCollapsed('标签') ? '▶' : '▼' }}</span></div>
+      <div class="row dead" :class="{ active: store.view.kind === 'dead' }" @click="setView('dead')"><AlertTriangle :size="14" /> 失效 <span class="cnt">{{ store.deadCount }}</span></div>
+      <div class="group-label" @click="toggleGroup('标签')">标签 <span class="caret"><ChevronRight v-if="isCollapsed('标签')" :size="12" /><ChevronDown v-else :size="12" /></span></div>
       <template v-if="!isCollapsed('标签')">
         <div class="tag-scroll">
           <div v-for="t in store.data.tags" :key="t" class="row"
@@ -106,7 +107,7 @@ function onTagDrop(e: DragEvent, t: string) {
         </div>
       </template>
       <div class="group-label">系统</div>
-      <div class="row trash" :class="{ active: store.view.kind === 'recycle' }" @click="setView('recycle')">🗑 回收站 <span class="cnt">{{ store.trashedSites.length }}</span></div>
+      <div class="row trash" :class="{ active: store.view.kind === 'recycle' }" @click="setView('recycle')"><Trash2 :size="14" /> 回收站 <span class="cnt">{{ store.trashedSites.length }}</span></div>
     </div>
     <Transition name="mask"><AddCategoryModal v-if="showAdd" :parent-id="null" @created="setView('category', $event); showAdd = false" @close="showAdd = false" /></Transition>
   </aside>

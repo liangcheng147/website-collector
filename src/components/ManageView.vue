@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ArrowLeft } from 'lucide-vue-next'
 import ManageCategories from './ManageCategories.vue'
 import ManageTags from './ManageTags.vue'
 const emit = defineEmits(['back'])
@@ -9,7 +10,7 @@ const tab = ref<'categories' | 'tags'>('categories')
 <template>
   <div class="manage">
     <div class="manage-bar">
-      <button class="btn" @click="emit('back')">← 返回主页面</button>
+      <button class="btn" @click="emit('back')"><ArrowLeft :size="14" /> 返回主页面</button>
       <span class="manage-title">管理</span>
       <div class="manage-tabs">
         <button class="btn" :class="{ active: tab === 'categories' }" @click="tab = 'categories'">分类</button>

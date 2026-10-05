@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { ChevronRight, ChevronDown } from 'lucide-vue-next'
 import { useAppStore } from '../store/app'
 import ContextMenu from './ContextMenu.vue'
 import PromptModal from './PromptModal.vue'
@@ -85,7 +86,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
         v-if="cat.children.length > 0"
         class="collapse-arrow"
         @click.stop="store.toggleCategoryCollapse(cat.id)"
-      >{{ store.settings.collapsedCategories.includes(cat.id) ? '▶' : '▼' }}</span>
+      ><ChevronRight v-if="store.settings.collapsedCategories.includes(cat.id)" :size="12" /><ChevronDown v-else :size="12" /></span>
       {{ cat.name }}
     </div>
     <div class="children" v-show="!store.settings.collapsedCategories.includes(cat.id)">

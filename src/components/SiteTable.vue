@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { FolderOpen } from 'lucide-vue-next'
+import { FolderOpen, Square, ExternalLink, X, ChevronUp, ChevronDown } from 'lucide-vue-next'
 import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
 import type { Site } from '../types'
 import * as api from '../api'
@@ -80,24 +80,24 @@ function onRowDragOver(e: DragEvent) {
   <div class="table-wrap">
     <div v-if="store.selectedIds.length" class="batchbar sticky-bar">
       <b>已选 {{ store.selectedIds.length }} 项</b>
-      <button v-if="store.checking" class="btn danger" @click="store.cancelCheck()">■ 取消检测</button>
-      <button v-else class="btn" @click="emit('check-site', [...store.selectedIds])">■ 检测所选</button>
+      <button v-if="store.checking" class="btn danger" @click="store.cancelCheck()"><Square :size="14" /> 取消检测</button>
+      <button v-else class="btn" @click="emit('check-site', [...store.selectedIds])"><Square :size="14" /> 检测所选</button>
       <button class="btn" :disabled="store.checking" @click="emit('move', [...store.selectedIds])">移动分类…</button>
       <button class="btn" :disabled="store.checking" @click="emit('tag', [...store.selectedIds])">添加标签…</button>
       <button class="btn danger" :disabled="store.checking" @click="store.deleteSites([...store.selectedIds])">删除所选</button>
-      <button class="btn" style="margin-left:auto" @click="store.clearSelection()">✕ 取消选择</button>
+      <button class="btn" style="margin-left:auto" @click="store.clearSelection()"><X :size="14" /> 取消选择</button>
     </div>
     <table class="site-table">
       <thead>
         <tr>
           <th><span class="cb" :class="{ checked: allSelected }" @click="store.selectAllVisible()"></span></th>
-          <th @click="store.toggleSort('name')" class="sortable">名称 <span v-if="store.sortKey==='name'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
-          <th @click="store.toggleSort('url')" class="sortable">链接 <span v-if="store.sortKey==='url'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
-          <th @click="store.toggleSort('category')" class="sortable">分类 <span v-if="store.sortKey==='category'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
+          <th @click="store.toggleSort('name')" class="sortable">名称 <span v-if="store.sortKey==='name'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('url')" class="sortable">链接 <span v-if="store.sortKey==='url'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('category')" class="sortable">分类 <span v-if="store.sortKey==='category'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
           <th>标签</th>
-          <th @click="store.toggleSort('status')" class="sortable">状态 <span v-if="store.sortKey==='status'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
-          <th @click="store.toggleSort('lastCheck')" class="sortable">检测时间 <span v-if="store.sortKey==='lastCheck'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
-          <th @click="store.toggleSort('note')" class="sortable">备注 <span v-if="store.sortKey==='note'">{{ store.sortDir==='asc'?'▲':'▼' }}</span></th>
+          <th @click="store.toggleSort('status')" class="sortable">状态 <span v-if="store.sortKey==='status'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('lastCheck')" class="sortable">检测时间 <span v-if="store.sortKey==='lastCheck'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('note')" class="sortable">备注 <span v-if="store.sortKey==='note'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
         </tr>
       </thead>
       <tbody>
@@ -120,7 +120,7 @@ function onRowDragOver(e: DragEvent) {
           >{{ s.name }}</td>
           <td class="muted link-cell">
             <span class="link-text">{{ s.url }}</span>
-            <span v-if="hoverId === s.id" class="open-btn" title="打开链接" @click.stop="api.openLink(s.url)">⧉</span>
+            <span v-if="hoverId === s.id" class="open-btn" title="打开链接" @click.stop="api.openLink(s.url)"><ExternalLink :size="12" /></span>
           </td>
           <td class="muted">{{ getCategoryName(s.categoryId) }}</td>
           <td><span v-for="t in s.tags" :key="t" class="chip">{{ t }}</span></td>

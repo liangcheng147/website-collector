@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { AlertTriangle } from 'lucide-vue-next'
 import ModalMask from './ModalMask.vue'
 import AddCategoryModal from './AddCategoryModal.vue'
 import { useAppStore } from '../store/app'
@@ -86,14 +87,14 @@ function save() {
               {{ fetchingTitle ? '...' : '获取名称' }}
             </button>
           </div>
-          <p v-if="titleError" class="err">⚠ {{ titleError }}</p>
+          <p v-if="titleError" class="err"><AlertTriangle :size="12" /> {{ titleError }}</p>
         </div>
         <div>
           <label>分类</label>
           <select v-model="categoryId" @change="onCatChange">
             <option :value="null">未分类</option>
             <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
-            <option :value="'__new_cat__'">＋ 新建分类…</option>
+            <option :value="'__new_cat__'">+ 新建分类…</option>
           </select>
           <label>标签</label>
           <TagInput :model-value="tags" :available="store.data.tags" @update:model-value="tags = $event" />
@@ -102,8 +103,8 @@ function save() {
       <label>备注（200 字以内）</label>
       <textarea v-model="note" maxlength="200" style="height:80px;resize:none" placeholder="网站简介" @keydown.enter.prevent></textarea>
       <span class="char-count">{{ note.length }}/200</span>
-      <p v-if="dup" class="err">⚠ 链接已存在</p>
-      <p v-if="validationMsg" class="err">⚠ {{ validationMsg }}</p>
+      <p v-if="dup" class="err"><AlertTriangle :size="12" /> 链接已存在</p>
+      <p v-if="validationMsg" class="err"><AlertTriangle :size="12" /> {{ validationMsg }}</p>
       <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="save">保存</button></div>
     </div>
     <Transition name="mask"><AddCategoryModal v-if="showAddCat" :parent-id="pendingCat" @created="onCatCreated" @close="showAddCat = false" /></Transition>

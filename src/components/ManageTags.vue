@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { Trash2, Merge, Pencil } from 'lucide-vue-next'
 import { useAppStore } from '../store/app'
 import { useSelection } from '../composables/useSelection'
 import PromptModal from './PromptModal.vue'
@@ -44,8 +45,8 @@ function doBatch() {
       <div style="display:flex;align-items:center;justify-content:space-between">
         <h4>标签列表</h4>
         <div style="display:flex;gap:6px">
-          <button class="btn danger" :disabled="!sel.selected.value.length" @click="doDelete">🗑 删除所选</button>
-          <button class="btn" :disabled="sel.selected.value.length < 2" @click="merging = true">🔗 合并所选</button>
+          <button class="btn danger" :disabled="!sel.selected.value.length" @click="doDelete"><Trash2 :size="14" /> 删除所选</button>
+          <button class="btn" :disabled="sel.selected.value.length < 2" @click="merging = true"><Merge :size="14" /> 合并所选</button>
         </div>
       </div>
       <div class="cat-head">
@@ -55,7 +56,7 @@ function doBatch() {
         @mouseenter="hovered = t" @mouseleave="hovered = null" @click="sel.onRowClick($event, t)">
         <span class="chk-col"><span class="cb" :class="{ checked: sel.selected.value.includes(t) }" @click.stop="sel.toggle(t)"></span></span>
         <span class="name-col"># {{ t }}
-          <span v-if="hovered === t" class="btn mini" style="margin-left:6px" @click.stop="renaming = t">✎ 重命名</span>
+          <span v-if="hovered === t" class="btn mini" style="margin-left:6px" @click.stop="renaming = t"><Pencil :size="12" /> 重命名</span>
         </span>
         <span class="cnt-col muted">{{ tagCounts[t] ?? 0 }}</span>
       </div>
