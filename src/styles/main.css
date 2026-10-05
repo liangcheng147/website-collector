@@ -343,3 +343,19 @@ html[data-palette="plum"][data-theme="dark"] { --primary:#C026D3; --primary-w:#E
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+[data-tooltip] { position: relative; }
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  z-index: 1000;
+}
