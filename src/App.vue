@@ -68,5 +68,5 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
 <style scoped>
 .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 170px 1fr; }
 .body > * { min-height: 0; }
-.content { overflow: auto; padding: 12px; background: var(--bg); }
+.content { overflow-y: auto; overflow-x: hidden; padding: 12px; background: var(--bg); }
 </style>
