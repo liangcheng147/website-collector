@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, nextTick } from 'vue'
-import { Play } from 'lucide-vue-next'
+import { Play, FolderInput, Tag, Pencil, Trash2 } from 'lucide-vue-next'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
 const emit = defineEmits(['action', 'close'])
@@ -43,10 +43,10 @@ function act(kind: string) { emit('action', kind); store.clearSelection() }
       </template>
       <template v-else>
         <button class="ctx-item" @click="act('check')"><Play :size="14" /> 检测所选</button>
-        <button class="ctx-item" @click="act('move')">移动分类…</button>
-        <button class="ctx-item" @click="act('tag')">添加标签…</button>
-        <button class="ctx-item" @click="act('edit')">编辑</button>
-        <button class="ctx-item danger" @click="act('delete')">删除所选</button>
+        <button class="ctx-item" @click="act('move')"><FolderInput :size="14" /> 移动分类…</button>
+        <button class="ctx-item" @click="act('tag')"><Tag :size="14" /> 添加标签…</button>
+        <button class="ctx-item" @click="act('edit')"><Pencil :size="14" /> 编辑</button>
+        <button class="ctx-item danger" @click="act('delete')"><Trash2 :size="14" /> 删除所选</button>
       </template>
     </div>
   </Teleport>
