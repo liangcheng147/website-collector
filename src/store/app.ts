@@ -52,7 +52,7 @@ export const useAppStore = defineStore('app', {
     connectivityError: false,
     flashMsg: '',
     location: { dir: '', isFallback: false },
-    settings: { theme: 'system', palette: 'teal', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] } as Settings,
+    settings: { theme: 'system', palette: 'teal', zoom: 100, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true } as Settings,
     sortKey: null as 'name' | 'url' | 'status' | 'category' | 'note' | 'lastCheck' | null,
     sortDir: 'asc' as 'asc' | 'desc',
   }),

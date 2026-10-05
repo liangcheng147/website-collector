@@ -11,6 +11,7 @@ export interface Settings {
   zoom: number
   sidebarCollapsed: string[]
   collapsedCategories: string[]
+  autoCheckUpdate: boolean
 }
 export interface TrashedSite { site: Site; deletedAt: string }
 export interface AppData {
