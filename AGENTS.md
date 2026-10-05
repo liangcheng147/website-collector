@@ -33,3 +33,21 @@ CI（`.github/workflows/release.yml`）只跑 `npm test`，不跑 `cargo test`�
 ## 发布
 
 推送 `v*` 标签（`git tag v0.1.x && git push origin v0.1.x`）触发 GitHub Actions 云端构建 NSIS/MSI 安装包并建 Release。本地无需手动构建发布产物。
+
+**本地打包必须先设置 updater 签名私钥**：`src-tauri/tauri.conf.json` 里 `bundle.createUpdaterArtifacts: true`，同时 `plugins.updater.pubkey` 已配置。这种组合下 `npm run tauri build` 在缺少 `TAURI_SIGNING_PRIVATE_KEY` 环境变量时会**直接构建失败**（不是静默降级）。所以本地二选一：
+
+- 要出可在线更新的产物：先设好私钥（PowerShell 示例）
+
+  ```powershell
+  $env:TAURI_SIGNING_PRIVATE_KEY = "<私钥 PEM 全文>"
+  $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "<私钥密码>"
+  npm run tauri build
+  ```
+
+- 只是本地验证能不能编译/跑安装包，跳过签名产物：
+
+  ```powershell
+  npm run tauri build -- --config '{"bundle":{"createUpdaterArtifacts":false}}'
+  ```
+
+CI 侧由 `.github/workflows/release.yml` 从 GitHub Secrets 注入这两个变量，无需在 runner 上手动设置。
