@@ -172,12 +172,13 @@ async function openDir() {
                 :class="{ checked: store.settings.autoCheckUpdate }"
                 role="switch"
                 :aria-checked="store.settings.autoCheckUpdate"
+                aria-labelledby="auto-update-label"
                 tabindex="0"
                 @click="toggleAutoCheck"
                 @keydown.enter.prevent="toggleAutoCheck"
                 @keydown.space.prevent="toggleAutoCheck"
               ></span>
-              启动时自动检查更新
+              <span id="auto-update-label">启动时自动检查更新</span>
             </label>
             <label style="margin-top:14px">技术信息</label>
             <p class="muted">{{ userAgent }}</p>
