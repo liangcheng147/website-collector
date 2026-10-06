@@ -34,7 +34,7 @@ input, textarea, select { user-select:text; -webkit-user-select:text; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 [draggable="true"] { -webkit-user-drag:element; }
-button { font-family:var(--font); font-size:13px; font-weight:500; border:1px solid var(--border-2); background:#fff; border-radius:var(--radius); padding:0 14px; height:36px; display:inline-flex; align-items:center; color:var(--text); cursor:pointer; transition:background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease), transform .08s var(--ease), box-shadow .16s var(--ease); }
+button { font-family:var(--font); font-size:13px; font-weight:500; border:1px solid var(--border-2); background:#fff; border-radius:var(--radius); padding:0 14px; height:36px; display:inline-flex; align-items:center; justify-content:center; color:var(--text); cursor:pointer; transition:background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease), transform .08s var(--ease), box-shadow .16s var(--ease); }
 button:hover { background:var(--hover); }
 button:active:not(:disabled) { transform:scale(.97); }
 button:focus-visible { outline:none; box-shadow:var(--ring); }
@@ -222,6 +222,7 @@ html[data-theme="dark"] .titlebar .mark { box-shadow: 0 0 8px rgba(45,212,191,.2
 .seg .btn.active { background:var(--primary-t); color:var(--primary); border-color:var(--primary-t); font-weight:600; }
 .slider-row { display:flex; align-items:center; gap:10px; margin-top:6px; }
 input[type="range"] { accent-color:var(--primary); padding:0; height:auto; }
+input[type="checkbox"], input[type="radio"] { width:auto; height:auto; padding:0; }
 
 /* ---- 选中交互与打开链接 ---- */
 .site-table { user-select:none; }
