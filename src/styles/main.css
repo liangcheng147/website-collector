@@ -175,12 +175,12 @@ input:focus, select:focus, textarea:focus { transition: border-color .18s var(--
 html[data-theme="dark"] .segctrl button.active { background:var(--primary-w); color:#06201C; }
 
 .btn:disabled { opacity: .5; cursor: default; }
-.btn.small { padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+.btn.small { padding: 0 10px; height: 32px; font-size: 12px; white-space: nowrap; }
 .url-row { display: flex; gap: 6px; align-items: center; }
 .url-row input { flex: 1; }
 .ctx { position:fixed; z-index:100; background:var(--panel); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow-md); padding:5px; min-width:160px; animation:ctxIn .14s var(--ease) both; }
 @keyframes ctxIn { from { opacity:0; transform:scale(.96); } to { opacity:1; transform:none; } }
-.ctx-item { display:block; width:100%; text-align:left; border:none; box-shadow:none; background:none; padding:6px 12px; border-radius:var(--radius); cursor:pointer; font-family:var(--font); font-size:13px; color:var(--text); transition:background .14s var(--ease); }
+.ctx-item { display:block; width:100%; text-align:left; border:none; box-shadow:none; background:none; height:auto; padding:6px 12px; border-radius:var(--radius); cursor:pointer; font-family:var(--font); font-size:13px; color:var(--text); transition:background .14s var(--ease); }
 .ctx-item:hover { background:var(--hover); }
 .ctx-item:focus-visible { outline:none; box-shadow:var(--ring); background:var(--hover); }
 .ctx-item.danger { color:var(--danger); }
@@ -319,7 +319,7 @@ input[type="checkbox"], input[type="radio"] { width:auto; height:auto; padding:0
 .chk-col { width:30px; flex:none; }
 .name-col { flex:1; }
 .cnt-col { width:60px; flex:none; text-align:center; }
-.btn.mini { padding:1px 8px; font-size:11px; }
+.btn.mini { padding:1px 8px; font-size:11px; height:auto; }
 
 /* ---- 减弱动效：尊重系统偏好 ---- */
 @media (prefers-reduced-motion: reduce) {
