@@ -167,7 +167,16 @@ async function openDir() {
             </div>
             <p v-else-if="updateState === 'error'" class="muted">{{ updateMsg }}</p>
             <label style="margin-top:14px" class="toggle-row">
-              <span class="toggle" :class="{ checked: store.settings.autoCheckUpdate }" @click="toggleAutoCheck"></span>
+              <span
+                class="toggle"
+                :class="{ checked: store.settings.autoCheckUpdate }"
+                role="switch"
+                :aria-checked="store.settings.autoCheckUpdate"
+                tabindex="0"
+                @click="toggleAutoCheck"
+                @keydown.enter.prevent="toggleAutoCheck"
+                @keydown.space.prevent="toggleAutoCheck"
+              ></span>
               启动时自动检查更新
             </label>
             <label style="margin-top:14px">技术信息</label>

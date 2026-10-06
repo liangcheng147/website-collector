@@ -278,7 +278,7 @@ html[data-theme="dark"] .titlebar .mark { box-shadow: 0 0 8px rgba(45,212,191,.2
 .settings-content label:first-child {
   margin-top: 0;
 }
-.toggle-row {
+.modal label.toggle-row {
   display: flex;
   align-items: center;
   gap: 8px;
