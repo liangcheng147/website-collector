@@ -34,3 +34,6 @@ design/
 
 # Vitest coverage
 coverage/
+
+# Local portable build output (manual testing)
+portable-*/
