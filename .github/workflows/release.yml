@@ -52,25 +52,28 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: ${{ github.ref_name }}
           releaseBody: |
-            ## SiteCollector v0.2.1
+            ## SiteCollector ${{ github.ref_name }}
 
             本地优先的网站收藏桌面应用（Tauri 2 + Vue 3 + Rust）。
 
-            ### 新功能
-            - 对话框布局优化：字段分两栏排列（名称+链接 | 分类+标签），备注移至底部全宽显示（200 字）
-            - 多套配色方案：11 套高级感配色色板（青绿/海洋/靛青/紫罗兰/玫瑰/琥珀/翡翠/石墨/砂岩/天空/梅紫），亮/暗模式独立，设置中一键切换
-            - 配色持久化：所选配色跨重启保持，存储在 settings.json
+            ### 界面
+            - 组件风格统一：按钮/输入框统一为 36px 高、8px 圆角，标签统一为胶囊形，弹窗内边距统一为 20px
+            - 设置弹窗重构为「左侧导航 + 右侧内容」的固定高度布局，不再因内容多少跳变
+            - 新增开关 (Toggle) 组件替换设置页原生复选框，支持键盘操作与无障碍标签
+            - 主题、配色、设置等页面观感一致，焦点态统一
 
             ### 改进
-            - 备注区域从 52px 增至 80px，支持完整显示多行内容
-            - 编辑对话框移除冗余的右侧帮助栏，空间利用更合理
-            - 启动时通过 localStorage 预加载主题配色，避免页面闪烁
+            - 修复图标统一后失效的端到端测试选择器（11 个用例恢复）
+            - 设置按钮补充 aria-label，修复图标按钮无可访问名称的问题
+            - 端到端测试纳入 CI（push/PR 到 master 时运行），此类问题今后在提交时即被发现
+            - 修复存在工作树时 `npm test` 会误收集工作树内测试文件的问题
+            - 版本号四处（tauri.conf/Cargo.toml/Cargo.lock/package.json）同步至 0.3.1
 
             ### 安装
-            - `SiteCollector_0.2.1_x64-setup.exe`：NSIS 安装包
-            - `SiteCollector_0.2.1_x64_en-US.msi`：MSI 安装包
+            - `SiteCollector_0.3.1_x64-setup.exe`：NSIS 安装包
+            - `SiteCollector_0.3.1_x64_en-US.msi`：MSI 安装包
 
-            > 本版本由 GitHub Actions 自动构建并生成。
+            > 本版本由 GitHub Actions 自动构建并生成，支持应用内检查更新。
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
