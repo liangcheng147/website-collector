@@ -35,5 +35,9 @@ design/
 # Vitest coverage
 coverage/
 
+# Playwright e2e reports
+playwright-report/
+test-results/
+
 # Local portable build output (manual testing)
 portable-*/
