@@ -29,6 +29,6 @@ onUnmounted(() => { if (timer) clearTimeout(timer) })
     <button class="btn primary" @click="$emit('add')"><Plus :size="14" /> 添加</button>
     <button class="btn btn-ghost" @click="emit('manage')"><LayoutGrid :size="14" /> 管理</button>
     <button class="btn btn-ghost" @click="$emit('import-export')">导入/导出</button>
-    <button class="btn btn-ghost" @click="$emit('settings')"><Settings :size="14" /></button>
+    <button class="btn btn-ghost" aria-label="设置" @click="$emit('settings')"><Settings :size="14" /></button>
   </header>
 </template>
