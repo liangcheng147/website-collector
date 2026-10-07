@@ -74,6 +74,10 @@ jobs:
             - `SiteCollector_0.3.1_x64_en-US.msi`：MSI 安装包
 
             > 本版本由 GitHub Actions 自动构建并生成，支持应用内检查更新。
-          releaseDraft: true
+          # Publish immediately, not as a draft. A draft release has no
+          # public download URL, so the updater endpoint
+          # (releases/latest/download/latest.json) 404s and in-app update
+          # checks fail until someone publishes it by hand.
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
