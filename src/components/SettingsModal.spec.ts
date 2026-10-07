@@ -43,7 +43,7 @@ describe('SettingsModal', () => {
     mount(SettingsModal)
     await nextTick()
     await nextTick()
-    const aboutBtn = Array.from(document.body.querySelectorAll('.seg .btn'))
+    const aboutBtn = Array.from(document.body.querySelectorAll('.settings-nav-item'))
       .find(el => el.textContent?.trim() === '关于') as HTMLElement
     aboutBtn.click()
     await nextTick()

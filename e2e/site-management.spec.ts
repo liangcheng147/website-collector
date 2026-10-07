@@ -43,7 +43,7 @@ async function mockInvoke(page: Page) {
 }
 
 async function addSite(page: Page, name: string, url: string) {
-  await page.click('button:has-text("＋ 添加")')
+  await page.click('button:has-text("添加")')
   await page.waitForSelector('.modal')
   const inputs = page.locator('.modal input')
   await inputs.nth(0).fill(name)
@@ -146,13 +146,13 @@ test('check all updates status', async ({ page }) => {
   await addSite(page, 'A', 'https://a.dev')
   await addSite(page, 'B', 'https://b.dev')
 
-  await page.click('button:has-text("■ 检测全部")')
+  await page.click('button:has-text("检测全部")')
   // Mock resolves instantly, so wait for check to complete
   await page.waitForTimeout(1000)
   // After check, status bar should show "上次检测" (not "—")
   await expect(page.locator('.statusbar')).toContainText('上次检测')
   // Check button should be back to "检测全部"
-  await expect(page.locator('button:has-text("■ 检测全部")')).toBeVisible()
+  await expect(page.locator('button:has-text("检测全部")')).toBeVisible()
 })
 
 test('filter by dead sites', async ({ page }) => {

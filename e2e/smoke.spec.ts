@@ -74,8 +74,8 @@ test('app loads with empty state', async ({ page }) => {
 
 test('app shows title bar and top bar', async ({ page }) => {
   await expect(page.locator('.logo')).toContainText('归集')
-  await expect(page.locator('.topbar button', { hasText: '＋ 添加' })).toBeVisible()
-  await expect(page.locator('.topbar button', { hasText: '■ 检测全部' })).toBeVisible()
+  await expect(page.locator('.topbar button', { hasText: '添加' })).toBeVisible()
+  await expect(page.locator('.topbar button', { hasText: '检测全部' })).toBeVisible()
 })
 
 test('sidebar shows default views', async ({ page }) => {
@@ -87,7 +87,7 @@ test('sidebar shows default views', async ({ page }) => {
 })
 
 test('add site via modal', async ({ page }) => {
-  await page.click('button:has-text("＋ 添加")')
+  await page.click('button:has-text("添加")')
   await expect(page.locator('.modal')).toBeVisible()
 
   // Inputs don't have explicit type="text", use nth() on all visible inputs
@@ -107,7 +107,7 @@ test('add site via modal', async ({ page }) => {
 test('search filters sites', async ({ page }) => {
   // Add two sites
   for (const [name, url] of [['React', 'https://react.dev'], ['Vue', 'https://vuejs.org']]) {
-    await page.click('button:has-text("＋ 添加")')
+    await page.click('button:has-text("添加")')
     await page.waitForSelector('.modal')
     const inputs = page.locator('.modal input')
     await inputs.nth(0).fill(name)

@@ -103,7 +103,7 @@ test('move category via batch pick', async ({ page }) => {
 })
 
 test('settings modal opens and closes', async ({ page }) => {
-  await page.click('.topbar button:has-text("⚙")')
+  await page.click('.topbar button[aria-label="设置"]')
   await expect(page.locator('.modal')).toBeVisible()
   await expect(page.locator('.modal')).toContainText('设置')
 

@@ -1,0 +1,35 @@
+name: CI
+
+# Runs on every push/PR to master so UI changes that break e2e selectors are
+# caught at commit time, not at release time. The e2e suite used to rot
+# silently because nothing in CI executed it.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium
+
+      # playwright.config.ts starts `npm run dev` (port 1420) as its webServer,
+      # so no separate dev-server step is needed.
+      - name: Run E2E tests
+        run: npx playwright test

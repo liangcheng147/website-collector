@@ -4,7 +4,10 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  // A few specs use fixed waitForTimeout waits; a shared CI runner can outrun
+  // them. Absorb that flakiness here so a flaky run never teaches anyone to
+  // ignore a red e2e job.
+  retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
 

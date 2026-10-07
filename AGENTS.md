@@ -11,7 +11,7 @@
 - 类型检查 + 构建：`npm run build`（先 `vue-tsc --noEmit` 再做 `vite build`，缺一不可）
 - 打包安装器：`npm run tauri build`（产物触发前会先跑 `npm run build`）
 
-CI（`.github/workflows/release.yml`）只跑 `npm test`，不跑 `cargo test`，也不做完整 `npm run build`。
+CI 有两个工作流：`.github/workflows/ci.yml` 在 push/PR 到 master 时跑 `npm test` + `npx playwright test`（e2e，CI 上 retries=2）；`.github/workflows/release.yml` 只在推 `v*` 标签时触发，跑 `npm test` 后构建签名安装包。两者都不跑 `cargo test`，也不做完整 `npm run build`。
 
 ## 关键约束与坑
 
