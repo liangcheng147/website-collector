@@ -462,3 +462,7 @@ html[data-palette="plum"][data-theme="dark"] { --primary:#C026D3; --primary-w:#E
 .toggle:active::after {
   width: 22px;
 }
+.toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
