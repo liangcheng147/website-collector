@@ -76,18 +76,23 @@ jobs:
             本地优先的网站收藏桌面应用（Tauri 2 + Vue 3 + Rust）。
 
             ### 修复
-            - 标签管理界面：全选后取消勾选某个标签，该标签会从列表中消失且无法保存。
-              原因是 `useSelection` 的 `selectAll()` 直接把数据数组本体赋给选中态，
-              之后 `toggle()` 的 `splice()` 便作用在数据源上。已改为复制数组
-            - 该问题影响所有共用 `useSelection` 且传入数据本体的调用方，
-              现补充 4 个单元测试覆盖「取消勾选不得改动数据源」
+            - **应用内更新下载失败**（v0.3.2 及更早版本受影响）：
+              点「检查更新」能查到新版本，但点下载必定报错
+              `TypeError: Cannot read private member from an object whose class did not declare it`
+            - 原因：Tauri v2 的 `Update` 继承自 `Resource`，其资源 id 存放在真正的
+              私有字段中，读取时会对 `this` 做品牌检查。而更新对象被存进 Vue 的
+              `ref()`，被深度响应式 Proxy 包裹，读取私有字段时品牌检查失败
+            - 改用 `shallowRef` 保存更新对象，并移除掩盖该类型不匹配的强制断言
+            - 回归测试继承真实的 `Resource` 类，验证深代理会抛错而 `shallowRef` 不会
 
             ### 改进
-            - Release 改为构建完成即发布，不再是草稿。
-              草稿没有公开下载地址，会让 `releases/latest/download/latest.json`
-              返回 404，导致应用内「检查更新」始终失败
-            - 发布说明的文件名改由标签名推导，避免再次出现说明与实际产物不符
-            - `playwright-report/` 与 `test-results/` 加入 `.gitignore`
+            - 发布工作流的版本号推导显式使用 bash。运行在 windows-latest，
+              默认 shell 是 PowerShell，`${GITHUB_REF_NAME#v}` 会被解析为
+              一个不存在的变量而得到空串，导致发布说明里的文件名缺少版本号。
+              现已指定 `shell: bash`，并在推导结果为空时直接失败
+
+            ### 包含
+            - 同时包含 v0.3.2 的标签管理修复（全选后取消勾选会导致标签消失且无法保存）
 
             ### 安装
             - `SiteCollector_${{ steps.ver.outputs.num }}_x64-setup.exe`：NSIS 安装包
