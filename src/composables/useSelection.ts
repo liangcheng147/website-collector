@@ -28,7 +28,7 @@ export function useSelection(getIds: () => string[]) {
   function selectAll() {
     const ids = getIds()
     if (ids.length && ids.every(i => selected.value.includes(i))) selected.value = []
-    else selected.value = ids
+    else selected.value = [...ids]
   }
   function clear() { selected.value = [] }
   function onRowClick(e: MouseEvent, id: string) {
