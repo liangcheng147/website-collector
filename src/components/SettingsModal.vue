@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, shallowRef, onMounted } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 import { getVersion } from '@tauri-apps/api/app'
 import ModalMask from './ModalMask.vue'
@@ -17,7 +17,12 @@ onMounted(async () => {
 })
 const appVersion = ref('')
 const updateState = ref<'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'error'>('idle')
-const updateInfo = ref<updater.Update | null>(null)
+// shallowRef, not ref: an Update is a Tauri Resource, and Resource keeps its
+// resource id in a real private field. ref() would wrap it in a deep reactive
+// Proxy, and reading that private field through a Proxy fails the brand check
+// with "Cannot read private member from an object whose class did not declare
+// it" -- which is what broke downloadAndInstall().
+const updateInfo = shallowRef<updater.Update | null>(null)
 const userAgent = navigator.userAgent
 const downloadPct = ref(0)
 const downloadKnown = ref(false)
@@ -30,10 +35,11 @@ async function checkNow() {
   else { updateState.value = 'none'; updateMsg.value = '已是最新版本' }
 }
 async function installNow() {
-  if (!updateInfo.value) return
+  const update = updateInfo.value
+  if (!update) return
   updateState.value = 'downloading'; downloadPct.value = 0; downloadKnown.value = false
   try {
-    await updater.downloadAndInstall(updateInfo.value as updater.Update, (p) => {
+    await updater.downloadAndInstall(update, (p) => {
       if (p.finished) { downloadPct.value = 100; downloadKnown.value = false; return }
       const total = p.total ?? 0
       if (total > 0) { downloadKnown.value = true; downloadPct.value = Math.min(100, Math.round((p.downloaded / total) * 100)) }
