@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { useAppStore } from '../store/app'
+import { PALETTES } from '../theme'
 import SettingsModal from './SettingsModal.vue'
 
 const getDataFilePathMock = vi.fn()
@@ -37,15 +38,23 @@ describe('SettingsModal', () => {
     relaunchAppMock.mockReset().mockResolvedValue(undefined)
   })
 
-  async function mountAndOpenAbout() {
+  async function mountModal() {
     const store = useAppStore()
     store.location = { dir: 'C:/data', isFallback: false }
     mount(SettingsModal)
     await nextTick()
     await nextTick()
-    const aboutBtn = document.body.querySelector('[data-testid="settings-tab-about"]') as HTMLElement
-    aboutBtn.click()
+    return store
+  }
+
+  async function openTab(testid: string) {
+    ;(document.body.querySelector(`[data-testid="${testid}"]`) as HTMLElement).click()
     await nextTick()
+  }
+
+  async function mountAndOpenAbout() {
+    const store = await mountModal()
+    await openTab('settings-tab-about')
     return store
   }
 
@@ -112,5 +121,57 @@ describe('SettingsModal', () => {
     await nextTick()
     expect(document.body.textContent).toContain('下载中 50%')
     expect(document.body.querySelector('.n-progress')).not.toBeNull()
+  })
+
+  it('renders theme mode and palette as naive-ui controls', async () => {
+    await mountModal()
+    expect(document.body.querySelector('.n-select')).not.toBeNull()
+    expect(document.body.querySelector('.n-radio-group')).not.toBeNull()
+    expect(document.body.querySelectorAll('.n-radio')).toHaveLength(PALETTES.length)
+    expect(document.body.querySelector('.palette-swatch')).toBeNull()
+    for (const p of PALETTES) {
+      expect(document.body.textContent).toContain(p.name)
+    }
+  })
+
+  it('renders display zoom as n-slider with the current value', async () => {
+    await mountModal()
+    await openTab('settings-tab-display')
+    expect(document.body.querySelector('.n-slider')).not.toBeNull()
+    expect(document.body.textContent).toContain('100%')
+  })
+
+  it('renders the data file path as a naive input, not a native readonly input', async () => {
+    await mountModal()
+    await openTab('settings-tab-storage')
+    expect(document.body.querySelector('.n-input')).not.toBeNull()
+    const readonly = document.body.querySelector('input[readonly]')
+    expect(readonly).not.toBeNull()
+    expect(readonly!.closest('.n-input')).not.toBeNull()
+    expect((readonly as HTMLInputElement).value).toBe('C:/data/data.json')
+    expect(document.body.querySelector('.palette-swatch')).toBeNull()
+  })
+
+  it('renders about controls as naive-ui and uses the LICENSE copyright', async () => {
+    await mountModal()
+    await openTab('settings-tab-about')
+    expect(document.body.querySelector('.n-button')).not.toBeNull()
+    expect(document.body.querySelector('.n-switch')).not.toBeNull()
+    expect(document.body.textContent).toContain('MIT License')
+    expect(document.body.textContent).toContain('Copyright (c) 2026 fan-root')
+    expect(document.body.textContent).not.toContain('作者 bjb')
+  })
+
+  it('does not depend on the legacy .modal-content layout', async () => {
+    await mountModal()
+    expect(document.body.querySelector('[data-testid="modal-settings"] .modal-content')).toBeNull()
+  })
+
+  it('selecting a palette option updates the store palette', async () => {
+    const store = await mountModal()
+    const options = document.body.querySelectorAll('.n-radio')
+    ;(options[1] as HTMLElement).click()
+    await nextTick()
+    expect(store.settings.palette).toBe(PALETTES[1].id)
   })
 })

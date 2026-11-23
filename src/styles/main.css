@@ -152,19 +152,6 @@ html.win-maximized .app { border-radius:0; }
 /* ---- 暗色主题：颜色全部由 applyShellVars 写入，这里只保留原生控件/滚动条需要的 color-scheme ---- */
 html[data-theme="dark"] { color-scheme: dark; }
 
-/* ---- 设置弹窗布局 ---- */
-.slider-row { display:flex; align-items:center; gap:10px; margin-top:6px; }
-.slider-row .n-slider { flex:1; }
-.switch-row { display:flex; align-items:center; gap:8px; }
-.mt-14 { margin-top:14px; }
-.actions.actions-start { justify-content:flex-start; }
-.pre-wrap { white-space:pre-wrap; }
-.modal-content .text-pending { color:var(--pending-txt); }
-/* n-tabs 左侧页签的内容区：naive 默认只有 12px 顶边距，这里补回内边距与滚动 */
-.n-tabs.modal-content .n-tab-pane { padding:18px 20px; overflow-y:auto; }
-.n-tabs.modal-content .n-tab-pane > label:first-child { margin-top: 0; }
-input[type="checkbox"], input[type="radio"] { width:auto; height:auto; padding:0; }
-
 /* ---- 选中交互与打开链接 ---- */
 .site-table { user-select:none; }
 .site-table th:first-child, .site-table td:first-child { width:28px; text-align:center; }
@@ -202,42 +189,3 @@ input[type="checkbox"], input[type="radio"] { width:auto; height:auto; padding:0
 
 .site-table th.sortable { cursor: pointer; user-select: none; }
 .site-table th.sortable:hover { color: var(--primary); }
-
-/* ---- 配色选择器 ---- */
-.palette-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-top: 6px;
-}
-.palette-swatch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--panel);
-  cursor: pointer;
-  transition: border-color .15s, transform .15s;
-}
-.palette-swatch:hover { border-color: var(--primary); }
-.palette-swatch.active {
-  border-color: var(--primary);
-  box-shadow: var(--ring);
-  transform: scale(1.03);
-}
-.palette-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--swatch-color);
-  flex-shrink: 0;
-}
-.palette-name {
-  font-size: 12px;
-  color: var(--text-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}

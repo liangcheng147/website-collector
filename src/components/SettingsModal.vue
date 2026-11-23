@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, shallowRef, computed, onMounted } from 'vue'
 import type { HTMLAttributes } from 'vue'
-import { AlertTriangle } from 'lucide-vue-next'
 import { getVersion } from '@tauri-apps/api/app'
-import { NModal, NTabs, NTabPane, NSelect, NSlider, NSwitch, NProgress, NButton } from 'naive-ui'
+import {
+  NModal, NTabs, NTabPane, NSelect, NSlider, NSwitch, NProgress, NButton,
+  NInput, NRadioGroup, NRadio, NText, NSpace, NAlert,
+} from 'naive-ui'
 import * as api from '../api'
 import * as updater from '../updater'
-import { PALETTES } from '../theme'
+import { PALETTES, type Palette } from '../theme'
 import { useAppStore } from '../store/app'
 const emit = defineEmits(['close'])
 const store = useAppStore()
@@ -47,11 +49,21 @@ const autoCheckUpdate = computed({
   get: () => store.settings.autoCheckUpdate,
   set: (v: boolean) => { store.updateSettings({ autoCheckUpdate: v }) },
 })
-function setPalette(id: string) {
-  store.updateSettings({ palette: id })
+function setPalette(id: string | number | boolean | null) {
+  if (typeof id === 'string') store.updateSettings({ palette: id })
 }
 function toggleAutoCheck() {
   store.updateSettings({ autoCheckUpdate: !store.settings.autoCheckUpdate })
+}
+// 色板色块跟随当前主题（跟随系统时按系统偏好），保证预览与生效配色一致
+const isDark = computed(() => {
+  const mode = store.settings.theme
+  if (mode === 'dark') return true
+  if (mode === 'light') return false
+  return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-color-scheme: dark)')?.matches
+})
+function swatchColor(p: Palette) {
+  return (isDark.value ? p.dark : p.light).primary
 }
 async function checkNow() {
   updateState.value = 'checking'; updateMsg.value = ''
@@ -77,6 +89,7 @@ async function doRelaunch() { await updater.relaunchApp() }
 async function openDir() {
   try { await api.openDataDir(); msg.value = '已打开数据目录' } catch (e) { msg.value = '打开失败：' + e }
 }
+const REPO_URL = 'https://github.com/liangcheng147/website-collector'
 </script>
 
 <template>
@@ -95,101 +108,150 @@ async function openDir() {
     @update:show="emit('close')"
   >
     <n-tabs
-      class="modal-content"
+      class="settings-tabs"
       placement="left"
       type="line"
-      :style="{ height: '480px' }"
       v-model:value="section"
     >
       <!-- 主题 -->
       <n-tab-pane name="theme" tab="主题" :tab-props="{ 'data-testid': 'settings-tab-theme' } as HTMLAttributes">
-        <label>主题模式</label>
-        <n-select :value="store.settings.theme" :options="themeModeOptions" @update:value="setTheme" />
-        <p class="muted">跟随系统：启动时读取系统主题，运行中不实时切换。</p>
-        <label>配色方案</label>
-        <div class="palette-grid">
-          <button
-            v-for="p in PALETTES"
-            :key="p.id"
-            class="palette-swatch"
-            :class="{ active: store.settings.palette === p.id }"
-            :style="{ '--swatch-color': p.light.primary }"
-            :title="p.name"
-            @click="setPalette(p.id)"
-          >
-            <span class="palette-dot"></span>
-            <span class="palette-name">{{ p.name }}</span>
-          </button>
-        </div>
+        <n-space vertical :size="16" class="settings-pane">
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">主题模式</n-text>
+            <n-select :value="store.settings.theme" :options="themeModeOptions" @update:value="setTheme" />
+            <n-text class="group-hint" depth="3">跟随系统：启动时读取系统主题，运行中不实时切换。</n-text>
+          </div>
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">配色方案</n-text>
+            <n-radio-group :value="store.settings.palette" class="palette-grid" @update:value="setPalette">
+              <n-radio
+                v-for="p in PALETTES"
+                :key="p.id"
+                :value="p.id"
+                class="palette-option"
+                :label="p.name"
+              >
+                <span class="palette-dot" :style="{ '--swatch-color': swatchColor(p) }"></span>
+                <span class="palette-name">{{ p.name }}</span>
+              </n-radio>
+            </n-radio-group>
+            <n-text class="group-hint" depth="3">配色实时应用到界面与弹窗。</n-text>
+          </div>
+        </n-space>
       </n-tab-pane>
 
       <!-- 显示 -->
       <n-tab-pane name="display" tab="显示" :tab-props="{ 'data-testid': 'settings-tab-display' } as HTMLAttributes">
-        <label>界面缩放（{{ store.settings.zoom }}%）</label>
-        <div class="slider-row">
-          <span class="muted">80%</span>
-          <n-slider v-model:value="zoom" :min="80" :max="200" :step="10" />
-          <span class="muted">200%</span>
-        </div>
-        <p class="muted">整体放大或缩小界面文字与控件，步进 10%。</p>
+        <n-space vertical :size="16" class="settings-pane">
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">界面缩放</n-text>
+            <div class="slider-row">
+              <n-text class="slider-bound" depth="3">80%</n-text>
+              <n-slider v-model:value="zoom" :min="80" :max="200" :step="10" />
+              <n-text class="slider-value">{{ store.settings.zoom }}%</n-text>
+            </div>
+            <n-text class="group-hint" depth="3">整体放大或缩小界面文字与控件，步进 10%。</n-text>
+          </div>
+        </n-space>
       </n-tab-pane>
 
       <!-- 数据存储 -->
       <n-tab-pane name="storage" tab="数据存储" :tab-props="{ 'data-testid': 'settings-tab-storage' } as HTMLAttributes">
-        <div class="modal-cols">
-          <div>
-            <label>数据文件</label>
-            <input :value="filePath" readonly />
-            <div class="actions actions-start"><n-button type="primary" @click="openDir">打开数据目录</n-button></div>
+        <n-space vertical :size="16" class="settings-pane">
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">数据文件</n-text>
+            <n-input :value="filePath" readonly />
+            <n-button @click="openDir">打开数据目录</n-button>
           </div>
-          <div class="help">
-            <label>存储说明</label>
-            <p class="muted">数据固定存储在软件目录下 <code>./data/</code>，与软件一起，便携易备份。若安装目录无写入权限，自动回退到系统用户目录。</p>
-            <p v-if="store.location.isFallback" class="muted text-pending"><AlertTriangle :size="12" /> 当前正使用系统目录（安装位置无写入权限）。</p>
-          </div>
-        </div>
-        <p v-if="msg" class="muted">{{ msg }}</p>
+          <n-text class="group-hint" depth="3">数据固定存储在软件目录下 <code>./data/</code>，与软件一起，便携易备份。若安装目录无写入权限，自动回退到系统用户目录。</n-text>
+          <n-alert v-if="store.location.isFallback" type="warning" :bordered="false">
+            当前正使用系统目录（安装位置无写入权限）。
+          </n-alert>
+          <n-text v-if="msg" class="group-hint" depth="3">{{ msg }}</n-text>
+        </n-space>
       </n-tab-pane>
 
       <!-- 关于 -->
       <n-tab-pane name="about" tab="关于" :tab-props="{ 'data-testid': 'settings-tab-about' } as HTMLAttributes">
-        <label>软件</label>
-        <p>SiteCollector v{{ appVersion }}</p>
-        <label>链接</label>
-        <p class="muted"><a @click.prevent="api.openLink('https://github.com/liangcheng147/website-collector')">GitHub 仓库</a> · 作者 bjb · MIT License</p>
-        <label>更新</label>
-        <div class="actions actions-start">
-          <n-button type="primary" :disabled="updateState === 'checking' || updateState === 'downloading'" @click="checkNow">检查更新</n-button>
-        </div>
-        <p v-if="updateState === 'checking'" class="muted">检查中…</p>
-        <p v-else-if="updateState === 'none'" class="muted">{{ updateMsg }}</p>
-        <div v-else-if="updateState === 'available' && updateInfo">
-          <p>发现新版本 v{{ updateInfo.version }}</p>
-          <p class="muted pre-wrap">{{ updateInfo.body }}</p>
-          <n-button type="primary" @click="installNow">下载并安装</n-button>
-        </div>
-        <div v-else-if="updateState === 'downloading'">
-          <template v-if="downloadKnown">
-            <p class="muted">下载中 {{ downloadPct }}%</p>
-            <n-progress type="line" :percentage="downloadPct" :show-indicator="false" />
-          </template>
-          <p v-else class="muted">下载中…</p>
-        </div>
-        <div v-else-if="updateState === 'ready'">
-          <p>已下载完成，重启后生效。</p>
-          <n-button type="primary" @click="doRelaunch">立即重启</n-button>
-        </div>
-        <p v-else-if="updateState === 'error'" class="muted">{{ updateMsg }}</p>
-        <div class="switch-row mt-14">
-          <n-switch v-model:value="autoCheckUpdate" aria-labelledby="auto-update-label" />
-          <span id="auto-update-label" @click="toggleAutoCheck">启动时自动检查更新</span>
-        </div>
-        <label>技术信息</label>
-        <p class="muted">{{ userAgent }}</p>
+        <n-space vertical :size="16" class="settings-pane">
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">应用信息</n-text>
+            <div class="app-head">SiteCollector <span class="app-version">v{{ appVersion }}</span></div>
+            <div class="link-row">
+              <n-button size="small" quaternary @click="api.openLink(REPO_URL)">GitHub 仓库</n-button>
+            </div>
+            <n-text class="group-hint" depth="3">MIT License · Copyright (c) 2026 fan-root</n-text>
+          </div>
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">更新</n-text>
+            <n-button type="primary" :disabled="updateState === 'checking' || updateState === 'downloading'" @click="checkNow">检查更新</n-button>
+            <n-text v-if="updateState === 'checking'" class="group-hint" depth="3">检查中…</n-text>
+            <n-text v-else-if="updateState === 'none'" class="group-hint" depth="3">{{ updateMsg }}</n-text>
+            <template v-else-if="updateState === 'available' && updateInfo">
+              <n-text>发现新版本 v{{ updateInfo.version }}</n-text>
+              <n-text class="group-hint pre-wrap" depth="3">{{ updateInfo.body }}</n-text>
+              <n-button type="primary" @click="installNow">下载并安装</n-button>
+            </template>
+            <template v-else-if="updateState === 'downloading'">
+              <template v-if="downloadKnown">
+                <n-text class="group-hint" depth="3">下载中 {{ downloadPct }}%</n-text>
+                <n-progress type="line" :percentage="downloadPct" :show-indicator="false" />
+              </template>
+              <n-text v-else class="group-hint" depth="3">下载中…</n-text>
+            </template>
+            <template v-else-if="updateState === 'ready'">
+              <n-text>已下载完成，重启后生效。</n-text>
+              <n-button type="primary" @click="doRelaunch">立即重启</n-button>
+            </template>
+            <n-text v-else-if="updateState === 'error'" class="group-hint" depth="3">{{ updateMsg }}</n-text>
+            <div class="switch-row">
+              <n-switch v-model:value="autoCheckUpdate" aria-labelledby="auto-update-label" />
+              <span id="auto-update-label" @click="toggleAutoCheck">启动时自动检查更新</span>
+            </div>
+          </div>
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">诊断信息</n-text>
+            <n-text class="group-hint" depth="3">{{ userAgent }}</n-text>
+          </div>
+        </n-space>
       </n-tab-pane>
     </n-tabs>
     <template #footer>
-      <div class="actions modal-footer"><n-button @click="emit('close')">关闭</n-button></div>
+      <div class="modal-footer"><n-button @click="emit('close')">关闭</n-button></div>
     </template>
   </n-modal>
 </template>
+
+<style scoped>
+.settings-tabs { height: 480px; }
+.settings-tabs :deep(.n-tab-pane) { padding: 18px 20px; overflow-y: auto; }
+.settings-pane { width: 100%; }
+.settings-group { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.settings-group > .n-input { width: 100%; }
+.group-title { font-size: 12px; font-weight: 600; }
+.group-hint { display: block; }
+.group-hint code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+  font-family: var(--mono);
+}
+.palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+.palette-option { margin: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-md); transition: border-color .15s var(--ease); }
+.palette-option:hover { border-color: var(--primary); }
+.palette-option.n-radio--checked { border-color: var(--primary); box-shadow: var(--ring); }
+.palette-option :deep(.n-radio__label) { display: flex; align-items: center; gap: 6px; width: 100%; }
+.palette-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--swatch-color); flex-shrink: 0; }
+.palette-name { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slider-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+.slider-row .n-slider { flex: 1; }
+.slider-bound { flex: none; }
+.slider-value { flex: none; min-width: 42px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.switch-row { display: flex; align-items: center; gap: 8px; }
+.switch-row span { cursor: pointer; }
+.pre-wrap { white-space: pre-wrap; }
+.app-head { font-size: 16px; font-weight: 700; }
+.app-version { color: var(--primary); margin-left: 6px; }
+.link-row { display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
