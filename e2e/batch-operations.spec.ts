@@ -124,9 +124,12 @@ test('import/export modal shows all formats', async ({ page }) => {
   await expect(page.locator('[data-testid="modal-import-export"]')).toContainText('导入 MD')
   await expect(page.locator('[data-testid="modal-import-export"]')).toContainText('导入 HTML')
 
-  // Toggle merge/overwrite
-  await expect(page.locator('.segctrl')).toContainText('合并导入')
-  await expect(page.locator('.segctrl')).toContainText('覆盖导入')
+  // 导入方式为 Naive 单选按钮组（原生 input 被 Naive 视觉隐藏）
+  const merge = page.getByRole('radio', { name: '合并导入' })
+  const overwrite = page.getByRole('radio', { name: '覆盖导入' })
+  await expect(merge).toHaveCount(1)
+  await expect(overwrite).toHaveCount(1)
+  await expect(merge).toBeChecked()
 })
 
 test('clear selection with Escape', async ({ page }) => {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NModal } from 'naive-ui'
+import { NModal, NButton, NRadioGroup, NRadio, NGrid, NGi, NSpace, NText, NAlert } from 'naive-ui'
 import { useAppStore } from '../store/app'
 import * as api from '../api'
 const store = useAppStore()
@@ -93,56 +93,69 @@ async function confirmJsonImport() {
     data-testid="modal-import-export"
     @update:show="emit('close')"
   >
-    <div class="modal-content">
+    <div class="import-export-body">
       <template v-if="jsonPath">
         <div class="modal-cols">
           <div>
-            <p class="muted">将导入：{{ jsonPath }}</p>
-            <p class="muted">JSON 导入会覆盖当前全部数据（自动备份 .bak），确定继续？</p>
-            <div class="actions">
-              <button class="btn" @click="jsonPath = null">取消</button>
-              <button class="btn danger" @click="confirmJsonImport">确定覆盖导入</button>
-            </div>
+            <label class="section-label">将导入</label>
+            <n-text depth="3">{{ jsonPath }}</n-text>
+            <n-alert type="warning" :bordered="false" class="confirm-warning">
+              JSON 导入会覆盖当前全部数据（自动备份 .bak），确定继续？
+            </n-alert>
+            <n-space class="confirm-actions" justify="end" :size="8">
+              <n-button @click="jsonPath = null">取消</n-button>
+              <n-button type="error" @click="confirmJsonImport">确定覆盖导入</n-button>
+            </n-space>
           </div>
           <div class="help">
-            <label>备份说明</label>
-            <p class="muted">导入前自动生成 .bak 备份文件，导入失败可从中恢复。</p>
+            <label class="section-label">备份说明</label>
+            <n-text depth="3">导入前自动生成 .bak 备份文件，导入失败可从中恢复。</n-text>
           </div>
         </div>
       </template>
       <template v-else>
         <div class="modal-cols">
           <div>
-            <label>导出</label>
-            <div class="grid2x2">
-              <button class="btn primary" @click="exportMd">导出 MD</button>
-              <button class="btn primary" @click="exportJson">导出 JSON</button>
-              <button class="btn primary" @click="exportHtml">导出 HTML</button>
-            </div>
-            <label>导入</label>
-            <div class="grid2x2">
-              <button class="btn" @click="importMd">导入 MD</button>
-              <button class="btn" @click="importHtml">导入 HTML</button>
-              <button class="btn" @click="pickJson">导入 JSON</button>
-            </div>
-            <label>导入方式</label>
-            <div class="segctrl" role="group" aria-label="导入方式">
-              <button type="button" :class="{ active: mode === 'merge' }" @click="mode = 'merge'">合并导入</button>
-              <button type="button" :class="{ active: mode === 'overwrite' }" @click="mode = 'overwrite'">覆盖导入（自动备份 .bak）</button>
-            </div>
+            <label class="section-label">导出</label>
+            <n-grid :cols="2" :x-gap="8" :y-gap="8" class="import-grid">
+              <n-gi><n-button type="primary" @click="exportMd">导出 MD</n-button></n-gi>
+              <n-gi><n-button type="primary" @click="exportJson">导出 JSON</n-button></n-gi>
+              <n-gi><n-button type="primary" @click="exportHtml">导出 HTML</n-button></n-gi>
+            </n-grid>
+            <label class="section-label">导入</label>
+            <n-grid :cols="2" :x-gap="8" :y-gap="8" class="import-grid">
+              <n-gi><n-button @click="importMd">导入 MD</n-button></n-gi>
+              <n-gi><n-button @click="importHtml">导入 HTML</n-button></n-gi>
+              <n-gi><n-button @click="pickJson">导入 JSON</n-button></n-gi>
+            </n-grid>
+            <label class="section-label">导入方式</label>
+            <n-radio-group v-model:value="mode" aria-label="导入方式">
+              <n-radio value="merge">合并导入</n-radio>
+              <n-radio value="overwrite">覆盖导入（自动备份 .bak）</n-radio>
+            </n-radio-group>
           </div>
           <div class="help">
-            <label>md 格式示例</label>
+            <label class="section-label">md 格式示例</label>
             <code># 分类名<br />名称&#9;https://链接&#9;状态<br />&gt; 网站简介备注</code>
-            <label>JSON 说明</label>
-            <p class="muted">读取「导出 JSON」的备份文件，覆盖当前全部数据（自动备份 .bak）。导入成功后在状态栏闪现提示。</p>
+            <label class="section-label">JSON 说明</label>
+            <n-text depth="3">读取「导出 JSON」的备份文件，覆盖当前全部数据（自动备份 .bak）。导入成功后在状态栏闪现提示。</n-text>
           </div>
         </div>
       </template>
-      <p class="muted">{{ msg }}</p>
+      <n-text v-if="msg" type="error">{{ msg }}</n-text>
     </div>
     <template #footer>
-      <div class="actions modal-footer"><button class="btn" @click="emit('close')">关闭</button></div>
+      <div class="modal-footer"><n-button @click="emit('close')">关闭</n-button></div>
     </template>
   </n-modal>
 </template>
+
+<style scoped>
+.import-export-body { display: flex; flex-direction: column; gap: 14px; }
+.section-label { display: block; margin: 14px 0 5px; font-size: 12px; color: var(--text-2); font-weight: 600; }
+.help { border-left: 1px dashed var(--border-2); padding-left: 14px; }
+.help code { display: block; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 10px; margin: 6px 0; font-size: 12px; font-family: var(--mono); color: var(--text); }
+.import-grid .n-button { width: 100%; }
+.confirm-warning { margin-top: 10px; }
+.confirm-actions { margin-top: 12px; }
+</style>
