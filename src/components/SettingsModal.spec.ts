@@ -43,7 +43,7 @@ describe('SettingsModal', () => {
     mount(SettingsModal)
     await nextTick()
     await nextTick()
-    const aboutBtn = Array.from(document.body.querySelectorAll('.settings-nav-item'))
+    const aboutBtn = Array.from(document.body.querySelectorAll('[role="tab"]'))
       .find(el => el.textContent?.trim() === '关于') as HTMLElement
     aboutBtn.click()
     await nextTick()
@@ -58,7 +58,7 @@ describe('SettingsModal', () => {
 
   it('reports already up to date when check succeeds with no update', async () => {
     await mountAndOpenAbout()
-    ;(Array.from(document.body.querySelectorAll('.btn'))
+    ;(Array.from(document.body.querySelectorAll('button'))
       .find(el => el.textContent?.trim() === '检查更新') as HTMLElement).click()
     await nextTick()
     await nextTick()
@@ -69,7 +69,7 @@ describe('SettingsModal', () => {
   it('offers download when an update is available', async () => {
     checkForUpdateMock.mockResolvedValue({ ok: true, update: { version: '0.3.0', body: 'notes' } })
     await mountAndOpenAbout()
-    ;(Array.from(document.body.querySelectorAll('.btn'))
+    ;(Array.from(document.body.querySelectorAll('button'))
       .find(el => el.textContent?.trim() === '检查更新') as HTMLElement).click()
     await nextTick()
     await nextTick()
@@ -80,7 +80,7 @@ describe('SettingsModal', () => {
   it('shows a check failure instead of claiming up to date', async () => {
     checkForUpdateMock.mockResolvedValue({ ok: false, error: 'offline' })
     await mountAndOpenAbout()
-    ;(Array.from(document.body.querySelectorAll('.btn'))
+    ;(Array.from(document.body.querySelectorAll('button'))
       .find(el => el.textContent?.trim() === '检查更新') as HTMLElement).click()
     await nextTick()
     await nextTick()
@@ -96,22 +96,22 @@ describe('SettingsModal', () => {
       return new Promise<void>(() => {})
     })
     await mountAndOpenAbout()
-    ;(Array.from(document.body.querySelectorAll('.btn'))
+    ;(Array.from(document.body.querySelectorAll('button'))
       .find(el => el.textContent?.trim() === '检查更新') as HTMLElement).click()
     await nextTick()
     await nextTick()
-    ;(Array.from(document.body.querySelectorAll('.btn'))
+    ;(Array.from(document.body.querySelectorAll('button'))
       .find(el => el.textContent?.trim() === '下载并安装') as HTMLElement).click()
     await nextTick()
 
     progress?.({ downloaded: 10, total: undefined, finished: false })
     await nextTick()
     expect(document.body.textContent).toContain('下载中…')
-    expect(document.body.querySelector('progress')).toBeNull()
+    expect(document.body.querySelector('.n-progress')).toBeNull()
 
     progress?.({ downloaded: 50, total: 100, finished: false })
     await nextTick()
     expect(document.body.textContent).toContain('下载中 50%')
-    expect(document.body.querySelector('progress')).not.toBeNull()
+    expect(document.body.querySelector('.n-progress')).not.toBeNull()
   })
 })

@@ -2,6 +2,9 @@ import type { GlobalThemeOverrides } from 'naive-ui'
 import { DEFAULT_PALETTE_ID, getPalette, type Palette } from './palettes'
 import { getShellTokens } from './tokens'
 
+export { PALETTES } from './palettes'
+export type { Palette, PaletteColors, PaletteId } from './palettes'
+
 /** 逐通道线性插值，返回 6 位小写十六进制。 */
 export function mix(hex: string, other: string, ratio: number): string {
   const a = parseInt(hex.slice(1), 16)
