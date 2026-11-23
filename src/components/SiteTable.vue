@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { FolderOpen, Square, ExternalLink, X, ChevronUp, ChevronDown } from 'lucide-vue-next'
+import { NButton, NCheckbox } from 'naive-ui'
 import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
 import type { Site } from '../types'
 import * as api from '../api'
@@ -50,6 +51,7 @@ function onAction(kind: string) {
 
 const allSelected = computed(() =>
   store.filteredSites.length > 0 && store.filteredSites.every(s => store.selectedIds.includes(s.id)))
+const someSelected = computed(() => store.selectedIds.length > 0 && !allSelected.value)
 
 function onRowClick(e: MouseEvent, site: Site) {
   if (e.ctrlKey || e.metaKey) store.toggleSelect(site.id)
@@ -79,18 +81,18 @@ function onRowDragOver(e: DragEvent) {
 <template>
   <div v-if="store.selectedIds.length" class="batchbar sticky-bar">
     <b>已选 {{ store.selectedIds.length }} 项</b>
-    <button v-if="store.checking" class="btn danger" @click="store.cancelCheck()"><Square :size="14" /> 取消检测</button>
-    <button v-else class="btn" @click="emit('check-site', [...store.selectedIds])"><Square :size="14" /> 检测所选</button>
-    <button class="btn" :disabled="store.checking" @click="emit('move', [...store.selectedIds])">移动分类…</button>
-    <button class="btn" :disabled="store.checking" @click="emit('tag', [...store.selectedIds])">添加标签…</button>
-    <button class="btn danger" :disabled="store.checking" @click="store.deleteSites([...store.selectedIds])">删除所选</button>
-    <button class="btn" style="margin-left:auto" @click="store.clearSelection()"><X :size="14" /> 取消选择</button>
+    <n-button v-if="store.checking" size="small" type="error" @click="store.cancelCheck()"><Square :size="14" /> 取消检测</n-button>
+    <n-button v-else size="small" @click="emit('check-site', [...store.selectedIds])"><Square :size="14" /> 检测所选</n-button>
+    <n-button size="small" :disabled="store.checking" @click="emit('move', [...store.selectedIds])">移动分类…</n-button>
+    <n-button size="small" :disabled="store.checking" @click="emit('tag', [...store.selectedIds])">添加标签…</n-button>
+    <n-button size="small" type="error" :disabled="store.checking" @click="store.deleteSites([...store.selectedIds])">删除所选</n-button>
+    <n-button size="small" class="batch-cancel" @click="store.clearSelection()"><X :size="14" /> 取消选择</n-button>
   </div>
   <div class="table-wrap">
     <table class="site-table">
       <thead>
         <tr>
-          <th><span class="cb" :class="{ checked: allSelected }" @click="store.selectAllVisible()"></span></th>
+          <th><n-checkbox :checked="allSelected" :indeterminate="someSelected" @update:checked="store.selectAllVisible()" /></th>
           <th @click="store.toggleSort('name')" class="sortable">名称 <span v-if="store.sortKey==='name'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
           <th @click="store.toggleSort('url')" class="sortable">链接 <span v-if="store.sortKey==='url'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
           <th @click="store.toggleSort('category')" class="sortable">分类 <span v-if="store.sortKey==='category'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
@@ -112,7 +114,7 @@ function onRowDragOver(e: DragEvent) {
           @dragover="onRowDragOver"
           @drop="onRowDrop($event, s)"
         >
-          <td><span class="cb" :class="{ checked: store.selectedIds.includes(s.id) }" @click.stop="store.toggleSelect(s.id)"></span></td>
+          <td><n-checkbox :checked="store.selectedIds.includes(s.id)" @update:checked="store.toggleSelect(s.id)" @click.stop /></td>
           <td
             :class="{ 'name-dead': s.status === 'dead' }"
             draggable="true"
@@ -142,3 +144,7 @@ function onRowDragOver(e: DragEvent) {
     <ContextMenu v-if="menu" :x="menu.x" :y="menu.y" @action="onAction" @close="menu = null" />
   </div>
 </template>
+
+<style scoped>
+.batchbar .batch-cancel { margin-left: auto; }
+</style>

@@ -56,7 +56,7 @@ test('select all with Ctrl+A', async ({ page }) => {
 })
 
 test('select individual site', async ({ page }) => {
-  const cbs = page.locator('.site-table tbody .cb')
+  const cbs = page.locator('.site-table tbody .n-checkbox')
   await cbs.first().click()
   await expect(page.locator('.batchbar')).toContainText('已选 1 项')
 })
@@ -87,7 +87,7 @@ test('batch bar shows check button for selected sites', async ({ page }) => {
 
 test('move category via batch pick', async ({ page }) => {
   // Select first site
-  await page.locator('.site-table tbody .cb').first().click()
+  await page.locator('.site-table tbody .n-checkbox').first().click()
   await page.click('.batchbar button:has-text("移动分类")')
 
   // Pick category modal appears

@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Trash2, Undo2, X } from 'lucide-vue-next'
-import { useDialog } from 'naive-ui'
+import { NButton, NCheckbox, useDialog } from 'naive-ui'
 import { useAppStore } from '../store/app'
 import { useSelection } from '../composables/useSelection'
 import type { TrashedSite } from '../types'
@@ -9,6 +10,7 @@ const dialog = useDialog()
 
 const list = () => store.trashedSites.map((t: TrashedSite) => t.site.id)
 const sel = useSelection(list)
+const someSelected = computed(() => sel.selected.value.length > 0 && !sel.allSelected.value)
 function restore() { store.restoreSites([...sel.selected.value]); sel.clear() }
 const selIds = () => [...sel.selected.value]
 function askDelete() {
@@ -38,30 +40,30 @@ function askEmpty() {
   <div>
     <div v-if="sel.selected.value.length" class="batchbar">
       <b>已选 {{ sel.selected.value.length }} 项</b>
-      <button class="btn" @click="restore"><Undo2 :size="14" /> 恢复所选</button>
-      <button class="btn danger" @click="askDelete"><X :size="14" /> 彻底删除所选</button>
-      <button class="btn" style="margin-left:auto" @click="sel.clear()"><X :size="14" /> 取消选择</button>
+      <n-button size="small" @click="restore"><Undo2 :size="14" /> 恢复所选</n-button>
+      <n-button size="small" type="error" @click="askDelete"><X :size="14" /> 彻底删除所选</n-button>
+      <n-button size="small" class="batch-cancel" @click="sel.clear()"><X :size="14" /> 取消选择</n-button>
     </div>
     <div v-else class="batchbar">
       <b>回收站 · {{ store.trashedSites.length }} 项</b>
-      <button class="btn danger" style="margin-left:auto" @click="askEmpty">清空回收站</button>
+      <n-button size="small" type="error" class="batch-cancel" @click="askEmpty">清空回收站</n-button>
     </div>
     <table class="site-table">
       <thead><tr>
-        <th><span class="cb" :class="{ checked: sel.allSelected.value }" @click="sel.selectAll()"></span></th>
+        <th><n-checkbox :checked="sel.allSelected.value" :indeterminate="someSelected" @update:checked="sel.selectAll()" /></th>
         <th>名称</th><th>链接</th><th>删除时间</th><th></th>
       </tr></thead>
       <tbody>
         <tr v-for="t in store.trashedSites" :key="t.site.id"
           :class="{ 'row-selected': sel.selected.value.includes(t.site.id) }"
           @click="sel.onRowClick($event, t.site.id)">
-          <td><span class="cb" :class="{ checked: sel.selected.value.includes(t.site.id) }" @click.stop="sel.toggle(t.site.id)"></span></td>
+          <td><n-checkbox :checked="sel.selected.value.includes(t.site.id)" @update:checked="sel.toggle(t.site.id)" @click.stop /></td>
           <td>{{ t.site.name }}</td>
           <td class="muted">{{ t.site.url }}</td>
           <td class="muted">{{ t.deletedAt.slice(0, 10) }}</td>
           <td>
-            <button class="btn" @click.stop="store.restoreSite(t.site.id)">恢复</button>
-            <button class="btn danger" @click.stop="store.permanentlyDelete(t.site.id)">彻底删除</button>
+            <n-button size="small" @click.stop="store.restoreSite(t.site.id)">恢复</n-button>
+            <n-button size="small" type="error" @click.stop="store.permanentlyDelete(t.site.id)">彻底删除</n-button>
           </td>
         </tr>
       </tbody>
@@ -73,3 +75,7 @@ function askEmpty() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.batchbar .batch-cancel { margin-left: auto; }
+</style>
