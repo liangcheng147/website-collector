@@ -105,6 +105,8 @@ function askDelete() {
 .card-head { display: flex; align-items: center; justify-content: space-between; }
 .card-head h4 { margin-bottom: 0; }
 .cat-item { padding: 6px 8px; cursor: pointer; border-bottom: 1px solid var(--border); }
+/* n-list-item 的默认插槽包在 __main 里，需要让它成为 flex 容器，列宽才能生效 */
+.cat-item :deep(.n-list-item__main) { display: flex; align-items: center; }
 .cat-item:hover { background: var(--hover); }
 .cat-item.selected, .cat-item.selected:hover { background: var(--primary-t); }
 .help-text { display: block; margin-top: 10px; }

@@ -151,6 +151,8 @@ function doBatch() {
 .card-head h4 { margin-bottom: 0; }
 .head-actions { display: flex; gap: 6px; }
 .cat-item { padding: 6px 8px; cursor: pointer; border-bottom: 1px solid var(--border); }
+/* n-list-item 的默认插槽包在 __main 里，需要让它成为 flex 容器，列宽才能生效 */
+.cat-item :deep(.n-list-item__main) { display: flex; align-items: center; }
 .cat-item:hover { background: var(--hover); }
 .cat-item.selected, .cat-item.selected:hover { background: var(--primary-t); }
 .rename-action { margin-left: 6px; }
