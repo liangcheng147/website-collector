@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { h, ref, computed } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
-import { NButton, useDialog } from 'naive-ui'
+import { NButton, NCheckbox, NSelect, NInput, NText, NList, NListItem, useDialog } from 'naive-ui'
 import { useAppStore } from '../store/app'
 import { useSelection } from '../composables/useSelection'
 const store = useAppStore()
@@ -11,6 +11,15 @@ const parentId = ref<string | null>(null)
 const sel = useSelection(() => store.flatCategories.map(c => c.id))
 const catList = computed(() =>
   store.flatCategories.map(c => ({ ...c, count: store.categoryCounts[c.id] ?? 0 })))
+const someSelected = computed(() => sel.selected.value.length > 0 && !sel.allSelected.value)
+const selectValue = computed(() => parentId.value ?? '')
+const parentOptions = computed(() => [
+  { label: '（顶级分类）', value: '' },
+  ...store.flatCategories.filter(c => c.depth < 2).map(c => ({ label: '\u3000'.repeat(c.depth) + c.name, value: c.id })),
+])
+function onParentChange(value: string | number | null) {
+  parentId.value = value ? String(value) : null
+}
 function add() {
   if (!name.value.trim()) return
   const validParent = store.flatCategories.find(c => c.id === parentId.value && c.depth < 2)
@@ -48,31 +57,55 @@ function askDelete() {
 <template>
   <div class="manage-cols">
     <div class="manage-card">
-      <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="card-head">
         <h4>分类列表</h4>
-        <button class="btn danger" :disabled="!sel.selected.value.length" @click="askDelete"><Trash2 :size="14" /> 批量删除所选</button>
+        <n-button type="error" size="small" :disabled="!sel.selected.value.length" @click="askDelete">
+          <Trash2 :size="14" /> 批量删除所选
+        </n-button>
       </div>
       <div class="cat-head">
-        <span class="chk-col"><span class="cb" :class="{ checked: sel.allSelected.value }" @click="sel.selectAll()"></span></span><span class="name-col">分类</span><span class="cnt-col">网站数</span>
+        <span class="chk-col">
+          <n-checkbox :checked="sel.allSelected.value" :indeterminate="someSelected" @update:checked="sel.selectAll()" />
+        </span>
+        <span class="name-col">分类</span>
+        <span class="cnt-col">网站数</span>
       </div>
-      <div v-for="c in catList" :key="c.id" class="cat-row" :class="{ 'row-selected': sel.selected.value.includes(c.id) }" @click="sel.onRowClick($event, c.id)">
-        <span class="chk-col"><span class="cb" :class="{ checked: sel.selected.value.includes(c.id) }" @click.stop="sel.toggle(c.id)"></span></span>
-        <span class="name-col" :style="{ paddingLeft: c.depth * 14 + 'px' }">{{ c.name }}</span>
-        <span class="cnt-col muted">{{ c.count }}</span>
-      </div>
+      <n-list>
+        <n-list-item
+          v-for="c in catList"
+          :key="c.id"
+          class="cat-item"
+          :class="{ selected: sel.selected.value.includes(c.id) }"
+          @click="sel.onRowClick($event, c.id)"
+        >
+          <span class="chk-col">
+            <n-checkbox :checked="sel.selected.value.includes(c.id)" @update:checked="sel.toggle(c.id)" @click.stop />
+          </span>
+          <span class="name-col" :style="{ paddingLeft: c.depth * 14 + 'px' }">{{ c.name }}</span>
+          <span class="cnt-col muted">{{ c.count }}</span>
+        </n-list-item>
+      </n-list>
       <div v-if="!catList.length" class="empty">暂无分类</div>
     </div>
     <div class="manage-card">
       <h4>批量添加分类</h4>
       <label>父分类</label>
-      <select v-model="parentId">
-        <option :value="null">（顶级分类）</option>
-        <option v-for="c in store.flatCategories.filter(c => c.depth < 2)" :key="c.id" :value="c.id">{{ '\u3000'.repeat(c.depth) }}{{ c.name }}</option>
-      </select>
+      <n-select :value="selectValue" :options="parentOptions" @update:value="onParentChange" />
       <label>分类名称</label>
-      <input v-model="name" placeholder="分类名" @keydown.enter="add" />
-      <div class="actions"><button class="btn primary" @click="add">添加</button></div>
-      <p class="muted">逐个输入，可连续添加多个。</p>
+      <n-input v-model:value="name" placeholder="分类名" @keydown.enter="add" />
+      <div class="actions">
+        <n-button type="primary" @click="add">添加</n-button>
+      </div>
+      <n-text class="help-text" depth="3">逐个输入，可连续添加多个。</n-text>
     </div>
   </div>
 </template>
+
+<style scoped>
+.card-head { display: flex; align-items: center; justify-content: space-between; }
+.card-head h4 { margin-bottom: 0; }
+.cat-item { padding: 6px 8px; cursor: pointer; border-bottom: 1px solid var(--border); }
+.cat-item:hover { background: var(--hover); }
+.cat-item.selected, .cat-item.selected:hover { background: var(--primary-t); }
+.help-text { display: block; margin-top: 10px; }
+</style>
