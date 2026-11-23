@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, shallowRef, computed, onMounted } from 'vue'
+import type { HTMLAttributes } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
 import { getVersion } from '@tauri-apps/api/app'
 import { NModal, NTabs, NTabPane, NSelect, NSlider, NSwitch, NProgress, NButton } from 'naive-ui'
@@ -101,11 +102,11 @@ async function openDir() {
       v-model:value="section"
     >
       <!-- 主题 -->
-      <n-tab-pane name="theme" tab="主题" :tab-props="{ role: 'tab' }">
+      <n-tab-pane name="theme" tab="主题" :tab-props="{ 'data-testid': 'settings-tab-theme' } as HTMLAttributes">
         <label>主题模式</label>
         <n-select :value="store.settings.theme" :options="themeModeOptions" @update:value="setTheme" />
         <p class="muted">跟随系统：启动时读取系统主题，运行中不实时切换。</p>
-        <label class="mt-14">配色方案</label>
+        <label>配色方案</label>
         <div class="palette-grid">
           <button
             v-for="p in PALETTES"
@@ -123,7 +124,7 @@ async function openDir() {
       </n-tab-pane>
 
       <!-- 显示 -->
-      <n-tab-pane name="display" tab="显示" :tab-props="{ role: 'tab' }">
+      <n-tab-pane name="display" tab="显示" :tab-props="{ 'data-testid': 'settings-tab-display' } as HTMLAttributes">
         <label>界面缩放（{{ store.settings.zoom }}%）</label>
         <div class="slider-row">
           <span class="muted">80%</span>
@@ -134,7 +135,7 @@ async function openDir() {
       </n-tab-pane>
 
       <!-- 数据存储 -->
-      <n-tab-pane name="storage" tab="数据存储" :tab-props="{ role: 'tab' }">
+      <n-tab-pane name="storage" tab="数据存储" :tab-props="{ 'data-testid': 'settings-tab-storage' } as HTMLAttributes">
         <div class="modal-cols">
           <div>
             <label>数据文件</label>
@@ -147,16 +148,16 @@ async function openDir() {
             <p v-if="store.location.isFallback" class="muted text-pending"><AlertTriangle :size="12" /> 当前正使用系统目录（安装位置无写入权限）。</p>
           </div>
         </div>
-        <p class="muted">{{ msg }}</p>
+        <p v-if="msg" class="muted">{{ msg }}</p>
       </n-tab-pane>
 
       <!-- 关于 -->
-      <n-tab-pane name="about" tab="关于" :tab-props="{ role: 'tab' }">
+      <n-tab-pane name="about" tab="关于" :tab-props="{ 'data-testid': 'settings-tab-about' } as HTMLAttributes">
         <label>软件</label>
         <p>SiteCollector v{{ appVersion }}</p>
-        <label class="mt-14">链接</label>
+        <label>链接</label>
         <p class="muted"><a @click.prevent="api.openLink('https://github.com/liangcheng147/website-collector')">GitHub 仓库</a> · 作者 bjb · MIT License</p>
-        <label class="mt-14">更新</label>
+        <label>更新</label>
         <div class="actions actions-start">
           <n-button type="primary" :disabled="updateState === 'checking' || updateState === 'downloading'" @click="checkNow">检查更新</n-button>
         </div>
@@ -170,7 +171,7 @@ async function openDir() {
         <div v-else-if="updateState === 'downloading'">
           <template v-if="downloadKnown">
             <p class="muted">下载中 {{ downloadPct }}%</p>
-            <n-progress type="line" :percentage="downloadPct" />
+            <n-progress type="line" :percentage="downloadPct" :show-indicator="false" />
           </template>
           <p v-else class="muted">下载中…</p>
         </div>
@@ -183,7 +184,7 @@ async function openDir() {
           <n-switch v-model:value="autoCheckUpdate" aria-labelledby="auto-update-label" />
           <span id="auto-update-label" @click="toggleAutoCheck">启动时自动检查更新</span>
         </div>
-        <label class="mt-14">技术信息</label>
+        <label>技术信息</label>
         <p class="muted">{{ userAgent }}</p>
       </n-tab-pane>
     </n-tabs>

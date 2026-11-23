@@ -43,8 +43,7 @@ describe('SettingsModal', () => {
     mount(SettingsModal)
     await nextTick()
     await nextTick()
-    const aboutBtn = Array.from(document.body.querySelectorAll('[role="tab"]'))
-      .find(el => el.textContent?.trim() === '关于') as HTMLElement
+    const aboutBtn = document.body.querySelector('[data-testid="settings-tab-about"]') as HTMLElement
     aboutBtn.click()
     await nextTick()
     return store

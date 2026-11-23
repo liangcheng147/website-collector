@@ -21,7 +21,7 @@ const tagOptions = computed(() => [
 ])
 const tagMenuProps = { 'data-testid': 'tag-filter-menu' } as HTMLAttributes
 function onTagChange(v: string | number | null) {
-  store.selectedTag = v === '' ? null : String(v)
+  store.selectedTag = v === '' || v === null || v === undefined ? null : String(v)
 }
 </script>
 
@@ -30,18 +30,18 @@ function onTagChange(v: string | number | null) {
     <span class="logo"><span class="lg-ic">GJ</span>归集</span>
     <n-input
       v-model:value="q"
+      class="topbar-search"
       data-testid="search-input"
       placeholder="搜索名称 / 链接 / 标签…"
-      :style="{ flex: '1', maxWidth: '300px' }"
     >
-      <template #prefix><Search :size="14" :style="{ color: 'var(--text-2)' }" /></template>
+      <template #prefix><Search :size="14" class="topbar-icon" /></template>
     </n-input>
     <n-select
       :value="store.selectedTag ?? ''"
       data-testid="tag-filter"
       :options="tagOptions"
+      class="topbar-select"
       :menu-props="tagMenuProps"
-      :style="{ width: 'auto', maxWidth: '220px' }"
       @update:value="onTagChange"
     />
     <n-button

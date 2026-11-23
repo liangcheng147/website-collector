@@ -67,7 +67,9 @@ html.win-maximized .app { border-radius:0; }
 .topbar { display:flex; align-items:center; gap:10px; padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--border); flex:none; }
 .topbar .logo { display:flex; align-items:center; gap:8px; font-weight:700; font-size:14px; color:var(--text); }
 .topbar .logo .lg-ic { width:22px; height:22px; border-radius:6px; background:var(--primary-t); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
-.topbar .search { flex:1; max-width:300px; }
+.topbar .topbar-search { flex:1; max-width:300px; }
+.topbar .topbar-icon { color:var(--text-2); }
+.topbar .topbar-select { width:auto; max-width:220px; min-width:120px; }
 
 .sidebar { background: var(--panel); border-right: 1px solid var(--border); padding: 10px 8px; display: flex; flex-direction: column; min-height: 0; }
 .sidebar-scroll { flex: 1 1 auto; overflow: auto; min-height: 0; }
@@ -100,11 +102,8 @@ html.win-maximized .app { border-radius:0; }
 .collapse-arrow:hover { color: var(--text); }
 
 .statusbar { display:flex; gap:14px; padding:6px 14px; background:var(--panel); border-top:1px solid var(--border); font-size:12px; color:var(--text-2); flex:none; }
-.statusbar .bad { color:var(--danger); font-weight:700; }
 .statusbar .pending-hint { color:var(--pending-txt); font-weight:700; }
 .statusbar .flash-ok { color:var(--ok-txt); font-weight:700; }
-.statusbar-badge { display:inline-flex; align-items:center; padding:1px 8px; border-radius:var(--radius-full); font-weight:600; font-size:12px; }
-.statusbar-badge.danger { background:var(--danger-bg); color:var(--danger); }
 
 .body > * { min-height:0; }
 .content { scroll-behavior:smooth; }
@@ -201,6 +200,7 @@ html[data-theme="dark"] { color-scheme: dark; }
 .modal-content .text-pending { color:var(--pending-txt); }
 /* n-tabs 左侧页签的内容区：naive 默认只有 12px 顶边距，这里补回内边距与滚动 */
 .n-tabs.modal-content .n-tab-pane { padding:18px 20px; overflow-y:auto; }
+.n-tabs.modal-content .n-tab-pane > label:first-child { margin-top: 0; }
 input[type="checkbox"], input[type="radio"] { width:auto; height:auto; padding:0; }
 
 /* ---- 选中交互与打开链接 ---- */
