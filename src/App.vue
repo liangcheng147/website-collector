@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
-import { NConfigProvider, NDialogProvider, NMessageProvider } from 'naive-ui'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { NConfigProvider, NDialogProvider, NMessageProvider, darkTheme, zhCN, dateZhCN } from 'naive-ui'
 import { useAppStore, UNCATEGORIZED_ID } from './store/app'
+import { resolveTheme, buildThemeOverrides } from './theme'
 import TitleBar from './components/TitleBar.vue'
 import TopBar from './components/TopBar.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -18,6 +19,9 @@ import type { Site } from './types'
 import { checkForUpdate } from './updater'
 
 const store = useAppStore()
+// 与 store.applyAppearance 读同一个 resolveTheme，保证 data-theme 与 Naive 主题一致
+const theme = computed(() => resolveTheme(store.settings))
+const themeOverrides = computed(() => buildThemeOverrides(theme.value.palette, theme.value.dark))
 const modal = ref<'' | 'add' | 'import' | 'settings'>('')
 const editing = ref<Site | undefined>()
 const modalDefaultCategoryId = ref<string | null>(null)
@@ -51,7 +55,14 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
 <template>
   <!-- abstract：不渲染包裹元素，保住 #app > .app 的 height:100% 链 -->
   <!-- preflight-style-disabled：跳过 Naive 全局 reset，且不用 n-global-style（透明窗口会露白） -->
-  <n-config-provider abstract preflight-style-disabled>
+  <n-config-provider
+    abstract
+    preflight-style-disabled
+    :theme="theme.dark ? darkTheme : null"
+    :theme-overrides="themeOverrides"
+    :locale="zhCN"
+    :date-locale="dateZhCN"
+  >
     <n-dialog-provider>
       <n-message-provider>
         <div class="app">

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { AppData, Site, TrashedSite, View, Category, Settings } from '../types'
 import * as api from '../api'
+import { resolveTheme, applyShellVars } from '../theme'
 
 const FLASH_DURATION_MS = 2500
 const MAX_CATEGORY_DEPTH = 2
@@ -147,14 +148,14 @@ export const useAppStore = defineStore('app', {
     },
     applyAppearance() {
       if (typeof document === 'undefined') return
-      const s = this.settings
-      const dark = s.theme === 'dark' || (s.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      const { dark, palette } = resolveTheme(this.settings)
       document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-      document.documentElement.dataset.palette = s.palette || 'teal'
+      document.documentElement.dataset.palette = palette.id
+      applyShellVars(palette, dark)
 
       const app = document.querySelector('.app') as HTMLElement | null
       if (!app) return
-      const scale = s.zoom / 100
+      const scale = this.settings.zoom / 100
       if (scale === 1) {
         app.style.transform = ''
         app.style.width = ''

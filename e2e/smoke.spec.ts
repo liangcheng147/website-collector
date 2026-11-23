@@ -137,3 +137,20 @@ test('providers are abstract and body stays transparent', async ({ page }) => {
   const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
   expect(bodyBg).toBe('rgba(0, 0, 0, 0)')
 })
+
+test('prefers-reduced-motion collapses transitions', async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: 'reduce' })
+  const page = await context.newPage()
+  await mockInvoke(page)
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+
+  const duration = await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>('.sidebar .row')
+    return el ? getComputedStyle(el).transitionDuration : null
+  })
+  // main.css 的 @media (prefers-reduced-motion: reduce) 把 transition-duration 压到 .001ms
+  expect(duration).not.toBeNull()
+  expect(parseFloat(duration!) * 1000).toBeLessThanOrEqual(0.001)
+  await context.close()
+})

@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { setActivePinia, createPinia } from 'pinia'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useAppStore, UNCATEGORIZED_ID } from './app'
@@ -12,6 +13,7 @@ vi.mock('../api', () => ({
   setSettings: vi.fn().mockResolvedValue(undefined),
 }))
 import * as api from '../api'
+import { getPalette } from '../theme/palettes'
 import type { AppData, CheckResult, Settings, Site } from '../types'
 
 function makeSite(id: string, status: Site['status'], tags: string[]): Site {
@@ -745,5 +747,14 @@ describe('app store', () => {
     // asc: null first (oldest), then 2026-01, then 2026-06
     expect(s.filteredSites[0].lastCheck).to.equal(null)
     expect(s.filteredSites[2].lastCheck).to.equal('2026-06-01T00:00:00Z')
+  })
+
+  it('写入 data-theme 与 data-palette', () => {
+    const store = useAppStore()
+    store.applyAppearance()
+    expect(document.documentElement.dataset.theme).toMatch(/light|dark/)
+    expect(document.documentElement.dataset.palette).toBeTruthy()
+    expect(document.documentElement.style.getPropertyValue('--primary').trim())
+      .toBe(getPalette('teal').light.primary)
   })
 })
