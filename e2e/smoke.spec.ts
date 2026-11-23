@@ -130,7 +130,7 @@ test('navigate to recycle bin (empty)', async ({ page }) => {
 
 test('providers are abstract and body stays transparent', async ({ page }) => {
   // provider 必须是 abstract，否则会多一层包裹元素，破坏 height:100% 链
-  await expect(page.locator('#app > *')).toBeVisible()
+  await expect(page.locator('#app > *')).toHaveCount(1)
 
   // 不得使用 n-global-style：它会把 body 背景写成不透明色，破坏透明窗口
   const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)

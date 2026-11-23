@@ -112,7 +112,7 @@ html.win-maximized .app { border-radius:0; }
 .site-table .name-dead { color:var(--danger); font-weight:600; }
 .status { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .status .dot { width:8px; height:8px; border-radius:50%; flex:none; box-shadow:0 0 0 3px var(--s-bg); }
-.status.ok { color:var(--ok-txt); } .status.ok .dot { background:var(--ok); --s-bg:color-mix(in srgb, var(--ok) 14%, transparent); }
+.status.ok { color:var(--ok-txt); font-weight:600; } .status.ok .dot { background:var(--ok); --s-bg:color-mix(in srgb, var(--ok) 14%, transparent); }
 .status.dead { color:var(--danger-txt); } .status.dead .dot { background:var(--danger); --s-bg:color-mix(in srgb, var(--danger) 14%, transparent); }
 .status.pending { color:var(--pending-txt); } .status.pending .dot { background:var(--pending); --s-bg:color-mix(in srgb, var(--pending) 16%, transparent); animation:sPulse 1.3s var(--ease) infinite; }
 @keyframes sPulse { 0%,100%{ opacity:1 } 50%{ opacity:.35 } }
