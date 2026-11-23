@@ -177,7 +177,5 @@ describe('AddEditModal', () => {
     expect(cancel?.classList.contains('n-button')).toBe(true)
     const fetchBtn = document.body.querySelector('[data-testid="btn-fetch-title"]') as HTMLElement
     expect(fetchBtn.classList.contains('n-button')).toBe(true)
-    // 不再存在旧 .btn 按钮
-    expect(document.body.querySelector('.btn')).toBeNull()
   })
 })

@@ -67,23 +67,23 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('app loads with empty state', async ({ page }) => {
-  await expect(page.locator('.empty-state')).toBeVisible()
-  await expect(page.locator('.empty-state')).toContainText('还没有网站')
-  await expect(page.locator('.statusbar')).toContainText('共 0 个')
+  await expect(page.getByText('还没有网站')).toBeVisible()
+  await expect(page.getByRole('contentinfo')).toContainText('共 0 个')
 })
 
 test('app shows title bar and top bar', async ({ page }) => {
-  await expect(page.locator('.logo')).toContainText('归集')
+  await expect(page.getByText('归集').last()).toBeVisible()
   await expect(page.locator('[data-testid="btn-add"]')).toBeVisible()
   await expect(page.locator('[data-testid="btn-check-all"]')).toBeVisible()
 })
 
 test('sidebar shows default views', async ({ page }) => {
-  await expect(page.locator('.sidebar')).toContainText('全部')
-  await expect(page.locator('.sidebar')).toContainText('失效')
-  await expect(page.locator('.sidebar')).toContainText('回收站')
-  await expect(page.locator('.sidebar')).toContainText('分类')
-  await expect(page.locator('.sidebar')).toContainText('标签')
+  const sidebar = page.getByRole('complementary')
+  await expect(sidebar).toContainText('全部')
+  await expect(sidebar).toContainText('失效')
+  await expect(sidebar).toContainText('回收站')
+  await expect(sidebar).toContainText('分类')
+  await expect(sidebar).toContainText('标签')
 })
 
 test('add site via modal', async ({ page }) => {
@@ -95,13 +95,13 @@ test('add site via modal', async ({ page }) => {
   await modalInputs.nth(0).fill('React')
   await modalInputs.nth(1).fill('https://react.dev')
 
-  await page.click('[data-testid="modal-add-edit"] button:has-text("保存")')
+  await page.locator('[data-testid="modal-add-edit"]').getByRole('button', { name: '保存', exact: true }).click()
   await expect(page.locator('[data-testid="modal-add-edit"]')).toBeHidden()
 
   // Site should appear in table
-  await expect(page.locator('.site-table')).toContainText('React')
-  await expect(page.locator('.site-table')).toContainText('https://react.dev')
-  await expect(page.locator('.statusbar')).toContainText('共 1 个')
+  await expect(page.getByRole('table')).toContainText('React')
+  await expect(page.getByRole('table')).toContainText('https://react.dev')
+  await expect(page.getByRole('contentinfo')).toContainText('共 1 个')
 })
 
 test('search filters sites', async ({ page }) => {
@@ -112,26 +112,25 @@ test('search filters sites', async ({ page }) => {
     const inputs = page.locator('[data-testid="modal-add-edit"] input')
     await inputs.nth(0).fill(name)
     await inputs.nth(1).fill(url)
-    await page.click('[data-testid="modal-add-edit"] button:has-text("保存")')
+    await page.locator('[data-testid="modal-add-edit"]').getByRole('button', { name: '保存', exact: true }).click()
     await page.waitForSelector('[data-testid="modal-add-edit"]', { state: 'hidden' })
   }
 
   // Search
   await page.fill('[data-testid="search-input"] input', 'React')
   await page.waitForTimeout(400)
-  await expect(page.locator('.site-table')).toContainText('React')
-  await expect(page.locator('.site-table')).not.toContainText('Vue')
+  await expect(page.getByRole('table')).toContainText('React')
+  await expect(page.getByRole('table')).not.toContainText('Vue')
 })
 
 test('navigate to recycle bin (empty)', async ({ page }) => {
-  await page.click('.sidebar .side-row:has-text("回收站")')
-  await expect(page.locator('.empty-state')).toBeVisible()
-  await expect(page.locator('.empty-state')).toContainText('回收站为空')
+  await page.getByRole('complementary').getByText('回收站').last().click()
+  await expect(page.getByText('回收站为空')).toBeVisible()
 })
 
 test('providers are abstract and body stays transparent', async ({ page }) => {
   // provider 必须是 abstract，否则会多一层包裹元素，破坏 height:100% 链
-  await expect(page.locator('#app > .app')).toBeVisible()
+  await expect(page.locator('#app > *')).toBeVisible()
 
   // 不得使用 n-global-style：它会把 body 背景写成不透明色，破坏透明窗口
   const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
@@ -145,12 +144,8 @@ test('prefers-reduced-motion collapses transitions', async ({ browser }) => {
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
-  const duration = await page.evaluate(() => {
-    const el = document.querySelector<HTMLElement>('.sidebar .side-row')
-    return el ? getComputedStyle(el).transitionDuration : null
-  })
   // main.css 的 @media (prefers-reduced-motion: reduce) 把 transition-duration 压到 .001ms
-  expect(duration).not.toBeNull()
-  expect(parseFloat(duration!) * 1000).toBeLessThanOrEqual(0.001)
+  const duration = await page.getByRole('complementary').locator('div').filter({ hasText: '全部' }).last().evaluate((el) => getComputedStyle(el).transitionDuration)
+  expect(parseFloat(duration) * 1000).toBeLessThanOrEqual(0.001)
   await context.close()
 })

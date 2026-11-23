@@ -52,27 +52,32 @@ test.beforeEach(async ({ page }) => {
   await page.waitForLoadState('networkidle')
 })
 
+// 侧栏行是 div（无 role），用文本定位；.last() 取最深层、带点击处理器的行元素
+function sidebarRow(page: Page, text: string) {
+  return page.getByRole('complementary').getByText(text).last()
+}
+
 test('all view shows all sites', async ({ page }) => {
-  await page.click('.sidebar .side-row:has-text("全部")')
-  const rows = page.locator('.site-table tbody tr')
+  await sidebarRow(page, '全部').click()
+  const rows = page.getByRole('table').locator('tbody tr')
   await expect(rows).toHaveCount(3)
-  await expect(page.locator('.statusbar')).toContainText('共 3 个')
+  await expect(page.getByRole('contentinfo')).toContainText('共 3 个')
 })
 
 test('navigate to category filters sites', async ({ page }) => {
   // Click "开发" category in sidebar
-  await page.click('.sidebar .row:has-text("开发")')
+  await sidebarRow(page, '开发').click()
   // Should show React + Spring (both under cat-dev subtree)
-  await expect(page.locator('.site-table')).toContainText('React')
-  await expect(page.locator('.site-table')).toContainText('Spring')
-  await expect(page.locator('.site-table')).not.toContainText('VS Code')
+  await expect(page.getByRole('table')).toContainText('React')
+  await expect(page.getByRole('table')).toContainText('Spring')
+  await expect(page.getByRole('table')).not.toContainText('VS Code')
 })
 
 test('navigate to sub-category', async ({ page }) => {
   // Expand "开发" if collapsed, then click "前端"
-  await page.click('.sidebar .row:has-text("前端")')
-  await expect(page.locator('.site-table')).toContainText('React')
-  await expect(page.locator('.site-table')).not.toContainText('Spring')
+  await sidebarRow(page, '前端').click()
+  await expect(page.getByRole('table')).toContainText('React')
+  await expect(page.getByRole('table')).not.toContainText('Spring')
 })
 
 test('filter by tag', async ({ page }) => {
@@ -80,44 +85,45 @@ test('filter by tag', async ({ page }) => {
   await page.click('[data-testid="tag-filter"]')
   await page.locator('[data-testid="tag-filter-menu"]').getByText('框架', { exact: true }).first().click()
   await page.waitForTimeout(200)
-  await expect(page.locator('.site-table')).toContainText('React')
-  await expect(page.locator('.site-table')).toContainText('Spring')
-  await expect(page.locator('.site-table')).not.toContainText('VS Code')
+  await expect(page.getByRole('table')).toContainText('React')
+  await expect(page.getByRole('table')).toContainText('Spring')
+  await expect(page.getByRole('table')).not.toContainText('VS Code')
 })
 
 test('dead view shows only dead sites', async ({ page }) => {
-  await page.click('.sidebar .side-row:has-text("失效")')
-  await expect(page.locator('.site-table')).toContainText('VS Code')
-  await expect(page.locator('.site-table')).not.toContainText('React')
+  await sidebarRow(page, '失效').click()
+  await expect(page.getByRole('table')).toContainText('VS Code')
+  await expect(page.getByRole('table')).not.toContainText('React')
 })
 
 test('status bar shows dead count', async ({ page }) => {
-  await expect(page.locator('.statusbar')).toContainText('失效 1')
-  await expect(page.locator('.statusbar')).toContainText('共 3 个')
+  await expect(page.getByRole('contentinfo')).toContainText('失效 1')
+  await expect(page.getByRole('contentinfo')).toContainText('共 3 个')
 })
 
 test('switch between views preserves state', async ({ page }) => {
-  await page.click('.sidebar .row:has-text("开发")')
-  await expect(page.locator('.site-table')).toContainText('React')
+  await sidebarRow(page, '开发').click()
+  await expect(page.getByRole('table')).toContainText('React')
 
-  await page.click('.sidebar .row:has-text("工具")')
-  await expect(page.locator('.site-table')).toContainText('VS Code')
+  await sidebarRow(page, '工具').click()
+  await expect(page.getByRole('table')).toContainText('VS Code')
 
-  await page.click('.sidebar .side-row:has-text("全部")')
-  await expect(page.locator('.site-table')).toContainText('React')
-  await expect(page.locator('.site-table')).toContainText('Spring')
-  await expect(page.locator('.site-table')).toContainText('VS Code')
+  await sidebarRow(page, '全部').click()
+  await expect(page.getByRole('table')).toContainText('React')
+  await expect(page.getByRole('table')).toContainText('Spring')
+  await expect(page.getByRole('table')).toContainText('VS Code')
 })
 
 test('collapse and expand sidebar groups', async ({ page }) => {
+  const groupLabel = page.getByRole('complementary').getByText('分类', { exact: true })
   // Initially categories visible
-  await expect(page.locator('.sidebar .side-row:has-text("全部")')).toBeVisible()
+  await expect(sidebarRow(page, '全部')).toBeVisible()
 
   // Collapse 分类 group
-  await page.click('.sidebar .group-label:has-text("分类")')
-  await expect(page.locator('.sidebar .side-row:has-text("全部")')).toBeHidden()
+  await groupLabel.click()
+  await expect(sidebarRow(page, '全部')).toBeHidden()
 
   // Expand again
-  await page.click('.sidebar .group-label:has-text("分类")')
-  await expect(page.locator('.sidebar .side-row:has-text("全部")')).toBeVisible()
+  await groupLabel.click()
+  await expect(sidebarRow(page, '全部')).toBeVisible()
 })

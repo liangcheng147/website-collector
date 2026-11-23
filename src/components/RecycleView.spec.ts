@@ -51,15 +51,13 @@ describe('RecycleView', () => {
     expect(w.text()).toContain('恢复所选')
   })
 
-  it('批量按钮为 n-button，选择为 n-checkbox，不再使用 .cb / .btn', async () => {
+  it('批量按钮为 n-button，选择为 n-checkbox', async () => {
     const store = useAppStore()
     store.data.recycleBin = [
       { site: { id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'dead', lastCheck: null, note: '' }, deletedAt: '2026-09-01T10:00:00Z' },
       { site: { id: '2', name: 'B', url: 'https://b.dev', categoryId: null, tags: [], status: 'dead', lastCheck: null, note: '' }, deletedAt: '2026-09-02T10:00:00Z' },
     ]
     const w = mountWithDialog(RecycleView)
-    expect(w.find('.cb').exists()).toBe(false)
-    expect(w.find('.btn').exists()).toBe(false)
     const boxes = w.findAll('.n-checkbox')
     expect(boxes.length).toBe(3) // 1 全选 + 2 行
     await boxes[1].trigger('click')

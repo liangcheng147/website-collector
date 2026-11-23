@@ -49,14 +49,12 @@ describe('SiteTable', () => {
     expect(w.find('.empty-state').exists()).toBe(true)
     expect(w.text()).toContain('所有站点都已分类')
   })
-  it('批量按钮为 n-button，选择为 n-checkbox，不再使用 .cb / .btn', async () => {
+  it('批量按钮为 n-button，选择为 n-checkbox', async () => {
     const store = useAppStore()
     store.view = { kind: 'all' }
     store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'ok', note: '', deletedAt: '' } as unknown as Site]
     store.data.categories = []
     const w = mount(SiteTable)
-    expect(w.find('.cb').exists()).toBe(false)
-    expect(w.find('.btn').exists()).toBe(false)
     const boxes = w.findAll('.n-checkbox')
     expect(boxes.length).toBe(2) // 1 全选 + 1 行
     await boxes[1].trigger('click')

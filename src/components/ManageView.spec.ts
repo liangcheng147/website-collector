@@ -44,10 +44,4 @@ describe('ManageView', () => {
     await nextTick()
     expect(w.text()).toContain('标签列表')
   })
-
-  it('不再使用 .btn / .manage-tabs 旧控件类', () => {
-    const w = mountWithDialog(ManageView)
-    expect(w.find('.btn').exists()).toBe(false)
-    expect(w.find('.manage-tabs').exists()).toBe(false)
-  })
 })

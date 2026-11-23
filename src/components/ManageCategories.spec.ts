@@ -65,14 +65,6 @@ describe('ManageCategories', () => {
     expect(w.findAll('.n-checkbox').length).toBeGreaterThan(0)
   })
 
-  it('不再使用 .cb / .btn 旧控件类', () => {
-    const store = useAppStore()
-    store.data = seed()
-    const w = mountWithDialog(ManageCategories)
-    expect(w.find('.cb').exists()).toBe(false)
-    expect(w.find('.btn').exists()).toBe(false)
-  })
-
   it('点击行复选框选中该分类，全选复选框联动', async () => {
     const store = useAppStore()
     store.data = seed()

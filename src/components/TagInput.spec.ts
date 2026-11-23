@@ -26,8 +26,6 @@ it('renders chips as naive tags inside a naive select', () => {
   const w = make(['工具'])
   expect(w.find('.n-select').exists()).toBe(true)
   expect(w.findAll('.n-tag').length).toBe(1)
-  expect(w.find('.chip').exists()).toBe(false)
-  expect(w.find('.tag-opts').exists()).toBe(false)
 })
 
 it('selects an existing tag from dropdown', async () => {

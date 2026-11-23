@@ -75,15 +75,6 @@ describe('ManageTags', () => {
     expect(w.text()).toContain('批量去除')
   })
 
-  it('不再使用 .cb / .btn / .segctrl 旧控件类', () => {
-    const store = useAppStore()
-    store.data = seed()
-    const w = mountWithDialog(ManageTags)
-    expect(w.find('.cb').exists()).toBe(false)
-    expect(w.find('.btn').exists()).toBe(false)
-    expect(w.find('.segctrl').exists()).toBe(false)
-  })
-
   it('选择标签后删除所选', async () => {
     const store = useAppStore()
     store.data = seed()

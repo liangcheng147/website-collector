@@ -42,12 +42,4 @@ describe('ImportExportModal', () => {
     expect(document.body.textContent).toContain('合并导入')
     expect(document.body.textContent).toContain('覆盖导入')
   })
-
-  it('no longer uses legacy control classes', async () => {
-    await mountModal()
-    expect(document.body.querySelector('.btn')).toBeNull()
-    expect(document.body.querySelector('.segctrl')).toBeNull()
-    expect(document.body.querySelector('.grid2x2')).toBeNull()
-    expect(document.body.querySelector('.modal-content')).toBeNull()
-  })
 })

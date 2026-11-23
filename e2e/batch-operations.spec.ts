@@ -49,46 +49,53 @@ test.beforeEach(async ({ page }) => {
   await page.waitForLoadState('networkidle')
 })
 
+function sidebarRow(page: Page, text: string) {
+  return page.getByRole('complementary').getByText(text).last()
+}
+
+function rowCheckboxes(page: Page) {
+  return page.getByRole('table').locator('tbody').getByRole('checkbox')
+}
+
 test('select all with Ctrl+A', async ({ page }) => {
   // Select all with Ctrl+A
   await page.keyboard.press('Control+a')
-  await expect(page.locator('.batchbar')).toContainText('已选 3 项')
+  await expect(page.getByText('已选 3 项').first()).toBeVisible()
 })
 
 test('select individual site', async ({ page }) => {
-  const cbs = page.locator('.site-table tbody .n-checkbox')
-  await cbs.first().click()
-  await expect(page.locator('.batchbar')).toContainText('已选 1 项')
+  await rowCheckboxes(page).first().click()
+  await expect(page.getByText('已选 1 项').first()).toBeVisible()
 })
 
 test('batch delete selected sites', async ({ page }) => {
   // Select all
   await page.keyboard.press('Control+a')
-  await expect(page.locator('.batchbar')).toContainText('已选 3 项')
+  await expect(page.getByText('已选 3 项').first()).toBeVisible()
 
   // Click delete
-  await page.click('.batchbar button:has-text("删除所选")')
-  await expect(page.locator('.statusbar')).toContainText('共 0 个')
+  await page.getByRole('button', { name: '删除所选', exact: true }).click()
+  await expect(page.getByRole('contentinfo')).toContainText('共 0 个')
 
   // Verify in recycle bin
-  await page.click('.sidebar .side-row:has-text("回收站")')
-  await expect(page.locator('.site-table')).toContainText('Site A')
-  await expect(page.locator('.site-table')).toContainText('Site B')
+  await sidebarRow(page, '回收站').click()
+  await expect(page.getByRole('table')).toContainText('Site A')
+  await expect(page.getByRole('table')).toContainText('Site B')
 })
 
 test('batch bar shows check button for selected sites', async ({ page }) => {
   await page.keyboard.press('Control+a')
-  await expect(page.locator('.batchbar')).toContainText('已选 3 项')
+  await expect(page.getByText('已选 3 项').first()).toBeVisible()
   // Verify check/move/tag/delete buttons present
-  await expect(page.locator('.batchbar button:has-text("检测所选")')).toBeVisible()
-  await expect(page.locator('.batchbar button:has-text("移动分类")')).toBeVisible()
-  await expect(page.locator('.batchbar button:has-text("删除所选")')).toBeVisible()
+  await expect(page.getByRole('button', { name: '检测所选', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /移动分类/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: '删除所选', exact: true })).toBeVisible()
 })
 
 test('move category via batch pick', async ({ page }) => {
   // Select first site
-  await page.locator('.site-table tbody .n-checkbox').first().click()
-  await page.click('.batchbar button:has-text("移动分类")')
+  await rowCheckboxes(page).first().click()
+  await page.getByRole('button', { name: /移动分类/ }).click()
 
   // Pick category modal appears
   await expect(page.locator('[data-testid="modal-pick-category"]')).toBeVisible()
@@ -96,12 +103,12 @@ test('move category via batch pick', async ({ page }) => {
   // Select "目标分类" from the NSelect dropdown
   const pickModal = page.locator('[data-testid="modal-pick-category"]')
   await pickModal.locator('.n-base-selection').click()
-  await pickModal.locator('.n-base-select-option').filter({ hasText: '目标分类' }).click()
-  await page.click('[data-testid="modal-pick-category"] button:has-text("移动")')
+  await page.locator('.n-base-select-option').filter({ hasText: '目标分类' }).click()
+  await page.getByRole('button', { name: '移动', exact: true }).click()
 
   // Verify site moved (check category column)
   await page.waitForTimeout(200)
-  await expect(page.locator('.site-table tbody tr').first()).toContainText('目标分类')
+  await expect(page.getByRole('table').locator('tbody tr').first()).toContainText('目标分类')
 })
 
 test('settings modal opens and closes', async ({ page }) => {
@@ -134,24 +141,24 @@ test('import/export modal shows all formats', async ({ page }) => {
 
 test('clear selection with Escape', async ({ page }) => {
   await page.keyboard.press('Control+a')
-  await expect(page.locator('.batchbar')).toContainText('已选 3 项')
+  await expect(page.getByText('已选 3 项').first()).toBeVisible()
 
   await page.keyboard.press('Escape')
-  await expect(page.locator('.batchbar')).toBeHidden()
+  await expect(page.getByText('已选 3 项').first()).toBeHidden()
 })
 
 test('add category via sidebar all-row context menu', async ({ page }) => {
   // Right-click "全部" row — opens AddCategoryModal directly (not a ctx menu)
-  await page.click('.sidebar .side-row:has-text("全部")', { button: 'right' })
+  await sidebarRow(page, '全部').click({ button: 'right' })
 
   // AddCategoryModal appears（标题「新建分类」在 n-modal 的 card header 里）
   await page.waitForSelector('[data-testid="modal-add-category"]')
 
   // Fill in category name (input has no type attr)
   await page.locator('[data-testid="modal-add-category"] input').fill('新分类')
-  await page.click('[data-testid="modal-add-category"] button:has-text("创建")')
+  await page.getByRole('button', { name: '创建', exact: true }).click()
   await page.waitForFunction(() => !document.querySelector('[data-testid="modal-add-category"]'))
 
   // Verify new category appears in sidebar
-  await expect(page.locator('.sidebar')).toContainText('新分类')
+  await expect(page.getByRole('complementary')).toContainText('新分类')
 })

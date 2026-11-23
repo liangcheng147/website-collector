@@ -42,13 +42,21 @@ async function mockInvoke(page: Page) {
   })
 }
 
+function sidebarRow(page: Page, text: string) {
+  return page.getByRole('complementary').getByText(text).last()
+}
+
+function tableRows(page: Page) {
+  return page.getByRole('table').locator('tbody tr')
+}
+
 async function addSite(page: Page, name: string, url: string) {
   await page.click('[data-testid="btn-add"]')
   await page.waitForSelector('[data-testid="modal-add-edit"]')
   const inputs = page.locator('[data-testid="modal-add-edit"] input')
   await inputs.nth(0).fill(name)
   await inputs.nth(1).fill(url)
-  await page.click('[data-testid="modal-add-edit"] button:has-text("保存")')
+  await page.locator('[data-testid="modal-add-edit"]').getByRole('button', { name: '保存', exact: true }).click()
   await page.waitForFunction(() => !document.querySelector('[data-testid="modal-add-edit"]'))
 }
 
@@ -63,83 +71,86 @@ test('add multiple sites and verify count', async ({ page }) => {
   await addSite(page, 'Vue', 'https://vuejs.org')
   await addSite(page, 'Angular', 'https://angular.dev')
 
-  await expect(page.locator('.statusbar')).toContainText('共 3 个')
-  const rows = page.locator('.site-table tbody tr')
-  await expect(rows).toHaveCount(3)
+  await expect(page.getByRole('contentinfo')).toContainText('共 3 个')
+  await expect(tableRows(page)).toHaveCount(3)
 })
 
 test('delete site moves to recycle bin', async ({ page }) => {
   await addSite(page, 'ToDelete', 'https://delete.dev')
-  await expect(page.locator('.statusbar')).toContainText('共 1 个')
+  await expect(page.getByRole('contentinfo')).toContainText('共 1 个')
 
   // Right-click to open context menu (Naive dropdown)
-  await page.click('.site-table tbody tr', { button: 'right' })
-  await page.waitForSelector('.n-dropdown')
-  await page.click('.n-dropdown-option:has-text("删除")')
+  await tableRows(page).first().click({ button: 'right' })
+  const deleteOption = page.locator('.n-dropdown-option').filter({ hasText: '删除' })
+  await expect(deleteOption).toBeVisible()
+  await deleteOption.click()
 
-  await expect(page.locator('.statusbar')).toContainText('共 0 个')
+  await expect(page.getByRole('contentinfo')).toContainText('共 0 个')
 
   // Check recycle bin
-  await page.click('.sidebar .side-row:has-text("回收站")')
-  await expect(page.locator('.site-table')).toContainText('ToDelete')
+  await sidebarRow(page, '回收站').click()
+  await expect(page.getByRole('table')).toContainText('ToDelete')
 })
 
 test('restore from recycle bin', async ({ page }) => {
   await addSite(page, 'RestoreMe', 'https://restore.dev')
 
   // Delete
-  await page.click('.site-table tbody tr', { button: 'right' })
-  await page.waitForSelector('.n-dropdown')
-  await page.click('.n-dropdown-option:has-text("删除")')
+  await tableRows(page).first().click({ button: 'right' })
+  const deleteOption = page.locator('.n-dropdown-option').filter({ hasText: '删除' })
+  await expect(deleteOption).toBeVisible()
+  await deleteOption.click()
 
   // Go to recycle bin
-  await page.click('.sidebar .side-row:has-text("回收站")')
-  await expect(page.locator('.site-table')).toContainText('RestoreMe')
+  await sidebarRow(page, '回收站').click()
+  await expect(page.getByRole('table')).toContainText('RestoreMe')
 
   // Restore
-  await page.click('button:has-text("恢复")')
-  await expect(page.locator('.empty-state')).toContainText('回收站为空')
+  await page.getByRole('button', { name: '恢复', exact: true }).first().click()
+  await expect(page.getByText('回收站为空')).toBeVisible()
 
   // Back to main view
-  await page.click('.sidebar .side-row:has-text("全部")')
-  await expect(page.locator('.site-table')).toContainText('RestoreMe')
+  await sidebarRow(page, '全部').click()
+  await expect(page.getByRole('table')).toContainText('RestoreMe')
 })
 
 test('permanent delete from recycle bin', async ({ page }) => {
   await addSite(page, 'PermaDelete', 'https://permadelete.dev')
 
   // Delete
-  await page.click('.site-table tbody tr', { button: 'right' })
-  await page.waitForSelector('.n-dropdown')
-  await page.click('.n-dropdown-option:has-text("删除")')
+  await tableRows(page).first().click({ button: 'right' })
+  const deleteOption = page.locator('.n-dropdown-option').filter({ hasText: '删除' })
+  await expect(deleteOption).toBeVisible()
+  await deleteOption.click()
 
   // Go to recycle bin
-  await page.click('.sidebar .side-row:has-text("回收站")')
+  await sidebarRow(page, '回收站').click()
 
   // Permanent delete
-  await page.click('button:has-text("彻底删除")')
-  await expect(page.locator('.empty-state')).toContainText('回收站为空')
+  await page.getByRole('button', { name: '彻底删除', exact: true }).first().click()
+  await expect(page.getByText('回收站为空')).toBeVisible()
 })
 
 test('edit site via context menu', async ({ page }) => {
   await addSite(page, 'Original', 'https://original.dev')
-  await expect(page.locator('.site-table')).toContainText('Original')
+  await expect(page.getByRole('table')).toContainText('Original')
 
   // Right-click → 编辑
-  await page.click('.site-table tbody tr', { button: 'right' })
-  await page.waitForSelector('.n-dropdown')
-  await page.click('.n-dropdown-option:has-text("编辑")')
+  await tableRows(page).first().click({ button: 'right' })
+  const editOption = page.locator('.n-dropdown-option').filter({ hasText: '编辑' })
+  await expect(editOption).toBeVisible()
+  await editOption.click()
 
   await page.waitForSelector('[data-testid="modal-add-edit"]')
   await expect(page.locator('[data-testid="modal-add-edit"]')).toContainText('编辑网站')
 
   // Change name
   await page.locator('[data-testid="modal-add-edit"] input').first().fill('Edited')
-  await page.click('[data-testid="modal-add-edit"] button:has-text("保存")')
+  await page.locator('[data-testid="modal-add-edit"]').getByRole('button', { name: '保存', exact: true }).click()
   await page.waitForFunction(() => !document.querySelector('[data-testid="modal-add-edit"]'))
 
-  await expect(page.locator('.site-table')).toContainText('Edited')
-  await expect(page.locator('.site-table')).not.toContainText('Original')
+  await expect(page.getByRole('table')).toContainText('Edited')
+  await expect(page.getByRole('table')).not.toContainText('Original')
 })
 
 test('check all updates status', async ({ page }) => {
@@ -150,7 +161,7 @@ test('check all updates status', async ({ page }) => {
   // Mock resolves instantly, so wait for check to complete
   await page.waitForTimeout(1000)
   // After check, status bar should show "上次检测" (not "—")
-  await expect(page.locator('.statusbar')).toContainText('上次检测')
+  await expect(page.getByRole('contentinfo')).toContainText('上次检测')
   // Check button should be back to "检测全部"
   await expect(page.locator('[data-testid="btn-check-all"]')).toBeVisible()
 })
@@ -159,7 +170,7 @@ test('filter by dead sites', async ({ page }) => {
   await addSite(page, 'Alive', 'https://alive.dev')
 
   // Navigate to dead view
-  await page.click('.sidebar .side-row:has-text("失效")')
+  await sidebarRow(page, '失效').click()
   // Since mock returns 'ok', no dead sites
-  await expect(page.locator('.empty-state')).toBeVisible()
+  await expect(page.getByText('当前筛选没有结果')).toBeVisible()
 })

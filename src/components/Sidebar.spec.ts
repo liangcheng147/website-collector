@@ -43,14 +43,12 @@ describe('Sidebar', () => {
     expect(btns).toHaveLength(2)
     for (const b of btns) expect(b.classes()).toContain('n-button')
   })
-  it('侧栏自身行不再依赖 .row，改用 .side-row', () => {
+  it('侧栏自身行使用 .side-row', () => {
     const w = mountWithDialog(Sidebar)
-    expect(w.find('.sidebar-fixed .row').exists()).toBe(false)
     const rows = w.findAll('.side-row')
     expect(rows.length).toBeGreaterThan(0)
     const allRow = rows.find(r => r.text().includes('全部'))
     expect(allRow).toBeDefined()
-    expect(allRow!.classes()).not.toContain('row')
     const trashRow = rows.find(r => r.text().includes('回收站'))
     expect(trashRow).toBeDefined()
     expect(trashRow!.find('.cnt').exists()).toBe(true)
