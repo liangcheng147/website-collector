@@ -60,6 +60,7 @@ function deleteCategory(cat: Category) {
           h('div', { class: 'actions', style: 'justify-content:flex-start; flex-wrap:wrap' }, [
             h(NButton, { onClick: () => { store.deleteCategory(cat.id, 'move-to-uncategorized'); d.destroy() } }, () => '网站移入未分类'),
             h(NButton, { type: 'error', onClick: () => { store.deleteCategory(cat.id, 'delete-sites'); d.destroy() } }, () => '连同网站删除'),
+            h(NButton, { secondary: true, onClick: () => d.destroy() }, () => '取消'),
           ]),
         ]),
         h('div', { class: 'help' }, [

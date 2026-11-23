@@ -118,7 +118,7 @@ function save() {
       <p v-if="validationMsg" class="err"><AlertTriangle :size="12" /> {{ validationMsg }}</p>
     </div>
     <template #footer>
-      <div class="actions">
+      <div class="actions modal-footer">
         <button class="btn" @click="emit('close')">取消</button>
         <button class="btn primary" data-testid="btn-save" @click="save">保存</button>
       </div>

@@ -48,7 +48,7 @@ function create() {
       </div>
     </div>
     <template #footer>
-      <div class="actions">
+      <div class="actions modal-footer">
         <button class="btn" @click="emit('close')">取消</button>
         <button class="btn primary" @click="create">创建</button>
       </div>

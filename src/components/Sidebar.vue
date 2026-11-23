@@ -117,6 +117,6 @@ function onTagDrop(e: DragEvent, t: string) {
       <div class="row trash" :class="{ active: store.view.kind === 'recycle' }" @click="setView('recycle')"><Trash2 :size="14" /> 回收站 <span class="cnt">{{ store.trashedSites.length }}</span></div>
       </div>
     </div>
-    <Transition name="mask"><AddCategoryModal v-if="showAdd" :parent-id="null" @created="setView('category', $event); showAdd = false" @close="showAdd = false" /></Transition>
+    <AddCategoryModal v-if="showAdd" :parent-id="null" @created="setView('category', $event); showAdd = false" @close="showAdd = false" />
   </aside>
 </template>

@@ -40,7 +40,7 @@ function confirm() {
       </div>
     </div>
     <template #footer>
-      <div class="actions">
+      <div class="actions modal-footer">
         <button class="btn" @click="emit('close')">取消</button>
         <button class="btn primary" @click="confirm">添加</button>
       </div>

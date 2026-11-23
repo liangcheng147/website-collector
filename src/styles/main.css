@@ -157,6 +157,8 @@ input:focus, select:focus, textarea:focus { transition: border-color .18s var(--
 .modal-content .err { color:var(--danger-txt); font-size:12px; margin-top:10px; background:var(--danger-bg); border:1px solid var(--danger-bd); border-radius:var(--radius-md); padding:6px 10px; }
 .modal-content .char-count { display:block; text-align:right; font-size:11px; color:var(--text-2); margin-top:4px; }
 .modal-content .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+/* n-card 的 #footer 插槽在 .modal-content 之外，单独补一条操作行规则 */
+.modal-footer { display:flex; gap:8px; justify-content:flex-end; }
 .modal-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
 .modal-content .help { border-left:1px dashed var(--border-2); padding-left:14px; }
 .modal-content .help code { display:block; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 10px; margin:6px 0; font-size:12px; font-family:var(--mono); color:var(--text); }
@@ -191,7 +193,6 @@ html[data-theme="dark"] { color-scheme: dark; }
 
 /* ---- 设置弹窗布局 ---- */
 .settings-layout {
-  width: min(640px, 92%);
   height: 480px;
   display: flex;
   flex-direction: column;

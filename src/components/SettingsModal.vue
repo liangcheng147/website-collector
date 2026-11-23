@@ -207,7 +207,7 @@ async function openDir() {
       </div>
     </div>
     <template #footer>
-      <div class="actions"><button class="btn" @click="emit('close')">关闭</button></div>
+      <div class="actions modal-footer"><button class="btn" @click="emit('close')">关闭</button></div>
     </template>
   </n-modal>
 </template>

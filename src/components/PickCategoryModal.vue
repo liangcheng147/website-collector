@@ -39,7 +39,7 @@ function confirm() { store.moveSites(props.siteIds, target.value); emit('close')
       </div>
     </div>
     <template #footer>
-      <div class="actions">
+      <div class="actions modal-footer">
         <button class="btn" @click="emit('close')">取消</button>
         <button class="btn primary" @click="confirm">移动</button>
       </div>
