@@ -53,7 +53,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('all view shows all sites', async ({ page }) => {
-  await page.click('.sidebar .row:has-text("全部")')
+  await page.click('.sidebar .side-row:has-text("全部")')
   const rows = page.locator('.site-table tbody tr')
   await expect(rows).toHaveCount(3)
   await expect(page.locator('.statusbar')).toContainText('共 3 个')
@@ -86,7 +86,7 @@ test('filter by tag', async ({ page }) => {
 })
 
 test('dead view shows only dead sites', async ({ page }) => {
-  await page.click('.sidebar .row:has-text("失效")')
+  await page.click('.sidebar .side-row:has-text("失效")')
   await expect(page.locator('.site-table')).toContainText('VS Code')
   await expect(page.locator('.site-table')).not.toContainText('React')
 })
@@ -103,7 +103,7 @@ test('switch between views preserves state', async ({ page }) => {
   await page.click('.sidebar .row:has-text("工具")')
   await expect(page.locator('.site-table')).toContainText('VS Code')
 
-  await page.click('.sidebar .row:has-text("全部")')
+  await page.click('.sidebar .side-row:has-text("全部")')
   await expect(page.locator('.site-table')).toContainText('React')
   await expect(page.locator('.site-table')).toContainText('Spring')
   await expect(page.locator('.site-table')).toContainText('VS Code')
@@ -111,13 +111,13 @@ test('switch between views preserves state', async ({ page }) => {
 
 test('collapse and expand sidebar groups', async ({ page }) => {
   // Initially categories visible
-  await expect(page.locator('.sidebar .row:has-text("全部")')).toBeVisible()
+  await expect(page.locator('.sidebar .side-row:has-text("全部")')).toBeVisible()
 
   // Collapse 分类 group
   await page.click('.sidebar .group-label:has-text("分类")')
-  await expect(page.locator('.sidebar .row:has-text("全部")')).toBeHidden()
+  await expect(page.locator('.sidebar .side-row:has-text("全部")')).toBeHidden()
 
   // Expand again
   await page.click('.sidebar .group-label:has-text("分类")')
-  await expect(page.locator('.sidebar .row:has-text("全部")')).toBeVisible()
+  await expect(page.locator('.sidebar .side-row:has-text("全部")')).toBeVisible()
 })

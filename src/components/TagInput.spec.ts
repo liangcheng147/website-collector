@@ -12,15 +12,30 @@ function lastEmit(w: ReturnType<typeof make>): unknown[] | undefined {
   if (!ev || ev.length === 0) return undefined
   return ev[ev.length - 1][0] as unknown[]
 }
+async function openMenu(w: ReturnType<typeof make>) {
+  await w.find('.n-base-selection').trigger('click')
+}
+function optionByText(text: string): HTMLElement {
+  const opt = Array.from(document.body.querySelectorAll<HTMLElement>('.n-base-select-option'))
+    .find(el => el.textContent?.includes(text))
+  if (!opt) throw new Error(`option not found: ${text}`)
+  return opt
+}
+
+it('renders chips as naive tags inside a naive select', () => {
+  const w = make(['工具'])
+  expect(w.find('.n-select').exists()).toBe(true)
+  expect(w.findAll('.n-tag').length).toBe(1)
+  expect(w.find('.chip').exists()).toBe(false)
+  expect(w.find('.tag-opts').exists()).toBe(false)
+})
 
 it('selects an existing tag from dropdown', async () => {
   const w = make()
-  const input = w.find('input')
-  await input.trigger('focus')
-  await input.setValue('框')
-  const opt = document.body.querySelector('.opt') as HTMLElement
-  expect(opt).not.toBeNull()
-  await opt.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+  await openMenu(w)
+  await w.find('input').setValue('框')
+  const opt = optionByText('框架')
+  await opt.click()
   expect(lastEmit(w)).toEqual(['框架'])
 })
 
@@ -38,11 +53,19 @@ it('is case-insensitive dedupe (no emit on duplicate)', async () => {
   await input.setValue('工具')
   await input.trigger('keydown', { key: 'Enter' })
   expect(w.emitted('update:modelValue')).toBeUndefined()
-  expect(w.findAll('.chip').length).toBe(1)
+  expect(w.findAll('.n-tag').length).toBe(1)
 })
 
-it('removes a chip via ×', async () => {
+it('removes a chip via close icon', async () => {
   const w = make(['工具'])
-  await w.find('.chip-x').trigger('click')
+  await w.find('.n-tag .n-base-close').trigger('click')
   expect(lastEmit(w)).toEqual([])
+})
+
+it('splits typed tags on separators', async () => {
+  const w = make()
+  const input = w.find('input')
+  await input.setValue('甲, 乙')
+  await input.trigger('keydown', { key: 'Enter' })
+  expect(lastEmit(w)).toEqual(['甲', '乙'])
 })

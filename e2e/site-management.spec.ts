@@ -72,15 +72,15 @@ test('delete site moves to recycle bin', async ({ page }) => {
   await addSite(page, 'ToDelete', 'https://delete.dev')
   await expect(page.locator('.statusbar')).toContainText('共 1 个')
 
-  // Right-click to open context menu (class is "ctx" not "context-menu")
+  // Right-click to open context menu (Naive dropdown)
   await page.click('.site-table tbody tr', { button: 'right' })
-  await page.waitForSelector('.ctx')
-  await page.click('.ctx button:has-text("删除")')
+  await page.waitForSelector('.n-dropdown')
+  await page.click('.n-dropdown-option:has-text("删除")')
 
   await expect(page.locator('.statusbar')).toContainText('共 0 个')
 
   // Check recycle bin
-  await page.click('.sidebar .row:has-text("回收站")')
+  await page.click('.sidebar .side-row:has-text("回收站")')
   await expect(page.locator('.site-table')).toContainText('ToDelete')
 })
 
@@ -89,11 +89,11 @@ test('restore from recycle bin', async ({ page }) => {
 
   // Delete
   await page.click('.site-table tbody tr', { button: 'right' })
-  await page.waitForSelector('.ctx')
-  await page.click('.ctx button:has-text("删除")')
+  await page.waitForSelector('.n-dropdown')
+  await page.click('.n-dropdown-option:has-text("删除")')
 
   // Go to recycle bin
-  await page.click('.sidebar .row:has-text("回收站")')
+  await page.click('.sidebar .side-row:has-text("回收站")')
   await expect(page.locator('.site-table')).toContainText('RestoreMe')
 
   // Restore
@@ -101,7 +101,7 @@ test('restore from recycle bin', async ({ page }) => {
   await expect(page.locator('.empty-state')).toContainText('回收站为空')
 
   // Back to main view
-  await page.click('.sidebar .row:has-text("全部")')
+  await page.click('.sidebar .side-row:has-text("全部")')
   await expect(page.locator('.site-table')).toContainText('RestoreMe')
 })
 
@@ -110,11 +110,11 @@ test('permanent delete from recycle bin', async ({ page }) => {
 
   // Delete
   await page.click('.site-table tbody tr', { button: 'right' })
-  await page.waitForSelector('.ctx')
-  await page.click('.ctx button:has-text("删除")')
+  await page.waitForSelector('.n-dropdown')
+  await page.click('.n-dropdown-option:has-text("删除")')
 
   // Go to recycle bin
-  await page.click('.sidebar .row:has-text("回收站")')
+  await page.click('.sidebar .side-row:has-text("回收站")')
 
   // Permanent delete
   await page.click('button:has-text("彻底删除")')
@@ -127,8 +127,8 @@ test('edit site via context menu', async ({ page }) => {
 
   // Right-click → 编辑
   await page.click('.site-table tbody tr', { button: 'right' })
-  await page.waitForSelector('.ctx')
-  await page.click('.ctx button:has-text("编辑")')
+  await page.waitForSelector('.n-dropdown')
+  await page.click('.n-dropdown-option:has-text("编辑")')
 
   await page.waitForSelector('[data-testid="modal-add-edit"]')
   await expect(page.locator('[data-testid="modal-add-edit"]')).toContainText('编辑网站')
@@ -159,7 +159,7 @@ test('filter by dead sites', async ({ page }) => {
   await addSite(page, 'Alive', 'https://alive.dev')
 
   // Navigate to dead view
-  await page.click('.sidebar .row:has-text("失效")')
+  await page.click('.sidebar .side-row:has-text("失效")')
   // Since mock returns 'ok', no dead sites
   await expect(page.locator('.empty-state')).toBeVisible()
 })

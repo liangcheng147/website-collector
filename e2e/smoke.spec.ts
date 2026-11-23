@@ -124,7 +124,7 @@ test('search filters sites', async ({ page }) => {
 })
 
 test('navigate to recycle bin (empty)', async ({ page }) => {
-  await page.click('.sidebar .row:has-text("回收站")')
+  await page.click('.sidebar .side-row:has-text("回收站")')
   await expect(page.locator('.empty-state')).toBeVisible()
   await expect(page.locator('.empty-state')).toContainText('回收站为空')
 })
@@ -146,7 +146,7 @@ test('prefers-reduced-motion collapses transitions', async ({ browser }) => {
   await page.waitForLoadState('networkidle')
 
   const duration = await page.evaluate(() => {
-    const el = document.querySelector<HTMLElement>('.sidebar .row')
+    const el = document.querySelector<HTMLElement>('.sidebar .side-row')
     return el ? getComputedStyle(el).transitionDuration : null
   })
   // main.css 的 @media (prefers-reduced-motion: reduce) 把 transition-duration 压到 .001ms

@@ -1,73 +1,74 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { computed, ref } from 'vue'
+import { NSelect } from 'naive-ui'
+
 const props = defineProps<{ modelValue: string[]; available: string[] }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string[]): void }>()
-const text = ref('')
-const open = ref(false)
-const inputEl = ref<HTMLInputElement | null>(null)
-const dropStyle = ref<Record<string, string>>({})
-const lowerSel = computed(() => new Set(props.modelValue.map(t => t.toLowerCase())))
-const filtered = computed(() => {
-  const q = text.value.trim().toLowerCase()
-  return props.available.filter(t => !lowerSel.value.has(t.toLowerCase()) && (q === '' || t.toLowerCase().includes(q)))
-})
-function add(tag: string) {
-  const t = tag.trim()
-  if (!t) return
-  if (props.modelValue.some(x => x.toLowerCase() === t.toLowerCase())) { text.value = ''; return }
-  emit('update:modelValue', [...props.modelValue, t])
-  text.value = ''
+
+// Naive 的 pattern 不对外暴露，用 search 事件跟踪输入内容，
+// 用于识别“输入与已选标签重复”时被 Naive 当作切换取消的移除。
+const pattern = ref('')
+
+// 已选标签不重复出现在候选里（大小写不敏感）
+const selectedKeys = computed(() => new Set(props.modelValue.map(t => t.toLowerCase())))
+const options = computed(() =>
+  props.available
+    .filter(t => !selectedKeys.value.has(t.toLowerCase()))
+    .map(t => ({ label: t, value: t })),
+)
+const availableKeys = computed(() => new Set(props.available.map(t => t.toLowerCase())))
+
+function splitCreated(raw: string): string[] {
+  return raw.split(/[#\s，,]+/).map(s => s.trim()).filter(Boolean)
 }
-function positionDropdown() {
-  const el = inputEl.value
-  if (!el) return
-  const r = el.getBoundingClientRect()
-  dropStyle.value = { position: 'fixed', top: r.bottom + 2 + 'px', left: r.left + 'px', width: r.width + 'px', right: 'auto' }
+
+function isDuplicateToggle(next: string[]): boolean {
+  if (next.length >= props.modelValue.length) return false
+  const nextKeys = new Set(next.map(t => t.toLowerCase()))
+  const removed = props.modelValue.filter(t => !nextKeys.has(t.toLowerCase()))
+  if (!removed.length) return false
+  const pieces = splitCreated(pattern.value).map(s => s.toLowerCase())
+  // 输入的每个片段都对应被“取消”的标签时，视为重复输入，保留原值
+  return removed.every(t => pieces.includes(t.toLowerCase()))
 }
-function commit() {
-  const raw = text.value.trim()
-  if (!raw) { if (filtered.value.length) add(filtered.value[0]); return }
-  for (const p of raw.split(/[#\s，,]+/).map(s => s.trim()).filter(Boolean)) add(p)
-  text.value = ''
-}
-function onKey(e: KeyboardEvent) {
-  if (e.key === 'Enter' || e.key === ',' || e.key === ' ') { e.preventDefault(); commit() }
-  else if (e.key === 'Backspace' && text.value === '' && props.modelValue.length) {
-    emit('update:modelValue', props.modelValue.slice(0, -1))
+
+function onUpdateValue(value: string | number | Array<string | number> | null) {
+  const next = Array.isArray(value) ? value.map(String) : []
+  if (isDuplicateToggle(next)) {
+    pattern.value = ''
+    return
   }
-}
-function onFocus() { open.value = true; positionDropdown() }
-function reposition() { if (open.value) positionDropdown() }
-watch([() => props.modelValue, filtered], reposition, { flush: 'post' })
-function onScrollOrResize() { reposition() }
-watch(open, (v) => {
-  if (v) {
-    window.addEventListener('scroll', onScrollOrResize, true)
-    window.addEventListener('resize', onScrollOrResize)
-  } else {
-    window.removeEventListener('scroll', onScrollOrResize, true)
-    window.removeEventListener('resize', onScrollOrResize)
+  const currentKeys = new Set(props.modelValue.map(t => t.toLowerCase()))
+  const result: string[] = []
+  const seen = new Set<string>()
+  for (const atom of next) {
+    const key = atom.toLowerCase()
+    // 仅对“新建的、且不在可用标签里”的输入按分隔符拆分；
+    // 从候选里点选的标签保持原样，已选标签大小写不敏感去重。
+    const pieces = !currentKeys.has(key) && !availableKeys.value.has(key) ? splitCreated(atom) : [atom]
+    for (const piece of pieces) {
+      const pieceKey = piece.toLowerCase()
+      if (seen.has(pieceKey)) continue
+      seen.add(pieceKey)
+      result.push(piece)
+    }
   }
-})
-onUnmounted(() => {
-  window.removeEventListener('scroll', onScrollOrResize, true)
-  window.removeEventListener('resize', onScrollOrResize)
-})
-function remove(tag: string) { emit('update:modelValue', props.modelValue.filter(x => x !== tag)) }
+  pattern.value = ''
+  const unchanged = result.length === props.modelValue.length && result.every((t, i) => t === props.modelValue[i])
+  if (!unchanged) emit('update:modelValue', result)
+}
 </script>
 
 <template>
-  <div class="tag-input-wrap">
-    <div class="tag-chips">
-      <span v-for="t in modelValue" :key="t" class="chip">{{ t }}<button class="chip-x" type="button" @click="remove(t)">×</button></span>
-    </div>
-    <div class="tag-field">
-      <input ref="inputEl" v-model="text" @focus="onFocus" @blur="open = false" @keydown="onKey" placeholder="输入新建标签，回车添加" />
-      <Teleport to="body">
-        <div v-if="open && filtered.length" class="tag-opts" :style="dropStyle">
-          <button v-for="t in filtered" :key="t" type="button" class="opt" @mousedown.prevent="add(t)">{{ t }}</button>
-        </div>
-      </Teleport>
-    </div>
-  </div>
+  <n-select
+    :value="modelValue"
+    multiple
+    tag
+    filterable
+    :virtual-scroll="false"
+    :options="options"
+    placeholder="输入新建标签，回车添加"
+    @update:value="onUpdateValue"
+    @search="pattern = $event"
+  />
 </template>

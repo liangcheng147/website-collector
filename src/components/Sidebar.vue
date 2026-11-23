@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { NButton, NText } from 'naive-ui'
 import { AlertTriangle, Trash2, UnfoldVertical, FoldVertical, ChevronRight, ChevronDown } from 'lucide-vue-next'
 import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
 import type { View } from '../types'
@@ -72,19 +73,19 @@ function onTagDrop(e: DragEvent, t: string) {
   <aside class="sidebar">
     <div class="sidebar-scroll">
       <div class="group-card">
-      <div class="group-label" @click="toggleGroup('分类')">分类 <span class="caret"><ChevronRight v-if="isCollapsed('分类')" :size="12" /><ChevronDown v-else :size="12" /></span>
+      <n-text class="group-label" tag="div" @click="toggleGroup('分类')">分类 <span class="caret"><ChevronRight v-if="isCollapsed('分类')" :size="12" /><ChevronDown v-else :size="12" /></span>
         <span class="group-actions">
-          <button class="group-btn" type="button" title="展开全部" @click.stop="store.expandAllCategories()"><UnfoldVertical :size="12" /></button>
-          <button class="group-btn" type="button" title="收起全部" @click.stop="store.collapseAllCategories()"><FoldVertical :size="12" /></button>
+          <n-button class="group-btn" attr-type="button" size="tiny" title="展开全部" @click.stop="store.expandAllCategories()"><UnfoldVertical :size="12" /></n-button>
+          <n-button class="group-btn" attr-type="button" size="tiny" title="收起全部" @click.stop="store.collapseAllCategories()"><FoldVertical :size="12" /></n-button>
         </span>
-      </div>
+      </n-text>
       <template v-if="!isCollapsed('分类')">
-        <div class="row" :class="{ active: store.view.kind === 'all', 'drop-over': allDrop }" @click="setView('all')" @contextmenu.prevent="onAllMenu"
+        <div class="side-row" :class="{ active: store.view.kind === 'all', 'drop-over': allDrop }" @click="setView('all')" @contextmenu.prevent="onAllMenu"
           @dragover="onAllDragOver" @dragleave="allDrop = false" @drop="onAllDrop">
           全部 <span class="cnt">{{ store.data.sites.length }}</span>
         </div>
         <CategoryNode v-for="c in store.data.categories" :key="c.id" :cat="c" :depth="0" />
-        <div class="row" :class="{ active: store.view.kind === 'category' && store.view.id === UNCATEGORIZED_ID, 'drop-over': uncatDrop }" @click="setView('category', UNCATEGORIZED_ID)" @dragover="onUncatDragOver" @dragleave="uncatDrop = false" @drop="onUncatDrop">
+        <div class="side-row" :class="{ active: store.view.kind === 'category' && store.view.id === UNCATEGORIZED_ID, 'drop-over': uncatDrop }" @click="setView('category', UNCATEGORIZED_ID)" @dragover="onUncatDragOver" @dragleave="uncatDrop = false" @drop="onUncatDrop">
           未分类 <span class="cnt">{{ store.uncategorizedCount }}</span>
         </div>
       </template>
@@ -92,14 +93,14 @@ function onTagDrop(e: DragEvent, t: string) {
     </div>
     <div class="sidebar-fixed">
       <div class="group-card">
-      <div class="group-label">视图</div>
-      <div class="row dead" :class="{ active: store.view.kind === 'dead' }" @click="setView('dead')"><AlertTriangle :size="14" /> 失效 <span class="cnt">{{ store.deadCount }}</span></div>
+      <n-text class="group-label" tag="div">视图</n-text>
+      <div class="side-row dead" :class="{ active: store.view.kind === 'dead' }" @click="setView('dead')"><AlertTriangle :size="14" /> 失效 <span class="cnt">{{ store.deadCount }}</span></div>
       </div>
       <div class="group-card">
-      <div class="group-label" @click="toggleGroup('标签')">标签 <span class="caret"><ChevronRight v-if="isCollapsed('标签')" :size="12" /><ChevronDown v-else :size="12" /></span></div>
+      <n-text class="group-label" tag="div" @click="toggleGroup('标签')">标签 <span class="caret"><ChevronRight v-if="isCollapsed('标签')" :size="12" /><ChevronDown v-else :size="12" /></span></n-text>
       <template v-if="!isCollapsed('标签')">
         <div class="tag-scroll">
-          <div v-for="t in store.data.tags" :key="t" class="row"
+          <div v-for="t in store.data.tags" :key="t" class="side-row"
             :class="{ active: store.view.kind === 'tag' && store.view.id === t, 'drop-over': tagDrop === t }"
             @click="setView('tag', t)"
             draggable="true"
@@ -113,10 +114,22 @@ function onTagDrop(e: DragEvent, t: string) {
       </template>
       </div>
       <div class="group-card">
-      <div class="group-label">系统</div>
-      <div class="row trash" :class="{ active: store.view.kind === 'recycle' }" @click="setView('recycle')"><Trash2 :size="14" /> 回收站 <span class="cnt">{{ store.trashedSites.length }}</span></div>
+      <n-text class="group-label" tag="div">系统</n-text>
+      <div class="side-row trash" :class="{ active: store.view.kind === 'recycle' }" @click="setView('recycle')"><Trash2 :size="14" /> 回收站 <span class="cnt">{{ store.trashedSites.length }}</span></div>
       </div>
     </div>
     <AddCategoryModal v-if="showAdd" :parent-id="null" @created="setView('category', $event); showAdd = false" @close="showAdd = false" />
   </aside>
 </template>
+
+<style scoped>
+.side-row { padding: 5px 10px; border-radius: var(--radius-md); cursor: pointer; font-size: 13px; color: var(--text); transition: background .15s var(--ease), color .15s var(--ease); }
+.side-row:hover { background: var(--hover); }
+.side-row.active { background: var(--primary-t); color: var(--primary); font-weight: 600; box-shadow: inset 3px 0 0 var(--primary); }
+.side-row .cnt { float: right; color: var(--text-2); font-size: 12px; }
+.side-row.active .cnt { color: var(--primary); }
+.side-row.dead, .side-row.trash { color: var(--danger); }
+.side-row.drop-over { outline: 2px dashed var(--primary); outline-offset: -2px; background: var(--primary-t); }
+.group-btn { color: var(--text-2); background: transparent; border: 1px solid var(--border-2); }
+.group-btn:hover { color: var(--primary); border-color: var(--primary); }
+</style>

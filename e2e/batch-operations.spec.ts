@@ -71,7 +71,7 @@ test('batch delete selected sites', async ({ page }) => {
   await expect(page.locator('.statusbar')).toContainText('共 0 个')
 
   // Verify in recycle bin
-  await page.click('.sidebar .row:has-text("回收站")')
+  await page.click('.sidebar .side-row:has-text("回收站")')
   await expect(page.locator('.site-table')).toContainText('Site A')
   await expect(page.locator('.site-table')).toContainText('Site B')
 })
@@ -142,7 +142,7 @@ test('clear selection with Escape', async ({ page }) => {
 
 test('add category via sidebar all-row context menu', async ({ page }) => {
   // Right-click "全部" row — opens AddCategoryModal directly (not a ctx menu)
-  await page.click('.sidebar .row:has-text("全部")', { button: 'right' })
+  await page.click('.sidebar .side-row:has-text("全部")', { button: 'right' })
 
   // AddCategoryModal appears（标题「新建分类」在 n-modal 的 card header 里）
   await page.waitForSelector('[data-testid="modal-add-category"]')
