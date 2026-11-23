@@ -93,8 +93,10 @@ test('move category via batch pick', async ({ page }) => {
   // Pick category modal appears
   await expect(page.locator('[data-testid="modal-pick-category"]')).toBeVisible()
 
-  // Select "目标分类" from dropdown
-  await page.selectOption('[data-testid="modal-pick-category"] select', { label: '目标分类' })
+  // Select "目标分类" from the NSelect dropdown
+  const pickModal = page.locator('[data-testid="modal-pick-category"]')
+  await pickModal.locator('.n-base-selection').click()
+  await pickModal.locator('.n-base-select-option').filter({ hasText: '目标分类' }).click()
   await page.click('[data-testid="modal-pick-category"] button:has-text("移动")')
 
   // Verify site moved (check category column)

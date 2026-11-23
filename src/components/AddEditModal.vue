@@ -36,8 +36,8 @@ function onCatChange(value: string | number | null) {
     return
   }
   const next = value ? String(value) : null
-  lastCat = next
   categoryId.value = next
+  lastCat = categoryId.value
 }
 
 function onCatCreated(id: string) {
