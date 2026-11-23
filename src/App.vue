@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { NConfigProvider, NDialogProvider, NMessageProvider } from 'naive-ui'
 import { useAppStore, UNCATEGORIZED_ID } from './store/app'
 import TitleBar from './components/TitleBar.vue'
 import TopBar from './components/TopBar.vue'
@@ -48,26 +49,34 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div class="app">
-    <TitleBar />
-    <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" @cancel-check="store.cancelCheck" @manage="manage = true" />
-    <div class="body">
-      <ManageView v-if="manage" @back="manage = false" />
-      <template v-else>
-        <Sidebar />
-        <main class="content">
-          <RecycleView v-if="store.view.kind === 'recycle'" />
-          <SiteTable v-else @edit="openEdit" @check-site="(ids: string[]) => ids.length === 1 ? store.checkOne(ids[0]) : store.checkSelected()" @move="pickIds = $event" @tag="tagIds = $event" />
-        </main>
-      </template>
-    </div>
-    <StatusBar />
-    <Transition name="mask"><AddEditModal v-if="modal === 'add'" :editing="editing" :default-category-id="modalDefaultCategoryId" @close="modal = ''" /></Transition>
-    <Transition name="mask"><ImportExportModal v-if="modal === 'import'" @close="modal = ''" /></Transition>
-    <Transition name="mask"><SettingsModal v-if="modal === 'settings'" @close="modal = ''" /></Transition>
-    <Transition name="mask"><PickCategoryModal v-if="pickIds.length" :site-ids="pickIds" @close="pickIds = []" /></Transition>
-    <Transition name="mask"><AddTagsModal v-if="tagIds.length" :site-ids="tagIds" @close="tagIds = []" /></Transition>
-  </div>
+  <!-- abstract：不渲染包裹元素，保住 #app > .app 的 height:100% 链 -->
+  <!-- preflight-style-disabled：跳过 Naive 全局 reset，且不用 n-global-style（透明窗口会露白） -->
+  <n-config-provider abstract preflight-style-disabled>
+    <n-dialog-provider>
+      <n-message-provider>
+        <div class="app">
+          <TitleBar />
+          <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" @cancel-check="store.cancelCheck" @manage="manage = true" />
+          <div class="body">
+            <ManageView v-if="manage" @back="manage = false" />
+            <template v-else>
+              <Sidebar />
+              <main class="content">
+                <RecycleView v-if="store.view.kind === 'recycle'" />
+                <SiteTable v-else @edit="openEdit" @check-site="(ids: string[]) => ids.length === 1 ? store.checkOne(ids[0]) : store.checkSelected()" @move="pickIds = $event" @tag="tagIds = $event" />
+              </main>
+            </template>
+          </div>
+          <StatusBar />
+          <Transition name="mask"><AddEditModal v-if="modal === 'add'" :editing="editing" :default-category-id="modalDefaultCategoryId" @close="modal = ''" /></Transition>
+          <Transition name="mask"><ImportExportModal v-if="modal === 'import'" @close="modal = ''" /></Transition>
+          <Transition name="mask"><SettingsModal v-if="modal === 'settings'" @close="modal = ''" /></Transition>
+          <Transition name="mask"><PickCategoryModal v-if="pickIds.length" :site-ids="pickIds" @close="pickIds = []" /></Transition>
+          <Transition name="mask"><AddTagsModal v-if="tagIds.length" :site-ids="tagIds" @close="tagIds = []" /></Transition>
+        </div>
+      </n-message-provider>
+    </n-dialog-provider>
+  </n-config-provider>
 </template>
 
 <style scoped>

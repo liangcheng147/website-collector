@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import SiteTable from '../components/SiteTable.vue'
 import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
+import type { Site } from '../types'
 
 describe('SiteTable', () => {
   beforeEach(() => { setActivePinia(createPinia()) })
@@ -15,7 +16,7 @@ describe('SiteTable', () => {
   })
   it('备注为空时显示"—"', () => {
     const store = useAppStore()
-    store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'ok', note: '', deletedAt: '' } as any]
+    store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'ok', note: '', deletedAt: '' } as unknown as Site]
     store.data.categories = []
     const w = mount(SiteTable)
     const noteCell = w.findAll('td').find(td => td.text() === '—')!
@@ -33,7 +34,7 @@ describe('SiteTable', () => {
   it('有站点但筛选无结果时提示调整筛选', () => {
     const store = useAppStore()
     store.view = { kind: 'all' }
-    store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'ok', note: '', deletedAt: '' } as any]
+    store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'ok', note: '', deletedAt: '' } as unknown as Site]
     store.search = '不存在的关键词'
     const w = mount(SiteTable)
     expect(w.find('.empty-state').exists()).toBe(true)
@@ -43,7 +44,7 @@ describe('SiteTable', () => {
   it('未分类视图为空时提示所有站点都已分类', () => {
     const store = useAppStore()
     store.view = { kind: 'category', id: UNCATEGORIZED_ID }
-    store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: 'c1', tags: [], status: 'ok', note: '', deletedAt: '' } as any]
+    store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: 'c1', tags: [], status: 'ok', note: '', deletedAt: '' } as unknown as Site]
     const w = mount(SiteTable)
     expect(w.find('.empty-state').exists()).toBe(true)
     expect(w.text()).toContain('所有站点都已分类')

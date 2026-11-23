@@ -18,7 +18,7 @@ function confirm() { store.moveSites(props.siteIds, target.value); emit('close')
           <label>目标分类</label>
           <select v-model="target">
             <option :value="null">未分类</option>
-            <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
+            <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '\u3000'.repeat(c.depth) }}{{ c.name }}</option>
           </select>
           <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="confirm">移动</button></div>
         </div>

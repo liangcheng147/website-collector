@@ -73,7 +73,7 @@ function doBatch() {
       <label>分类范围</label>
       <select v-model="scopeCat">
         <option :value="null">全部网站</option>
-        <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
+        <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '\u3000'.repeat(c.depth) }}{{ c.name }}</option>
       </select>
       <div class="actions">
         <button class="btn primary" @click="doBatch">{{ removeMode ? '批量去除' : '批量添加' }}</button>

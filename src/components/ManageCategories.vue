@@ -46,7 +46,7 @@ function doDelete(mode: string) {
       <label>父分类</label>
       <select v-model="parentId">
         <option :value="null">（顶级分类）</option>
-        <option v-for="c in store.flatCategories.filter(c => c.depth < 2)" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
+        <option v-for="c in store.flatCategories.filter(c => c.depth < 2)" :key="c.id" :value="c.id">{{ '\u3000'.repeat(c.depth) }}{{ c.name }}</option>
       </select>
       <label>分类名称</label>
       <input v-model="name" placeholder="分类名" @keydown.enter="add" />

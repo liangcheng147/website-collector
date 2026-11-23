@@ -12,7 +12,7 @@ vi.mock('../api', () => ({
   setSettings: vi.fn().mockResolvedValue(undefined),
 }))
 import * as api from '../api'
-import type { AppData, Site } from '../types'
+import type { AppData, CheckResult, Settings, Site } from '../types'
 
 function makeSite(id: string, status: Site['status'], tags: string[]): Site {
   return { id, name: 'Site' + id, url: 'https://' + id + '.dev', categoryId: 'c1', tags, status, lastCheck: null, note: '' }
@@ -166,7 +166,7 @@ describe('app store', () => {
   })
 
   it('init keeps defaults when getSettings omits collapsedCategories', async () => {
-    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'system', zoom: 100, sidebarCollapsed: [] } as any)
+    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'system', zoom: 100, sidebarCollapsed: [] } as unknown as Settings)
     const s = useAppStore()
     await s.init()
     expect(s.settings.collapsedCategories).toEqual([])
@@ -550,8 +550,8 @@ describe('app store', () => {
       tags: [],
     }
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
-    const resolvers: ((v: any) => void)[] = []
-    vi.mocked(api.checkSite).mockImplementation(() => new Promise<any>(res => resolvers.push(res)))
+    const resolvers: ((v: CheckResult) => void)[] = []
+    vi.mocked(api.checkSite).mockImplementation(() => new Promise<CheckResult>(res => resolvers.push(res)))
     const promise = s.checkAll()
     for (let i = 0; i < 10; i++) await Promise.resolve()
     expect(resolvers.length).toBe(5) // 5 个 worker 同时在检，剩余 2 个未开始

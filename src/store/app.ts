@@ -89,8 +89,8 @@ export const useAppStore = defineStore('app', {
             av = a.lastCheck ?? ''
             bv = b.lastCheck ?? ''
           } else {
-            av = ((a as any)[sortKey] ?? '').toString()
-            bv = ((b as any)[sortKey] ?? '').toString()
+            av = String(a[sortKey] ?? '')
+            bv = String(b[sortKey] ?? '')
           }
           if (sortKey === 'status') {
             const order: Record<string, number> = { unknown: 0, ok: 1, dead: 2 }
@@ -169,8 +169,8 @@ export const useAppStore = defineStore('app', {
     async updateSettings(patch: Partial<Settings>) {
       this.settings = { ...this.settings, ...patch }
       this.applyAppearance()
-      if (patch.theme) try { localStorage.setItem('site-collector-theme', patch.theme) } catch (e) {}
-      if (patch.palette) try { localStorage.setItem('site-collector-palette', patch.palette) } catch (e) {}
+      if (patch.theme) try { localStorage.setItem('site-collector-theme', patch.theme) } catch { /* ignore */ }
+      if (patch.palette) try { localStorage.setItem('site-collector-palette', patch.palette) } catch { /* ignore */ }
       try { await api.setSettings(this.settings) } catch (e) { this.flash('设置保存失败：' + e) }
     },
     toggleCategoryCollapse(id: string) {

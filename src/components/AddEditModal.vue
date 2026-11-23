@@ -93,7 +93,7 @@ function save() {
           <label>分类</label>
           <select v-model="categoryId" @change="onCatChange">
             <option :value="null">未分类</option>
-            <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '　'.repeat(c.depth) }}{{ c.name }}</option>
+            <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '\u3000'.repeat(c.depth) }}{{ c.name }}</option>
             <option :value="'__new_cat__'">+ 新建分类…</option>
           </select>
           <label>标签</label>
