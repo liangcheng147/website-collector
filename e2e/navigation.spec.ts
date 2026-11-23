@@ -77,7 +77,8 @@ test('navigate to sub-category', async ({ page }) => {
 
 test('filter by tag', async ({ page }) => {
   // Select "框架" tag from dropdown
-  await page.selectOption('.topbar select', '框架')
+  await page.click('[data-testid="tag-filter"]')
+  await page.locator('[data-testid="tag-filter-menu"]').getByText('框架', { exact: true }).first().click()
   await page.waitForTimeout(200)
   await expect(page.locator('.site-table')).toContainText('React')
   await expect(page.locator('.site-table')).toContainText('Spring')

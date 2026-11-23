@@ -103,7 +103,7 @@ test('move category via batch pick', async ({ page }) => {
 })
 
 test('settings modal opens and closes', async ({ page }) => {
-  await page.click('.topbar button[aria-label="设置"]')
+  await page.click('[data-testid="btn-settings"]')
   await expect(page.locator('.modal')).toBeVisible()
   await expect(page.locator('.modal')).toContainText('设置')
 
@@ -113,7 +113,7 @@ test('settings modal opens and closes', async ({ page }) => {
 })
 
 test('import/export modal shows all formats', async ({ page }) => {
-  await page.click('.topbar button:has-text("导入/导出")')
+  await page.click('[data-testid="btn-import-export"]')
   await expect(page.locator('.modal')).toBeVisible()
 
   await expect(page.locator('.modal')).toContainText('导出 MD')

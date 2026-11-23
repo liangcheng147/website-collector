@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NTag } from 'naive-ui'
 import { Square, AlertTriangle } from 'lucide-vue-next'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
@@ -12,7 +13,7 @@ const store = useAppStore()
         · 当前 {{ store.filteredSites.length }} 个
       </template>
     </span>
-    <span class="statusbar-badge danger">失效 {{ store.deadCount }}</span>
+    <n-tag type="error" size="small" round :bordered="false">失效 {{ store.deadCount }}</n-tag>
     <span>未检测 {{ store.data.sites.filter(s => s.status === 'unknown').length }}</span>
     <span>上次检测 {{ store.lastCheckTime }}</span>
     <span v-if="store.checking">检测中 {{ store.progress.done }}/{{ store.progress.total }}</span>
