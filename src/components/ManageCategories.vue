@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { h, ref, computed } from 'vue'
 import { Trash2 } from 'lucide-vue-next'
+import { NButton, useDialog } from 'naive-ui'
 import { useAppStore } from '../store/app'
 import { useSelection } from '../composables/useSelection'
-import ConfirmModal from './ConfirmModal.vue'
 const store = useAppStore()
+const dialog = useDialog()
 const name = ref('')
 const parentId = ref<string | null>(null)
 const sel = useSelection(() => store.flatCategories.map(c => c.id))
-const delMode = ref(false)
 const catList = computed(() =>
   store.flatCategories.map(c => ({ ...c, count: store.categoryCounts[c.id] ?? 0 })))
 function add() {
@@ -17,10 +17,30 @@ function add() {
   store.addCategory(name.value.trim(), validParent ? validParent.id : null)
   name.value = ''
 }
-function doDelete(mode: string) {
-  store.deleteCategories([...sel.selected.value], mode === 'delete' ? 'delete-sites' : 'move-to-uncategorized')
-  sel.clear()
-  delMode.value = false
+function askDelete() {
+  const ids = [...sel.selected.value]
+  if (!ids.length) return
+  const d = dialog.warning({
+    title: '删除分类',
+    style: { width: 'min(520px, 92%)' },
+    content: () => h('div', { class: 'modal-content' }, [
+      h('div', { class: 'modal-cols' }, [
+        h('div', null, [
+          h('p', { class: 'muted' }, `删除所选 ${ids.length} 个分类，其中网站如何处理？`),
+          h('div', { class: 'actions', style: 'justify-content:flex-start; flex-wrap:wrap' }, [
+            h(NButton, { onClick: () => { store.deleteCategories(ids, 'move-to-uncategorized'); sel.clear(); d.destroy() } }, () => '网站移入未分类'),
+            h(NButton, { type: 'error', onClick: () => { store.deleteCategories(ids, 'delete-sites'); sel.clear(); d.destroy() } }, () => '连同网站删除'),
+          ]),
+        ]),
+        h('div', { class: 'help' }, [
+          h('label', null, '风险提示'),
+          h('p', { class: 'muted' }, '「连同网站删除」会把这些分类下所有网站移入回收站，可在回收站恢复。'),
+        ]),
+      ]),
+    ]),
+    positiveText: '',
+    negativeText: '',
+  })
 }
 </script>
 
@@ -29,7 +49,7 @@ function doDelete(mode: string) {
     <div class="manage-card">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <h4>分类列表</h4>
-        <button class="btn danger" :disabled="!sel.selected.value.length" @click="delMode = true"><Trash2 :size="14" /> 批量删除所选</button>
+        <button class="btn danger" :disabled="!sel.selected.value.length" @click="askDelete"><Trash2 :size="14" /> 批量删除所选</button>
       </div>
       <div class="cat-head">
         <span class="chk-col"><span class="cb" :class="{ checked: sel.allSelected.value }" @click="sel.selectAll()"></span></span><span class="name-col">分类</span><span class="cnt-col">网站数</span>
@@ -54,15 +74,4 @@ function doDelete(mode: string) {
       <p class="muted">逐个输入，可连续添加多个。</p>
     </div>
   </div>
-  <Transition name="mask">
-    <ConfirmModal
-      v-if="delMode"
-      title="删除分类"
-      :message="`删除所选 ${sel.selected.value.length} 个分类，其中网站如何处理？`"
-      :options="[{ value: 'move', label: '网站移入未分类' }, { value: 'delete', label: '连同网站删除', danger: true }]"
-      hint="「连同网站删除」会把这些分类下所有网站移入回收站，可在回收站恢复。"
-      @choose="doDelete"
-      @close="delMode = false"
-    />
-  </Transition>
 </template>

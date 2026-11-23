@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import ModalMask from './ModalMask.vue'
+import { NModal } from 'naive-ui'
 import { useAppStore } from '../store/app'
 import * as api from '../api'
 const store = useAppStore()
@@ -80,9 +80,20 @@ async function confirmJsonImport() {
 </script>
 
 <template>
-  <ModalMask @close="emit('close')">
-    <div class="modal">
-      <h3>导入 / 导出</h3>
+  <n-modal
+    :show="true"
+    preset="card"
+    title="导入 / 导出"
+    to="body"
+    :mask-closable="true"
+    :close-on-esc="true"
+    :trap-focus="true"
+    :auto-focus="true"
+    :style="{ width: 'min(520px, 92%)' }"
+    data-testid="modal-import-export"
+    @update:show="emit('close')"
+  >
+    <div class="modal-content">
       <template v-if="jsonPath">
         <div class="modal-cols">
           <div>
@@ -129,7 +140,9 @@ async function confirmJsonImport() {
         </div>
       </template>
       <p class="muted">{{ msg }}</p>
-      <div class="actions"><button class="btn" @click="emit('close')">关闭</button></div>
     </div>
-  </ModalMask>
+    <template #footer>
+      <div class="actions"><button class="btn" @click="emit('close')">关闭</button></div>
+    </template>
+  </n-modal>
 </template>

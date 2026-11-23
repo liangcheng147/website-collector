@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { NModal } from 'naive-ui'
 import { useAppStore } from '../store/app'
-import ModalMask from './ModalMask.vue'
 const store = useAppStore()
 const props = defineProps<{ parentId: string | null }>()
 const emit = defineEmits(['created', 'close'])
@@ -17,9 +17,20 @@ function create() {
 </script>
 
 <template>
-  <ModalMask @close="emit('close')">
-    <div class="modal">
-      <h3>新建分类</h3>
+  <n-modal
+    :show="true"
+    preset="card"
+    title="新建分类"
+    to="body"
+    :mask-closable="true"
+    :close-on-esc="true"
+    :trap-focus="true"
+    :auto-focus="true"
+    :style="{ width: 'min(520px, 92%)' }"
+    data-testid="modal-add-category"
+    @update:show="emit('close')"
+  >
+    <div class="modal-content">
       <div class="modal-cols">
         <div>
           <label>父级分类</label>
@@ -29,7 +40,6 @@ function create() {
           </select>
           <label>分类名称</label>
           <input v-model="name" placeholder="分类名" />
-          <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="create">创建</button></div>
         </div>
         <div class="help">
           <label>层级规则</label>
@@ -37,5 +47,11 @@ function create() {
         </div>
       </div>
     </div>
-  </ModalMask>
+    <template #footer>
+      <div class="actions">
+        <button class="btn" @click="emit('close')">取消</button>
+        <button class="btn primary" @click="create">创建</button>
+      </div>
+    </template>
+  </n-modal>
 </template>

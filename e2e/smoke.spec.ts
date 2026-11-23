@@ -88,15 +88,15 @@ test('sidebar shows default views', async ({ page }) => {
 
 test('add site via modal', async ({ page }) => {
   await page.click('[data-testid="btn-add"]')
-  await expect(page.locator('.modal')).toBeVisible()
+  await expect(page.locator('[data-testid="modal-add-edit"]')).toBeVisible()
 
   // Inputs don't have explicit type="text", use nth() on all visible inputs
-  const modalInputs = page.locator('.modal input')
+  const modalInputs = page.locator('[data-testid="modal-add-edit"] input')
   await modalInputs.nth(0).fill('React')
   await modalInputs.nth(1).fill('https://react.dev')
 
-  await page.click('button:has-text("保存")')
-  await expect(page.locator('.modal')).toBeHidden()
+  await page.click('[data-testid="modal-add-edit"] button:has-text("保存")')
+  await expect(page.locator('[data-testid="modal-add-edit"]')).toBeHidden()
 
   // Site should appear in table
   await expect(page.locator('.site-table')).toContainText('React')
@@ -108,12 +108,12 @@ test('search filters sites', async ({ page }) => {
   // Add two sites
   for (const [name, url] of [['React', 'https://react.dev'], ['Vue', 'https://vuejs.org']]) {
     await page.click('[data-testid="btn-add"]')
-    await page.waitForSelector('.modal')
-    const inputs = page.locator('.modal input')
+    await page.waitForSelector('[data-testid="modal-add-edit"]')
+    const inputs = page.locator('[data-testid="modal-add-edit"] input')
     await inputs.nth(0).fill(name)
     await inputs.nth(1).fill(url)
-    await page.click('.modal button:has-text("保存")')
-    await page.waitForSelector('.modal', { state: 'hidden' })
+    await page.click('[data-testid="modal-add-edit"] button:has-text("保存")')
+    await page.waitForSelector('[data-testid="modal-add-edit"]', { state: 'hidden' })
   }
 
   // Search

@@ -6,7 +6,7 @@ import { useAppStore } from '../store/app'
 import AddEditModal from './AddEditModal.vue'
 import { mount } from '@vue/test-utils'
 
-// ModalMask uses <Teleport to="body">, so modal content renders in document.body
+// n-modal teleports into document.body, so modal content renders in document.body
 // Query body directly instead of wrapper
 describe('AddEditModal', () => {
   beforeEach(() => {
@@ -20,13 +20,16 @@ describe('AddEditModal', () => {
       el => el.type === 'text'
     ) as HTMLInputElement[]
   }
+  function saveBtn(): HTMLElement {
+    return document.body.querySelector('[data-testid="btn-save"]') as HTMLElement
+  }
 
   it('shows validation error for empty name', async () => {
     const store = useAppStore()
     store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
     mount(AddEditModal)
     await nextTick()
-    const btn = document.body.querySelector('.btn.primary') as HTMLElement
+    const btn = saveBtn()
     btn.click()
     await nextTick()
     expect(document.body.textContent).toContain('请填写名称')
@@ -43,7 +46,7 @@ describe('AddEditModal', () => {
     ;(inputs[1] as HTMLInputElement).value = 'not-a-url'
     inputs[1].dispatchEvent(new Event('input'))
     await nextTick()
-    const btn = document.body.querySelector('.btn.primary') as HTMLElement
+    const btn = saveBtn()
     btn.click()
     await nextTick()
     expect(document.body.textContent).toContain('链接格式')
@@ -64,7 +67,7 @@ describe('AddEditModal', () => {
     textarea.value = '好'.repeat(201)
     textarea.dispatchEvent(new Event('input'))
     await nextTick()
-    const btn = document.body.querySelector('.btn.primary') as HTMLElement
+    const btn = saveBtn()
     btn.click()
     await nextTick()
     expect(document.body.textContent).toContain('备注不能超过 200 字')
@@ -99,7 +102,7 @@ describe('AddEditModal', () => {
     ;(inputs[1] as HTMLInputElement).value = 'https://exists.dev'
     inputs[1].dispatchEvent(new Event('input'))
     await nextTick()
-    const btn = document.body.querySelector('.btn.primary') as HTMLElement
+    const btn = saveBtn()
     btn.click()
     await nextTick()
     expect(document.body.textContent).toContain('链接已存在')
@@ -123,7 +126,7 @@ describe('AddEditModal', () => {
     ;(inputs[1] as HTMLInputElement).value = 'https://a.dev'
     inputs[1].dispatchEvent(new Event('input'))
     await nextTick()
-    const btn = document.body.querySelector('.btn.primary') as HTMLElement
+    const btn = saveBtn()
     btn.click()
     await nextTick()
     expect(document.body.textContent).toContain('该链接已存在')

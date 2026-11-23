@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { h, onMounted, onUnmounted, ref } from 'vue'
 import { ChevronRight, ChevronDown } from 'lucide-vue-next'
+import { NButton, NInput, useDialog } from 'naive-ui'
 import { useAppStore } from '../store/app'
 import ContextMenu from './ContextMenu.vue'
-import PromptModal from './PromptModal.vue'
-import ConfirmModal from './ConfirmModal.vue'
 import AddCategoryModal from './AddCategoryModal.vue'
 import type { Category, View } from '../types'
 const store = useAppStore()
+const dialog = useDialog()
 const props = defineProps<{ cat: Category; depth: number }>()
 const menu = ref<{ x: number; y: number } | null>(null)
-const renameCat = ref<Category | null>(null)
-const delCat = ref<Category | null>(null)
 const addCat = ref(false)
 const dragOver = ref(false)
 
@@ -25,19 +23,54 @@ function setView(kind: View['kind'], id?: string) { store.view = { kind, id } }
 function onCatMenu(e: MouseEvent) { menu.value = { x: e.clientX, y: e.clientY } }
 function onAction(kind: string, cat: Category) {
   menu.value = null
-  if (kind === 'rename') renameCat.value = cat
+  if (kind === 'rename') renameCategory(cat)
   else if (kind === 'add-sub') addCat.value = true
-  else if (kind === 'delete') delCat.value = cat
+  else if (kind === 'delete') deleteCategory(cat)
 }
-function doRename(name: string) {
-  if (!renameCat.value) return
-  store.renameCategory(renameCat.value.id, name)
-  renameCat.value = null
+function renameCategory(cat: Category) {
+  const name = ref(cat.name)
+  dialog.warning({
+    title: '重命名分类',
+    style: { width: 'min(520px, 92%)' },
+    content: () => h('div', { class: 'modal-content' }, [
+      h(NInput, {
+        value: name.value,
+        'onUpdate:value': (v: string) => { name.value = v },
+        placeholder: '分类名',
+      }),
+      h('p', { class: 'muted' }, '修改后所有子分类与网站归属保持不变。'),
+    ]),
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: () => {
+      const v = name.value.trim()
+      if (!v) return false
+      store.renameCategory(cat.id, v)
+    },
+  })
 }
-function doDelete(mode: string) {
-  if (!delCat.value) return
-  store.deleteCategory(delCat.value.id, mode === 'delete' ? 'delete-sites' : 'move-to-uncategorized')
-  delCat.value = null
+function deleteCategory(cat: Category) {
+  const d = dialog.warning({
+    title: '删除分类',
+    style: { width: 'min(520px, 92%)' },
+    content: () => h('div', { class: 'modal-content' }, [
+      h('div', { class: 'modal-cols' }, [
+        h('div', null, [
+          h('p', { class: 'muted' }, `删除「${cat.name}」及其子分类，其中网站如何处理？`),
+          h('div', { class: 'actions', style: 'justify-content:flex-start; flex-wrap:wrap' }, [
+            h(NButton, { onClick: () => { store.deleteCategory(cat.id, 'move-to-uncategorized'); d.destroy() } }, () => '网站移入未分类'),
+            h(NButton, { type: 'error', onClick: () => { store.deleteCategory(cat.id, 'delete-sites'); d.destroy() } }, () => '连同网站删除'),
+          ]),
+        ]),
+        h('div', { class: 'help' }, [
+          h('label', null, '风险提示'),
+          h('p', { class: 'muted' }, '「连同网站删除」会把该分类下所有网站移入回收站，可在回收站恢复。'),
+        ]),
+      ]),
+    ]),
+    positiveText: '',
+    negativeText: '',
+  })
 }
 function onCatDragStart(e: DragEvent) {
   if (!e.dataTransfer) return
@@ -93,18 +126,6 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
       <CategoryNode v-for="cc in cat.children" :key="cc.id" :cat="cc" :depth="depth + 1" />
     </div>
     <ContextMenu v-if="menu" :x="menu.x" :y="menu.y" :items="menuItems()" @action="(kind: string) => onAction(kind, cat)" @close="menu = null" />
-    <Transition name="mask"><PromptModal v-if="renameCat" :title="'重命名分类'" :initial="renameCat.name" hint="修改后所有子分类与网站归属保持不变。" @confirm="doRename" @close="renameCat = null" /></Transition>
-    <Transition name="mask">
-      <ConfirmModal
-        v-if="delCat"
-        :title="'删除分类'"
-        :message="`删除「${delCat.name}」及其子分类，其中网站如何处理？`"
-        :options="[{ value: 'move', label: '网站移入未分类' }, { value: 'delete', label: '连同网站删除', danger: true }]"
-        hint="「连同网站删除」会把该分类下所有网站移入回收站，可在回收站恢复。"
-        @choose="doDelete"
-        @close="delCat = null"
-      />
-    </Transition>
-    <Transition name="mask"><AddCategoryModal v-if="addCat" :parent-id="cat.id" @created="setView('category', $event); addCat = false" @close="addCat = false" /></Transition>
+    <AddCategoryModal v-if="addCat" :parent-id="cat.id" @created="setView('category', $event); addCat = false" @close="addCat = false" />
   </div>
 </template>

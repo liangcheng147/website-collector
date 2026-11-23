@@ -91,11 +91,11 @@ test('move category via batch pick', async ({ page }) => {
   await page.click('.batchbar button:has-text("移动分类")')
 
   // Pick category modal appears
-  await expect(page.locator('.modal')).toBeVisible()
+  await expect(page.locator('[data-testid="modal-pick-category"]')).toBeVisible()
 
   // Select "目标分类" from dropdown
-  await page.selectOption('.modal select', { label: '目标分类' })
-  await page.click('.modal button:has-text("移动")')
+  await page.selectOption('[data-testid="modal-pick-category"] select', { label: '目标分类' })
+  await page.click('[data-testid="modal-pick-category"] button:has-text("移动")')
 
   // Verify site moved (check category column)
   await page.waitForTimeout(200)
@@ -104,23 +104,23 @@ test('move category via batch pick', async ({ page }) => {
 
 test('settings modal opens and closes', async ({ page }) => {
   await page.click('[data-testid="btn-settings"]')
-  await expect(page.locator('.modal')).toBeVisible()
-  await expect(page.locator('.modal')).toContainText('设置')
+  await expect(page.locator('[data-testid="modal-settings"]')).toBeVisible()
+  await expect(page.locator('[data-testid="modal-settings"]')).toContainText('设置')
 
   // Close via Escape
   await page.keyboard.press('Escape')
-  await expect(page.locator('.modal')).toBeHidden()
+  await expect(page.locator('[data-testid="modal-settings"]')).toBeHidden()
 })
 
 test('import/export modal shows all formats', async ({ page }) => {
   await page.click('[data-testid="btn-import-export"]')
-  await expect(page.locator('.modal')).toBeVisible()
+  await expect(page.locator('[data-testid="modal-import-export"]')).toBeVisible()
 
-  await expect(page.locator('.modal')).toContainText('导出 MD')
-  await expect(page.locator('.modal')).toContainText('导出 JSON')
-  await expect(page.locator('.modal')).toContainText('导出 HTML')
-  await expect(page.locator('.modal')).toContainText('导入 MD')
-  await expect(page.locator('.modal')).toContainText('导入 HTML')
+  await expect(page.locator('[data-testid="modal-import-export"]')).toContainText('导出 MD')
+  await expect(page.locator('[data-testid="modal-import-export"]')).toContainText('导出 JSON')
+  await expect(page.locator('[data-testid="modal-import-export"]')).toContainText('导出 HTML')
+  await expect(page.locator('[data-testid="modal-import-export"]')).toContainText('导入 MD')
+  await expect(page.locator('[data-testid="modal-import-export"]')).toContainText('导入 HTML')
 
   // Toggle merge/overwrite
   await expect(page.locator('.segctrl')).toContainText('合并导入')
@@ -139,13 +139,13 @@ test('add category via sidebar all-row context menu', async ({ page }) => {
   // Right-click "全部" row — opens AddCategoryModal directly (not a ctx menu)
   await page.click('.sidebar .row:has-text("全部")', { button: 'right' })
 
-  // AddCategoryModal appears (h3 = "新建分类")
-  await page.waitForSelector('.modal')
+  // AddCategoryModal appears（标题「新建分类」在 n-modal 的 card header 里）
+  await page.waitForSelector('[data-testid="modal-add-category"]')
 
   // Fill in category name (input has no type attr)
-  await page.locator('.modal input').fill('新分类')
-  await page.click('.modal button:has-text("创建")')
-  await page.waitForFunction(() => !document.querySelector('.modal'))
+  await page.locator('[data-testid="modal-add-category"] input').fill('新分类')
+  await page.click('[data-testid="modal-add-category"] button:has-text("创建")')
+  await page.waitForFunction(() => !document.querySelector('[data-testid="modal-add-category"]'))
 
   // Verify new category appears in sidebar
   await expect(page.locator('.sidebar')).toContainText('新分类')

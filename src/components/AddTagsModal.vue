@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import ModalMask from './ModalMask.vue'
+import { NModal } from 'naive-ui'
 import TagInput from './TagInput.vue'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
@@ -14,14 +14,24 @@ function confirm() {
 </script>
 
 <template>
-  <ModalMask @close="emit('close')">
-    <div class="modal">
-      <h3>添加标签（{{ props.siteIds.length }} 项）</h3>
+  <n-modal
+    :show="true"
+    preset="card"
+    :title="`添加标签（${props.siteIds.length} 项）`"
+    to="body"
+    :mask-closable="true"
+    :close-on-esc="true"
+    :trap-focus="true"
+    :auto-focus="true"
+    :style="{ width: 'min(520px, 92%)' }"
+    data-testid="modal-add-tags"
+    @update:show="emit('close')"
+  >
+    <div class="modal-content">
       <div class="modal-cols">
         <div>
           <label>标签</label>
           <TagInput :model-value="tags" :available="store.data.tags" @update:model-value="tags = $event" />
-          <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="confirm">添加</button></div>
         </div>
         <div class="help">
           <label>说明</label>
@@ -29,5 +39,11 @@ function confirm() {
         </div>
       </div>
     </div>
-  </ModalMask>
+    <template #footer>
+      <div class="actions">
+        <button class="btn" @click="emit('close')">取消</button>
+        <button class="btn primary" @click="confirm">添加</button>
+      </div>
+    </template>
+  </n-modal>
 </template>

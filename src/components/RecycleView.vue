@@ -1,26 +1,36 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { Trash2, Undo2, X } from 'lucide-vue-next'
+import { useDialog } from 'naive-ui'
 import { useAppStore } from '../store/app'
 import { useSelection } from '../composables/useSelection'
-import ConfirmModal from './ConfirmModal.vue'
 import type { TrashedSite } from '../types'
 const store = useAppStore()
+const dialog = useDialog()
 
 const list = () => store.trashedSites.map((t: TrashedSite) => t.site.id)
 const sel = useSelection(list)
 function restore() { store.restoreSites([...sel.selected.value]); sel.clear() }
-const confirm = ref<null | 'delete-selected' | 'empty'>(null)
 const selIds = () => [...sel.selected.value]
-function askDelete() { if (selIds().length) confirm.value = 'delete-selected' }
-function askEmpty() { if (store.trashedSites.length) confirm.value = 'empty' }
-function onChoose(v: string) {
-  if (v === 'ok') {
-    if (confirm.value === 'delete-selected') store.permanentlyDeleteSites(selIds())
-    else if (confirm.value === 'empty') store.emptyRecycle()
-    sel.clear()
-  }
-  confirm.value = null
+function askDelete() {
+  const ids = selIds()
+  if (!ids.length) return
+  dialog.error({
+    title: '彻底删除',
+    content: `确定永久删除选中的 ${ids.length} 项？此操作不可恢复。删除后将从回收站移除，无法再恢复。`,
+    positiveText: '彻底删除',
+    negativeText: '取消',
+    onPositiveClick: () => { store.permanentlyDeleteSites(ids); sel.clear() },
+  })
+}
+function askEmpty() {
+  if (!store.trashedSites.length) return
+  dialog.error({
+    title: '清空回收站',
+    content: '确定清空整个回收站？所有已删除网站将永久移除。此操作不可恢复。',
+    positiveText: '清空',
+    negativeText: '取消',
+    onPositiveClick: () => { store.emptyRecycle(); sel.clear() },
+  })
 }
 </script>
 
@@ -61,7 +71,5 @@ function onChoose(v: string) {
       <b>回收站为空</b>
       <span class="hint">已删除的网站会暂时存放在这里</span>
     </div>
-    <ConfirmModal v-if="confirm === 'delete-selected'" title="彻底删除" :message="`确定永久删除选中的 ${selIds().length} 项？此操作不可恢复。`" hint="删除后将从回收站移除，无法再恢复。" :options="[{ value: 'ok', label: '彻底删除', danger: true }, { value: 'cancel', label: '取消' }]" @choose="onChoose" @close="confirm = null" />
-<ConfirmModal v-if="confirm === 'empty'" title="清空回收站" message="确定清空整个回收站？所有已删除网站将永久移除。" hint="此操作不可恢复。" :options="[{ value: 'ok', label: '清空', danger: true }, { value: 'cancel', label: '取消' }]" @choose="onChoose" @close="confirm = null" />
   </div>
 </template>

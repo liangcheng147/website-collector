@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import ModalMask from './ModalMask.vue'
+import { NModal } from 'naive-ui'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
 const props = defineProps<{ siteIds: string[] }>()
@@ -10,9 +10,20 @@ function confirm() { store.moveSites(props.siteIds, target.value); emit('close')
 </script>
 
 <template>
-  <ModalMask @close="emit('close')">
-    <div class="modal">
-      <h3>移动分类（{{ props.siteIds.length }} 项）</h3>
+  <n-modal
+    :show="true"
+    preset="card"
+    :title="`移动分类（${props.siteIds.length} 项）`"
+    to="body"
+    :mask-closable="true"
+    :close-on-esc="true"
+    :trap-focus="true"
+    :auto-focus="true"
+    :style="{ width: 'min(520px, 92%)' }"
+    data-testid="modal-pick-category"
+    @update:show="emit('close')"
+  >
+    <div class="modal-content">
       <div class="modal-cols">
         <div>
           <label>目标分类</label>
@@ -20,7 +31,6 @@ function confirm() { store.moveSites(props.siteIds, target.value); emit('close')
             <option :value="null">未分类</option>
             <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '\u3000'.repeat(c.depth) }}{{ c.name }}</option>
           </select>
-          <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="confirm">移动</button></div>
         </div>
         <div class="help">
           <label>说明</label>
@@ -28,5 +38,11 @@ function confirm() { store.moveSites(props.siteIds, target.value); emit('close')
         </div>
       </div>
     </div>
-  </ModalMask>
+    <template #footer>
+      <div class="actions">
+        <button class="btn" @click="emit('close')">取消</button>
+        <button class="btn primary" @click="confirm">移动</button>
+      </div>
+    </template>
+  </n-modal>
 </template>

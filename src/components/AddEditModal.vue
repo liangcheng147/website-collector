@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { AlertTriangle } from 'lucide-vue-next'
-import ModalMask from './ModalMask.vue'
+import { NModal } from 'naive-ui'
 import AddCategoryModal from './AddCategoryModal.vue'
 import { useAppStore } from '../store/app'
 import type { Site } from '../types'
@@ -74,16 +74,27 @@ function save() {
 </script>
 
 <template>
-  <ModalMask @close="emit('close')">
-    <div class="modal">
-      <h3>{{ props.editing ? '编辑网站' : '添加网站' }}</h3>
+  <n-modal
+    :show="true"
+    preset="card"
+    :title="props.editing ? '编辑网站' : '添加网站'"
+    to="body"
+    :mask-closable="true"
+    :close-on-esc="true"
+    :trap-focus="true"
+    :auto-focus="true"
+    :style="{ width: 'min(520px, 92%)' }"
+    data-testid="modal-add-edit"
+    @update:show="emit('close')"
+  >
+    <div class="modal-content">
       <div class="modal-cols">
         <div>
-          <label>名称</label><input v-model="name" placeholder="网站名称" />
+          <label>名称</label><input v-model="name" data-testid="input-name" placeholder="网站名称" />
           <label>链接</label>
           <div class="url-row">
-            <input v-model="url" placeholder="https://..." @blur="fetchTitle" />
-            <button type="button" class="btn small" @click="fetchTitle" :disabled="fetchingTitle">
+            <input v-model="url" data-testid="input-url" placeholder="https://..." @blur="fetchTitle" />
+            <button type="button" class="btn small" data-testid="btn-fetch-title" @click="fetchTitle" :disabled="fetchingTitle">
               {{ fetchingTitle ? '...' : '获取名称' }}
             </button>
           </div>
@@ -101,12 +112,17 @@ function save() {
         </div>
       </div>
       <label>备注（200 字以内）</label>
-      <textarea v-model="note" maxlength="200" style="height:80px;resize:none" placeholder="网站简介" @keydown.enter.prevent></textarea>
+      <textarea v-model="note" data-testid="textarea-note" maxlength="200" style="height:80px;resize:none" placeholder="网站简介" @keydown.enter.prevent></textarea>
       <span class="char-count">{{ note.length }}/200</span>
       <p v-if="dup" class="err"><AlertTriangle :size="12" /> 链接已存在</p>
       <p v-if="validationMsg" class="err"><AlertTriangle :size="12" /> {{ validationMsg }}</p>
-      <div class="actions"><button class="btn" @click="emit('close')">取消</button><button class="btn primary" @click="save">保存</button></div>
     </div>
-    <Transition name="mask"><AddCategoryModal v-if="showAddCat" :parent-id="pendingCat" @created="onCatCreated" @close="showAddCat = false" /></Transition>
-  </ModalMask>
+    <template #footer>
+      <div class="actions">
+        <button class="btn" @click="emit('close')">取消</button>
+        <button class="btn primary" data-testid="btn-save" @click="save">保存</button>
+      </div>
+    </template>
+  </n-modal>
+  <AddCategoryModal v-if="showAddCat" :parent-id="pendingCat" @created="onCatCreated" @close="showAddCat = false" />
 </template>

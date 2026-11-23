@@ -44,12 +44,12 @@ async function mockInvoke(page: Page) {
 
 async function addSite(page: Page, name: string, url: string) {
   await page.click('[data-testid="btn-add"]')
-  await page.waitForSelector('.modal')
-  const inputs = page.locator('.modal input')
+  await page.waitForSelector('[data-testid="modal-add-edit"]')
+  const inputs = page.locator('[data-testid="modal-add-edit"] input')
   await inputs.nth(0).fill(name)
   await inputs.nth(1).fill(url)
-  await page.click('.modal button:has-text("保存")')
-  await page.waitForFunction(() => !document.querySelector('.modal'))
+  await page.click('[data-testid="modal-add-edit"] button:has-text("保存")')
+  await page.waitForFunction(() => !document.querySelector('[data-testid="modal-add-edit"]'))
 }
 
 test.beforeEach(async ({ page }) => {
@@ -130,13 +130,13 @@ test('edit site via context menu', async ({ page }) => {
   await page.waitForSelector('.ctx')
   await page.click('.ctx button:has-text("编辑")')
 
-  await page.waitForSelector('.modal')
-  await expect(page.locator('.modal h3')).toContainText('编辑网站')
+  await page.waitForSelector('[data-testid="modal-add-edit"]')
+  await expect(page.locator('[data-testid="modal-add-edit"]')).toContainText('编辑网站')
 
   // Change name
-  await page.locator('.modal input').first().fill('Edited')
-  await page.click('.modal button:has-text("保存")')
-  await page.waitForFunction(() => !document.querySelector('.modal'))
+  await page.locator('[data-testid="modal-add-edit"] input').first().fill('Edited')
+  await page.click('[data-testid="modal-add-edit"] button:has-text("保存")')
+  await page.waitForFunction(() => !document.querySelector('[data-testid="modal-add-edit"]'))
 
   await expect(page.locator('.site-table')).toContainText('Edited')
   await expect(page.locator('.site-table')).not.toContainText('Original')

@@ -25,7 +25,7 @@ vi.mock('../updater', () => ({
 }))
 vi.mock('@tauri-apps/api/app', () => ({ getVersion: () => getVersionMock() }))
 
-// ModalMask teleports into document.body, so assert against document.body
+// n-modal teleports into document.body, so assert against document.body
 describe('SettingsModal', () => {
   beforeEach(() => {
     setActivePinia(createPinia())

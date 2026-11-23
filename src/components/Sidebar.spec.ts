@@ -3,23 +3,32 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { h, type Component } from 'vue'
+import { NDialogProvider } from 'naive-ui'
 import { UnfoldVertical, FoldVertical } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
 import { useAppStore } from '../store/app'
+
+// Sidebar → CategoryNode 在 setup 里调 useDialog()，没有 provider 会抛异常
+function mountWithDialog(component: Component) {
+  return mount({
+    setup: () => () => h(NDialogProvider, null, { default: () => h(component) }),
+  })
+}
 
 describe('Sidebar', () => {
   beforeEach(() => { setActivePinia(createPinia()) })
   it('点击"标签"组标题可折叠该组', async () => {
     const store = useAppStore()
     store.settings.sidebarCollapsed = []
-    const w = mount(Sidebar)
+    const w = mountWithDialog(Sidebar)
     const tagLabel = w.findAll('.group-label').find(l => l.text().startsWith('标签'))!
     expect(store.settings.sidebarCollapsed).not.toContain('标签')
     await tagLabel.trigger('click')
     expect(store.settings.sidebarCollapsed).toContain('标签')
   })
   it('分类组渲染展开/收起图标按钮', () => {
-    const w = mount(Sidebar)
+    const w = mountWithDialog(Sidebar)
     const catLabel = w.findAll('.group-label').find(l => l.text().startsWith('分类'))!
     const btns = catLabel.findAll('.group-btn')
     expect(btns).toHaveLength(2)
