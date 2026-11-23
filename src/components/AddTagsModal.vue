@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NModal } from 'naive-ui'
+import { NForm, NFormItem, NButton, NModal, NText } from 'naive-ui'
 import TagInput from './TagInput.vue'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
@@ -27,22 +27,24 @@ function confirm() {
     data-testid="modal-add-tags"
     @update:show="emit('close')"
   >
-    <div class="modal-content">
+    <n-form size="medium" @submit.prevent>
       <div class="modal-cols">
         <div>
-          <label>标签</label>
-          <TagInput :model-value="tags" :available="store.data.tags" @update:model-value="tags = $event" />
+          <n-form-item label="标签">
+            <TagInput :model-value="tags" :available="store.data.tags" @update:model-value="tags = $event" />
+          </n-form-item>
         </div>
-        <div class="help">
-          <label>说明</label>
-          <p class="muted">输入标签后回车或逗号即可添加；多个可用空格分隔，批量应用到选中的网站。</p>
+        <div>
+          <n-form-item>
+            <n-text depth="3">输入标签后回车或逗号即可添加；多个可用空格分隔，批量应用到选中的网站。</n-text>
+          </n-form-item>
         </div>
       </div>
-    </div>
+    </n-form>
     <template #footer>
       <div class="actions modal-footer">
-        <button class="btn" @click="emit('close')">取消</button>
-        <button class="btn primary" @click="confirm">添加</button>
+        <n-button @click="emit('close')">取消</n-button>
+        <n-button type="primary" @click="confirm">添加</n-button>
       </div>
     </template>
   </n-modal>

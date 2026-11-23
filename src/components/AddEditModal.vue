@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { AlertTriangle } from 'lucide-vue-next'
-import { NModal } from 'naive-ui'
-import AddCategoryModal from './AddCategoryModal.vue'
+import { ref, computed } from 'vue'
+import { NForm, NFormItem, NInput, NSelect, NButton, NModal, NText } from 'naive-ui'
 import { useAppStore } from '../store/app'
 import type { Site } from '../types'
 import TagInput from './TagInput.vue'
+import AddCategoryModal from './AddCategoryModal.vue'
 import * as api from '../api'
 const store = useAppStore()
 const props = defineProps<{ editing?: Site | null; defaultCategoryId?: string | null }>()
@@ -15,7 +14,7 @@ const url = ref(props.editing?.url ?? '')
 const tags = ref<string[]>((props.editing?.tags ?? []).slice())
 const note = ref(props.editing?.note ?? '')
 const validationMsg = ref('')
-const categoryId = ref(props.editing?.categoryId ?? props.defaultCategoryId ?? null)
+const categoryId = ref<string | null>(props.editing?.categoryId ?? props.defaultCategoryId ?? null)
 const dup = ref(false)
 const showAddCat = ref(false)
 const pendingCat = ref<string | null>(null)
@@ -23,16 +22,24 @@ const titleError = ref('')
 const fetchingTitle = ref(false)
 const NEW_CAT = '__new_cat__'
 let lastCat: string | null = categoryId.value
-function onCatChange(e: Event) {
-  const target = e.target as HTMLSelectElement
-  if (target.value === NEW_CAT) {
+const categoryOptions = computed(() => [
+  { label: '未分类', value: '' },
+  ...store.flatCategories.map((c) => ({ label: '\u3000'.repeat(c.depth) + c.name, value: c.id })),
+  { label: '+ 新建分类…', value: NEW_CAT },
+])
+const selectValue = computed(() => categoryId.value ?? '')
+function onCatChange(value: string | number | null) {
+  if (value === NEW_CAT) {
     pendingCat.value = lastCat
     showAddCat.value = true
     categoryId.value = null
-  } else {
-    lastCat = categoryId.value
+    return
   }
+  const next = value ? String(value) : null
+  lastCat = next
+  categoryId.value = next
 }
+
 function onCatCreated(id: string) {
   categoryId.value = id
   showAddCat.value = false
@@ -87,40 +94,48 @@ function save() {
     data-testid="modal-add-edit"
     @update:show="emit('close')"
   >
-    <div class="modal-content">
+    <n-form size="medium" @submit.prevent>
       <div class="modal-cols">
         <div>
-          <label>名称</label><input v-model="name" data-testid="input-name" placeholder="网站名称" />
-          <label>链接</label>
-          <div class="url-row">
-            <input v-model="url" data-testid="input-url" placeholder="https://..." @blur="fetchTitle" />
-            <button type="button" class="btn small" data-testid="btn-fetch-title" @click="fetchTitle" :disabled="fetchingTitle">
-              {{ fetchingTitle ? '...' : '获取名称' }}
-            </button>
-          </div>
-          <p v-if="titleError" class="err"><AlertTriangle :size="12" /> {{ titleError }}</p>
+          <n-form-item label="名称" required>
+            <n-input v-model:value="name" data-testid="input-name" placeholder="网站名称" />
+          </n-form-item>
+          <n-form-item label="链接" required>
+            <div class="url-row">
+              <n-input v-model:value="url" data-testid="input-url" placeholder="https://..." @blur="fetchTitle" />
+              <n-button size="small" data-testid="btn-fetch-title" :disabled="fetchingTitle" @click="fetchTitle">
+                {{ fetchingTitle ? '...' : '获取名称' }}
+              </n-button>
+            </div>
+          </n-form-item>
+          <n-form-item>
+            <n-text v-if="titleError" type="error">{{ titleError }}</n-text>
+          </n-form-item>
         </div>
         <div>
-          <label>分类</label>
-          <select v-model="categoryId" @change="onCatChange">
-            <option :value="null">未分类</option>
-            <option v-for="c in store.flatCategories" :key="c.id" :value="c.id">{{ '\u3000'.repeat(c.depth) }}{{ c.name }}</option>
-            <option :value="'__new_cat__'">+ 新建分类…</option>
-          </select>
-          <label>标签</label>
-          <TagInput :model-value="tags" :available="store.data.tags" @update:model-value="tags = $event" />
+          <n-form-item label="分类">
+            <n-select :value="selectValue" :options="categoryOptions" @update:value="onCatChange" />
+          </n-form-item>
+          <n-form-item label="标签">
+            <TagInput :model-value="tags" :available="store.data.tags" @update:model-value="tags = $event" />
+          </n-form-item>
         </div>
       </div>
-      <label>备注（200 字以内）</label>
-      <textarea v-model="note" data-testid="textarea-note" maxlength="200" style="height:80px;resize:none" placeholder="网站简介" @keydown.enter.prevent></textarea>
+      <n-form-item label="备注（200 字以内）">
+        <n-input v-model:value="note" type="textarea" data-testid="textarea-note" maxlength="200" placeholder="网站简介" @keydown.enter.prevent />
+      </n-form-item>
       <span class="char-count">{{ note.length }}/200</span>
-      <p v-if="dup" class="err"><AlertTriangle :size="12" /> 链接已存在</p>
-      <p v-if="validationMsg" class="err"><AlertTriangle :size="12" /> {{ validationMsg }}</p>
-    </div>
+      <n-form-item v-if="dup">
+        <n-text type="error">链接已存在</n-text>
+      </n-form-item>
+      <n-form-item v-if="validationMsg">
+        <n-text type="error">{{ validationMsg }}</n-text>
+      </n-form-item>
+    </n-form>
     <template #footer>
       <div class="actions modal-footer">
-        <button class="btn" @click="emit('close')">取消</button>
-        <button class="btn primary" data-testid="btn-save" @click="save">保存</button>
+        <n-button @click="emit('close')">取消</n-button>
+        <n-button type="primary" data-testid="btn-save" @click="save">保存</n-button>
       </div>
     </template>
   </n-modal>

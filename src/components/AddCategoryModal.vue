@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { NModal } from 'naive-ui'
+import { ref, computed } from 'vue'
+import { NForm, NFormItem, NInput, NSelect, NButton, NModal, NText } from 'naive-ui'
 import { useAppStore } from '../store/app'
 const store = useAppStore()
 const props = defineProps<{ parentId: string | null }>()
 const emit = defineEmits(['created', 'close'])
 const name = ref('')
-const parentId = ref(props.parentId)
+const parentId = ref<string | null>(props.parentId)
+
+const parentOptions = computed(() => [
+  { label: '顶层', value: '' },
+  ...store.flatCategories.filter((c) => c.depth < 2).map((c) => ({ label: '\u3000'.repeat(c.depth) + c.name, value: c.id })),
+])
+function onParentChange(value: string | number | null) {
+  parentId.value = value ? String(value) : null
+}
 
 function create() {
   if (!name.value.trim()) return
-  const validParent = store.flatCategories.find(c => c.id === parentId.value && c.depth < 2)
+  const validParent = store.flatCategories.find((c) => c.id === parentId.value && c.depth < 2)
   const id = store.addCategory(name.value.trim(), validParent ? validParent.id : null)
   emit('created', id)
 }
@@ -30,27 +38,27 @@ function create() {
     data-testid="modal-add-category"
     @update:show="emit('close')"
   >
-    <div class="modal-content">
+    <n-form size="medium" @submit.prevent>
       <div class="modal-cols">
         <div>
-          <label>父级分类</label>
-          <select v-model="parentId">
-            <option :value="null">顶层</option>
-            <option v-for="c in store.flatCategories.filter(c => c.depth < 2)" :key="c.id" :value="c.id">{{ '\u3000'.repeat(c.depth) }}{{ c.name }}</option>
-          </select>
-          <label>分类名称</label>
-          <input v-model="name" placeholder="分类名" />
+          <n-form-item label="父级分类">
+            <n-select :value="parentId ?? ''" :options="parentOptions" @update:value="onParentChange" />
+          </n-form-item>
+          <n-form-item label="分类名称">
+            <n-input v-model:value="name" placeholder="分类名" />
+          </n-form-item>
         </div>
-        <div class="help">
-          <label>层级规则</label>
-          <p class="muted">分类最多嵌套 3 层。<br />父级列表只显示深度 ≤ 2 的分类，保证新分类不会超过第 3 层。</p>
+        <div>
+          <n-form-item>
+            <n-text depth="3">分类最多嵌套 3 层。<br />父级列表只显示深度 ≤ 2 的分类，保证新分类不会超过第 3 层。</n-text>
+          </n-form-item>
         </div>
       </div>
-    </div>
+    </n-form>
     <template #footer>
       <div class="actions modal-footer">
-        <button class="btn" @click="emit('close')">取消</button>
-        <button class="btn primary" @click="create">创建</button>
+        <n-button @click="emit('close')">取消</n-button>
+        <n-button type="primary" @click="create">创建</n-button>
       </div>
     </template>
   </n-modal>

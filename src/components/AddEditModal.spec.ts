@@ -155,4 +155,29 @@ describe('AddEditModal', () => {
     const nameInput = textInputs()[0]
     expect(nameInput.value).toBe('Edit Me')
   })
+
+  it('renders form controls with naive-ui components and no legacy buttons', async () => {
+    const store = useAppStore()
+    store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    mount(AddEditModal)
+    await nextTick()
+    // 主要输入为 Naive 控件
+    expect(document.body.querySelector('.n-input')).not.toBeNull()
+    expect(document.body.querySelector('[data-testid="input-url"]')?.classList.contains('n-input')).toBe(true)
+    expect(document.body.querySelector('textarea')).not.toBeNull()
+    // 分类选择为 Naive 控件
+    expect(document.body.querySelector('.n-select')).not.toBeNull()
+    expect(document.body.querySelector('select')).toBeNull()
+    // 保存 / 取消按钮为 Naive 按钮
+    const save = saveBtn()
+    expect(save.classList.contains('n-button')).toBe(true)
+    const cancel = Array.from(document.body.querySelectorAll('.n-button'))
+      .find(el => el.textContent?.trim() === '取消') as HTMLElement | undefined
+    expect(cancel).toBeDefined()
+    expect(cancel?.classList.contains('n-button')).toBe(true)
+    const fetchBtn = document.body.querySelector('[data-testid="btn-fetch-title"]') as HTMLElement
+    expect(fetchBtn.classList.contains('n-button')).toBe(true)
+    // 不再存在旧 .btn 按钮
+    expect(document.body.querySelector('.btn')).toBeNull()
+  })
 })
