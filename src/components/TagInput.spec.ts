@@ -62,6 +62,13 @@ it('removes a chip via close icon', async () => {
   expect(lastEmit(w)).toEqual([])
 })
 
+it('removes a chip via close icon even when the input still equals that tag', async () => {
+  const w = make(['工具'])
+  await w.find('input').setValue('工具')
+  await w.find('.n-tag .n-base-close').trigger('click')
+  expect(lastEmit(w)).toEqual([])
+})
+
 it('splits typed tags on separators', async () => {
   const w = make()
   const input = w.find('input')

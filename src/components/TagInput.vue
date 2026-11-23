@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { NSelect } from 'naive-ui'
 
 const props = defineProps<{ modelValue: string[]; available: string[] }>()
@@ -8,6 +8,19 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: string[]): void }>()
 // Naive 的 pattern 不对外暴露，用 search 事件跟踪输入内容，
 // 用于识别“输入与已选标签重复”时被 Naive 当作切换取消的移除。
 const pattern = ref('')
+
+// 点击 chip × 删除与 Enter 触发重复项切换在 Naive 内部走同一段代码
+// （Select.mjs 的 handleDeleteOption === handleToggleByOption），
+// 因此必须用 Enter 标志区分两者，否则 × 删除会被误当成重复切换吞掉。
+const enterToggled = ref(false)
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') enterToggled.value = true
+  // Enter 若未触发 update:value，也要复位，避免残留标志影响后续 × 删除
+  nextTick(() => {
+    enterToggled.value = false
+  })
+}
 
 // 已选标签不重复出现在候选里（大小写不敏感）
 const selectedKeys = computed(() => new Set(props.modelValue.map(t => t.toLowerCase())))
@@ -22,7 +35,8 @@ function splitCreated(raw: string): string[] {
   return raw.split(/[#\s，,]+/).map(s => s.trim()).filter(Boolean)
 }
 
-function isDuplicateToggle(next: string[]): boolean {
+function isDuplicateToggle(next: string[], enter: boolean): boolean {
+  if (!enter) return false
   if (next.length >= props.modelValue.length) return false
   const nextKeys = new Set(next.map(t => t.toLowerCase()))
   const removed = props.modelValue.filter(t => !nextKeys.has(t.toLowerCase()))
@@ -34,7 +48,9 @@ function isDuplicateToggle(next: string[]): boolean {
 
 function onUpdateValue(value: string | number | Array<string | number> | null) {
   const next = Array.isArray(value) ? value.map(String) : []
-  if (isDuplicateToggle(next)) {
+  const enter = enterToggled.value
+  enterToggled.value = false
+  if (isDuplicateToggle(next, enter)) {
     pattern.value = ''
     return
   }
@@ -70,5 +86,6 @@ function onUpdateValue(value: string | number | Array<string | number> | null) {
     placeholder="输入新建标签，回车添加"
     @update:value="onUpdateValue"
     @search="pattern = $event"
+    @keydown.capture="onKeydown"
   />
 </template>
