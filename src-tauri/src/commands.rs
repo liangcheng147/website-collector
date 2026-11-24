@@ -43,6 +43,11 @@ pub async fn check_site_cmd(url: String) -> check::CheckResult {
 }
 
 #[tauri::command]
+pub async fn check_sites_cmd(urls: Vec<String>, retry_count: u32, concurrency: usize) -> Vec<check::SiteCheckResult> {
+    check::check_sites(&urls, retry_count, concurrency).await
+}
+
+#[tauri::command]
 pub async fn check_connectivity_cmd() -> bool {
     check::check_connectivity().await
 }

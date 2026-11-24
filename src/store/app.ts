@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { AppData, Site, TrashedSite, View, Category, Settings, DuplicateGroup, ImportSummary } from '../types'
+import type { AppData, Site, TrashedSite, View, Category, Settings, DuplicateGroup, ImportSummary, CheckScope } from '../types'
 import * as api from '../api'
 import { resolveTheme, applyShellVars } from '../theme'
 
@@ -96,6 +96,36 @@ function collectCategoryIds(cats: Category[], rootId: string): string[] {  const
   return out
 }
 
+/**
+ * 按检查范围解析目标站点 id（纯函数）。
+ * category/tag 依赖当前视图；无对应视图时返回空列表，避免误检全部。
+ */
+export function resolveScopeIds(
+  sites: Site[],
+  categories: Category[],
+  view: View,
+  selectedIds: string[],
+  scope: CheckScope,
+  fallbackTag: string | null = null,
+): string[] {
+  const all = sites.map(s => s.id)
+  if (scope === 'all') return all
+  if (scope === 'selected') {
+    const set = new Set(selectedIds)
+    return all.filter(id => set.has(id))
+  }
+  if (scope === 'category') {
+    if (view.kind !== 'category' || !view.id) return []
+    if (view.id === UNCATEGORIZED_ID) return sites.filter(s => !s.categoryId).map(s => s.id)
+    const ids = new Set(collectCategoryIds(categories, view.id))
+    return sites.filter(s => s.categoryId && ids.has(s.categoryId)).map(s => s.id)
+  }
+  // tag
+  const tagId = view.kind === 'tag' && view.id ? view.id : fallbackTag
+  if (!tagId) return []
+  return sites.filter(s => s.tags.includes(tagId)).map(s => s.id)
+}
+
 export const useAppStore = defineStore('app', {
   state: () => ({
     data: { version: 1, categories: [], sites: [], recycleBin: [], tags: [] } as AppData,
@@ -112,7 +142,11 @@ export const useAppStore = defineStore('app', {
     connectivityError: false,
     flashMsg: '',
     location: { dir: '', isFallback: false },
-    settings: { theme: 'system', palette: 'teal', zoom: 100, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: true } as Settings,
+    settings: {
+      theme: 'system', palette: 'teal', zoom: 100, sidebarCollapsed: [], collapsedCategories: [],
+      autoCheckUpdate: true, autoFetchFavicon: true,
+      autoCheck: false, checkInterval: 0, checkScope: 'all', retryCount: 1, concurrency: 3,
+    } as Settings,
     sortKey: null as 'name' | 'url' | 'status' | 'category' | 'note' | 'lastCheck' | null,
     sortDir: 'asc' as 'asc' | 'desc',
   }),
@@ -610,16 +644,19 @@ export const useAppStore = defineStore('app', {
 
     cancelCheck() { this.cancelRequested = true },
 
-    async checkAll() {
-      if (this.checking) return
-      this.cancelled = false
-      if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
-      this.connectivityError = false
+    /** 设置中的并发/重试参数归一化，避免脏值造成 0 并发或无止境重试。 */
+    checkLimits(): { concurrency: number; retryCount: number } {
+      const concurrency = Math.max(1, Math.min(10, Number(this.settings.concurrency) || 1))
+      const retryCount = Math.max(0, Math.min(5, Number(this.settings.retryCount) || 0))
+      return { concurrency, retryCount }
+    },
+
+    /** 按目标站点列表执行检测：并发受限、可取消、进度可追踪。 */
+    async checkQueue(sites: Site[]) {
       this.checking = true
-      const sites = [...this.data.sites]
       this.progress = { done: 0, total: sites.length }
       try {
-        const CONCURRENCY = 5
+        const { concurrency } = this.checkLimits()
         let idx = 0
         const worker = async () => {
           while (idx < sites.length && !this.cancelRequested) {
@@ -628,7 +665,7 @@ export const useAppStore = defineStore('app', {
             this.progress.done++
           }
         }
-        const workers = Array.from({ length: Math.min(CONCURRENCY, sites.length) }, () => worker())
+        const workers = Array.from({ length: Math.min(concurrency, sites.length) }, () => worker())
         await Promise.all(workers)
       } finally {
         this.cancelled = this.cancelRequested
@@ -638,8 +675,43 @@ export const useAppStore = defineStore('app', {
       }
     },
 
+    async checkAll() {
+      if (this.checking) return
+      this.cancelled = false
+      if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
+      this.connectivityError = false
+      await this.checkQueue([...this.data.sites])
+    },
+
+    /** 按范围（全部/当前分类/当前标签/所选）检测，默认取 settings.checkScope。 */
+    async checkByScope(scope?: CheckScope) {
+      if (this.checking) return
+      const targetScope = scope ?? this.settings.checkScope
+      this.cancelled = false
+      if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
+      this.connectivityError = false
+      const ids = resolveScopeIds(
+        this.data.sites,
+        this.data.categories,
+        this.view,
+        this.selectedIds,
+        targetScope,
+        this.selectedTag,
+      )
+      const sites = ids
+        .map(id => this.data.sites.find(s => s.id === id))
+        .filter((s): s is Site => !!s)
+      if (!sites.length) { this.flash('当前范围没有可检测的站点'); return }
+      await this.checkQueue(sites)
+    },
+
     async checkSiteWithVerify(s: Site) {
+      const { retryCount } = this.checkLimits()
       let r = await api.checkSite(s.url)
+      // 失败按设置额外重试；仍失败再交给 WebView 复核
+      for (let i = 0; i < retryCount && r.status === 'dead'; i++) {
+        r = await api.checkSite(s.url)
+      }
       if (r.status === 'dead') {
         r = await api.verifySiteWebview(s.url)
       }
@@ -663,30 +735,11 @@ export const useAppStore = defineStore('app', {
       this.cancelled = false
       if (!(await api.checkConnectivity())) { this.connectivityError = true; this.view = { kind: 'dead' }; return }
       this.connectivityError = false
-      this.checking = true
       const ids = [...this.selectedIds]
-      this.progress = { done: 0, total: ids.length }
-      try {
-        const CONCURRENCY = 5
-        let idx = 0
-        const sitesMap = new Map(this.data.sites.map(s => [s.id, s]))
-        const worker = async () => {
-          while (idx < ids.length && !this.cancelRequested) {
-            const id = ids[idx++]
-            const s = sitesMap.get(id)
-            if (s) await this.checkSiteWithVerify(s)
-            this.progress.done++
-          }
-        }
-        const workers = Array.from({ length: Math.min(CONCURRENCY, ids.length) }, () => worker())
-        await Promise.all(workers)
-      } finally {
-        this.cancelled = this.cancelRequested
-        this.checking = false
-        this.cancelRequested = false
-        await this.persist()
-        this.clearSelection()
-      }
+      const sitesMap = new Map(this.data.sites.map(s => [s.id, s]))
+      const sites = ids.map(id => sitesMap.get(id)).filter((s): s is Site => !!s)
+      await this.checkQueue(sites)
+      this.clearSelection()
     },
   },
 })

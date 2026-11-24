@@ -1,10 +1,12 @@
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import type { AppData, CheckResult, Settings } from './types'
+import type { AppData, CheckResult, Settings, SiteCheckResult } from './types'
 
 export const loadData = () => invoke<AppData>('load_data')
 export const saveData = (data: AppData) => invoke<void>('save_data', { data })
 export const checkSite = (url: string) => invoke<CheckResult>('check_site_cmd', { url })
+export const checkSites = (urls: string[], retryCount: number, concurrency: number) =>
+  invoke<SiteCheckResult[]>('check_sites_cmd', { urls, retryCount, concurrency })
 export const verifySiteWebview = (url: string) => invoke<CheckResult>('verify_site_webview_cmd', { url })
 export const checkConnectivity = () => invoke<boolean>('check_connectivity_cmd')
 export const fetchSiteTitle = (url: string) => invoke<string>('fetch_site_title_cmd', { url })

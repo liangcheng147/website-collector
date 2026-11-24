@@ -10,6 +10,7 @@ import SettingsModal from './SettingsModal.vue'
 const getDataFilePathMock = vi.fn()
 const openDataDirMock = vi.fn()
 const openLinkMock = vi.fn()
+const setSettingsMock = vi.fn()
 const getVersionMock = vi.fn()
 const checkForUpdateMock = vi.fn()
 const downloadAndInstallMock = vi.fn()
@@ -19,6 +20,7 @@ vi.mock('../api', () => ({
   getDataFilePath: () => getDataFilePathMock(),
   openDataDir: () => openDataDirMock(),
   openLink: (...args: unknown[]) => openLinkMock(...args),
+  setSettings: (...args: unknown[]) => setSettingsMock(...args),
 }))
 vi.mock('../updater', () => ({
   checkForUpdate: () => checkForUpdateMock(),
@@ -37,6 +39,7 @@ describe('SettingsModal', () => {
     checkForUpdateMock.mockReset().mockResolvedValue({ ok: true, update: null })
     downloadAndInstallMock.mockReset().mockResolvedValue(undefined)
     relaunchAppMock.mockReset().mockResolvedValue(undefined)
+    setSettingsMock.mockReset().mockResolvedValue(undefined)
   })
 
   async function mountModal() {
@@ -259,5 +262,34 @@ describe('SettingsModal', () => {
     label.click()
     await nextTick()
     expect(store.settings.autoFetchFavicon).toBe(false)
+  })
+
+  it('renders the check policy section with defaults and naive controls', async () => {
+    await mountModal()
+    await openTab('settings-tab-check')
+    const text = document.body.textContent || ''
+    for (const label of ['自动检查', '检查频率', '默认范围', '重试次数', '并发上限']) {
+      expect(text).toContain(label)
+    }
+    // 频率/重试/并发用 slider（非当前页签的控件可能仍在 DOM，故用下限断言），范围用 select，自动检查用 switch
+    expect(document.body.querySelectorAll('.n-slider').length).toBeGreaterThanOrEqual(3)
+    expect(document.body.querySelectorAll('.n-select').length).toBeGreaterThanOrEqual(1)
+    expect(document.body.querySelector('.n-switch')).not.toBeNull()
+    expect(text).toContain('0 分钟')
+    expect(text).toContain('1 次')
+    expect(text).toContain('3 路')
+  })
+
+  it('toggling auto check persists through updateSettings', async () => {
+    const store = await mountModal()
+    await openTab('settings-tab-check')
+    const autoCheckLabel = document.body.querySelector('#auto-check-label') as HTMLElement
+    expect(autoCheckLabel).not.toBeNull()
+    autoCheckLabel.click()
+    await nextTick()
+    expect(store.settings.autoCheck).toBe(true)
+    expect(setSettingsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ autoCheck: true, checkInterval: 0, checkScope: 'all', retryCount: 1, concurrency: 3 }),
+    )
   })
 })

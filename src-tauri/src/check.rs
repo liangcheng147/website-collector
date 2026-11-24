@@ -127,18 +127,58 @@ pub(crate) fn html_decode_simple(input: &str) -> String {
         .replace("&nbsp;", " ")
 }
 
-pub async fn check_site(url: &str) -> CheckResult {
-    let r = check_site_attempt(url).await;
-    if r.status == "dead" {
+/// 批量检测结果：在单站结果外带上请求 URL，便于调用方按 URL 回填站点。
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SiteCheckResult { pub url: String, pub status: String, pub used_url: String }
+
+/// 失败后在 `retry_count` 次额外重试；每次重试前短暂退避。
+async fn check_site_with_retries(url: &str, retry_count: u32) -> CheckResult {
+    let mut r = check_site_attempt(url).await;
+    for _ in 0..retry_count {
+        if r.status != "dead" { break; }
         tokio::time::sleep(RETRY_DELAY).await;
-        return check_site_attempt(url).await;
+        r = check_site_attempt(url).await;
     }
     r
+}
+
+pub async fn check_site(url: &str) -> CheckResult {
+    // 保持既有语义：失败后再试一次。
+    check_site_with_retries(url, 1).await
+}
+
+/// 在 `concurrency` 上限内批量检测，失败项按 `retry_count` 额外重试。
+/// 返回顺序与输入一致；调用方需先自行确认在线（见 check_connectivity）。
+pub async fn check_sites(urls: &[String], retry_count: u32, concurrency: usize) -> Vec<SiteCheckResult> {
+    let limit = concurrency.max(1);
+    let mut results: Vec<Option<SiteCheckResult>> = urls.iter().map(|_| None).collect();
+    let mut start = 0usize;
+    while start < urls.len() {
+        let end = (start + limit).min(urls.len());
+        let mut handles = Vec::with_capacity(end - start);
+        for i in start..end {
+            let url = urls[i].clone();
+            handles.push(tokio::spawn(async move {
+                let r = check_site_with_retries(&url, retry_count).await;
+                (i, r)
+            }));
+        }
+        for h in handles {
+            if let Ok((i, r)) = h.await {
+                results[i] = Some(SiteCheckResult { url: urls[i].clone(), status: r.status, used_url: r.used_url });
+            }
+        }
+        start = end;
+    }
+    results.into_iter().flatten().collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn normalize_adds_https() {
@@ -348,6 +388,105 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let title = rt.block_on(super::fetch_site_title(&url)).unwrap();
         assert_eq!(title, "My Site & Co");
+    }
+
+    /// 本地测试服务器：第 n 次连接返回 responses[n]（超出后重复最后一项），可配置每连接延迟。
+    fn spawn_test_server(
+        responses: Vec<&'static str>,
+        delay: Duration,
+        max_conn: usize,
+    ) -> (String, Arc<AtomicUsize>, Arc<AtomicUsize>, Arc<AtomicUsize>) {
+        let responses = Arc::new(Mutex::new(responses));
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap().to_string();
+        let idx = Arc::new(AtomicUsize::new(0));
+        let active = Arc::new(AtomicUsize::new(0));
+        let max_active = Arc::new(AtomicUsize::new(0));
+        let idx2 = idx.clone();
+        let active2 = active.clone();
+        let max2 = max_active.clone();
+        let responses2 = responses.clone();
+        std::thread::spawn(move || {
+            for _ in 0..max_conn {
+                let Ok((stream, _)) = listener.accept() else { break };
+                let idx = idx2.clone();
+                let active = active2.clone();
+                let max = max2.clone();
+                let responses = responses2.clone();
+                std::thread::spawn(move || {
+                    use std::io::{Read, Write};
+                    let mut stream = stream;
+                    let mut buf = [0u8; 4096];
+                    let _ = stream.read(&mut buf);
+                    let n = idx.fetch_add(1, Ordering::SeqCst);
+                    let list = responses.lock().unwrap();
+                    let status = list[n.min(list.len() - 1)];
+                    let cur = active.fetch_add(1, Ordering::SeqCst) + 1;
+                    max.fetch_max(cur, Ordering::SeqCst);
+                    drop(list);
+                    std::thread::sleep(delay);
+                    active.fetch_sub(1, Ordering::SeqCst);
+                    let resp = format!(
+                        "HTTP/1.1 {}\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok",
+                        status
+                    );
+                    let _ = stream.write_all(resp.as_bytes());
+                });
+            }
+        });
+        (addr, idx, active, max_active)
+    }
+
+    #[test]
+    fn check_sites_without_retry_stays_dead() {
+        let (addr, _idx, _active, _max) =
+            spawn_test_server(vec!["404 Not Found"], Duration::from_millis(1), 8);
+        let url = format!("http://{}/", addr);
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let results = rt.block_on(async { check_sites(&[url.clone()], 0, 1).await });
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].url, url);
+        assert_eq!(results[0].status, "dead");
+    }
+
+    #[test]
+    fn check_sites_retries_until_success() {
+        // 首次完整尝试会产生 4 个连接（http/https × 原路径/根），第 5 个连接成功 → retry_count=1 应恢复
+        let (addr, _idx, _active, _max) = spawn_test_server(
+            vec!["404 Not Found", "404 Not Found", "404 Not Found", "404 Not Found", "200 OK"],
+            Duration::from_millis(1),
+            8,
+        );
+        let url = format!("http://{}/", addr);
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let results = rt.block_on(async { check_sites(&[url.clone()], 1, 1).await });
+        assert_eq!(results[0].status, "ok");
+        // 重试轮首次探测原 URL（带尾斜杠）即成功，used_url 保留实际生效地址
+        assert_eq!(results[0].used_url, url);
+    }
+
+    #[test]
+    fn check_sites_caps_concurrency() {
+        let (addr, _idx, _active, max_active) =
+            spawn_test_server(vec!["200 OK"], Duration::from_millis(120), 8);
+        let url_a = format!("http://{}/a", addr);
+        let url_b = format!("http://{}/b", addr);
+        let rt = tokio::runtime::Runtime::new().unwrap();
+
+        let results = rt.block_on(check_sites(&[url_a.clone(), url_b.clone()], 0, 1));
+        assert_eq!(results.len(), 2);
+        assert_eq!(max_active.load(Ordering::SeqCst), 1, "concurrency=1 必须串行");
+
+        max_active.store(0, Ordering::SeqCst);
+        let results = rt.block_on(check_sites(&[url_a.clone(), url_b.clone()], 0, 2));
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].url, url_a);
+        assert_eq!(results[1].url, url_b);
+        assert_eq!(
+            max_active.load(Ordering::SeqCst),
+            2,
+            "concurrency=2 应允许两个站点同时探测"
+        );
     }
 
     #[test]

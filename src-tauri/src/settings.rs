@@ -12,15 +12,41 @@ pub struct Settings {
     #[serde(default)] pub collapsed_categories: Vec<String>,
     #[serde(default = "default_true")] pub auto_check_update: bool,
     #[serde(default = "default_true")] pub auto_fetch_favicon: bool,
+    /// 自动检查偏好。当前版本只持久化，定时调度尚未接入（见 Task 12 报告）。
+    #[serde(default)] pub auto_check: bool,
+    /// 自动检查间隔（分钟）；0 表示不调度。
+    #[serde(default)] pub check_interval: u32,
+    /// 默认检查范围：all / category / tag / selected。
+    #[serde(default = "default_check_scope")] pub check_scope: String,
+    /// 失败后的额外重试次数。
+    #[serde(default = "default_retry_count")] pub retry_count: u32,
+    /// 并发检测上限。
+    #[serde(default = "default_concurrency")] pub concurrency: u32,
 }
 
 fn default_palette() -> String { "teal".into() }
 
 fn default_true() -> bool { true }
+fn default_check_scope() -> String { "all".into() }
+fn default_retry_count() -> u32 { 1 }
+fn default_concurrency() -> u32 { 3 }
 
 impl Settings {
     pub fn defaults() -> Self {
-        Settings { theme: "system".into(), palette: "teal".into(), zoom: 100, sidebar_collapsed: vec![], collapsed_categories: vec![], auto_check_update: true, auto_fetch_favicon: true }
+        Settings {
+            theme: "system".into(),
+            palette: "teal".into(),
+            zoom: 100,
+            sidebar_collapsed: vec![],
+            collapsed_categories: vec![],
+            auto_check_update: true,
+            auto_fetch_favicon: true,
+            auto_check: false,
+            check_interval: 0,
+            check_scope: default_check_scope(),
+            retry_count: default_retry_count(),
+            concurrency: default_concurrency(),
+        }
     }
 }
 
@@ -181,12 +207,47 @@ mod tests {
     }
 
     #[test]
+    fn missing_check_fields_use_conservative_defaults() {
+        let d = tmp_dir("check_fields_missing");
+        fs::write(settings_file_path(&d), r#"{"theme":"dark","zoom":110}"#).unwrap();
+        let s = load_settings(&d);
+        assert!(!s.auto_check);
+        assert_eq!(s.check_interval, 0);
+        assert_eq!(s.check_scope, "all");
+        assert_eq!(s.retry_count, 1);
+        assert_eq!(s.concurrency, 3);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn check_policy_roundtrip() {
+        let d = tmp_dir("check_policy_roundtrip");
+        let mut s = Settings::defaults();
+        s.auto_check = true;
+        s.check_interval = 30;
+        s.check_scope = "category".into();
+        s.retry_count = 3;
+        s.concurrency = 8;
+        save_settings(&d, &s).unwrap();
+        let loaded = load_settings(&d);
+        assert!(loaded.auto_check);
+        assert_eq!(loaded.check_interval, 30);
+        assert_eq!(loaded.check_scope, "category");
+        assert_eq!(loaded.retry_count, 3);
+        assert_eq!(loaded.concurrency, 8);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
     fn serialized_keys_are_camel_case() {
         let d = tmp_dir("camel_case_keys");
         save_settings(&d, &Settings::defaults()).unwrap();
         let raw = fs::read_to_string(settings_file_path(&d)).unwrap();
         assert!(raw.contains("\"autoCheckUpdate\""), "settings.json should use camelCase keys, got: {}", raw);
         assert!(raw.contains("\"autoFetchFavicon\""), "settings.json should persist autoFetchFavicon, got: {}", raw);
+        for key in ["autoCheck", "checkInterval", "checkScope", "retryCount", "concurrency"] {
+            assert!(raw.contains(&format!("\"{}\"", key)), "settings.json should persist {}, got: {}", key, raw);
+        }
         let _ = fs::remove_dir_all(&d);
     }
 }

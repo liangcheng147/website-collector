@@ -4,8 +4,20 @@ import type { HTMLAttributes } from 'vue'
 import { NInput, NSelect, NButton } from 'naive-ui'
 import { Plus, LayoutGrid, Settings, Square, Search } from 'lucide-vue-next'
 import { useAppStore } from '../store/app'
+import type { CheckScope } from '../types'
 const store = useAppStore()
-const emit = defineEmits(['check-all', 'cancel-check', 'add', 'import-export', 'settings', 'manage'])
+const emit = defineEmits(['check-all', 'cancel-check', 'add', 'import-export', 'settings', 'manage', 'check-scope'])
+
+const scopeOptions = [
+  { label: '检测范围：全部', value: 'all' },
+  { label: '检测范围：当前分类', value: 'category' },
+  { label: '检测范围：当前标签', value: 'tag' },
+  { label: '检测范围：所选', value: 'selected' },
+]
+function onScopeChange(v: string | number | null) {
+  if (v === '' || v === null || v === undefined) return
+  emit('check-scope', String(v) as CheckScope)
+}
 
 const q = ref(store.search)
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -43,6 +55,13 @@ function onTagChange(v: string | number | null) {
       class="topbar-select"
       :menu-props="tagMenuProps"
       @update:value="onTagChange"
+    />
+    <n-select
+      class="topbar-select"
+      data-testid="check-scope"
+      :options="scopeOptions"
+      :disabled="store.checking"
+      @update:value="onScopeChange"
     />
     <n-button
       :type="store.checking ? 'error' : 'default'"

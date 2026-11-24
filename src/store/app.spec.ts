@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { setActivePinia, createPinia } from 'pinia'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useAppStore, UNCATEGORIZED_ID, summarizeImport } from './app'
+import { useAppStore, UNCATEGORIZED_ID, summarizeImport, resolveScopeIds } from './app'
 vi.mock('../api', () => ({
   saveData: vi.fn().mockResolvedValue(undefined),
   loadData: vi.fn().mockResolvedValue(undefined),
@@ -164,14 +164,14 @@ describe('app store', () => {
     const s = useAppStore()
     await s.updateSettings({ zoom: 150 })
     expect(s.settings.zoom).toBe(150)
-    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', palette: 'teal', zoom: 150, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: true })
+    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', palette: 'teal', zoom: 150, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: true, autoCheck: false, checkInterval: 0, checkScope: 'all', retryCount: 1, concurrency: 3 })
   })
 
   it('init loads settings', async () => {
-    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: false })
+    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: false, autoCheck: true, checkInterval: 15, checkScope: 'category', retryCount: 2, concurrency: 6 })
     const s = useAppStore()
     await s.init()
-    expect(s.settings).toEqual({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: false })
+    expect(s.settings).toEqual({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: false, autoCheck: true, checkInterval: 15, checkScope: 'category', retryCount: 2, concurrency: 6 })
   })
 
   it('init keeps defaults when getSettings omits collapsedCategories', async () => {
@@ -301,6 +301,7 @@ describe('app store', () => {
       recycleBin: [],
       tags: [],
     }
+    s.settings.concurrency = 5 // 显式恢复旧测试的并发上限语义
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
     let callCount = 0
     let active = 0
@@ -558,6 +559,7 @@ describe('app store', () => {
       recycleBin: [],
       tags: [],
     }
+    s.settings.concurrency = 5 // 显式恢复旧测试的 5 worker 取消语义
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
     const resolvers: ((v: CheckResult) => void)[] = []
     vi.mocked(api.checkSite).mockImplementation(() => new Promise<CheckResult>(res => resolvers.push(res)))
@@ -609,6 +611,133 @@ describe('app store', () => {
       url.includes('a') ? { status: 'ok', usedUrl: url } : { status: 'dead', usedUrl: url })
     await s.checkAll()
     expect(api.verifySiteWebview).toHaveBeenCalledTimes(2) // 只复核 b、c
+  })
+
+  it('resolveScopeIds returns every site for all scope', () => {
+    expect(resolveScopeIds(baseData.sites, baseData.categories, { kind: 'all' }, [], 'all'))
+      .toEqual(['a', 'b', 'c'])
+  })
+
+  it('resolveScopeIds category scope includes descendants only', () => {
+    const data = makeData()
+    data.sites[0].categoryId = 'c2' // a 挂 c1 的子分类
+    data.sites[2].categoryId = null // c 移出 c1 子树
+    expect(
+      resolveScopeIds(data.sites, data.categories, { kind: 'category', id: 'c1' }, [], 'category'),
+    ).toEqual(['a', 'b'])
+  })
+
+  it('resolveScopeIds uncategorized scope returns only uncategorized sites', () => {
+    const data = makeData()
+    data.sites[0].categoryId = null
+    expect(
+      resolveScopeIds(data.sites, data.categories, { kind: 'category', id: UNCATEGORIZED_ID }, [], 'category'),
+    ).toEqual(['a'])
+  })
+
+  it('resolveScopeIds tag scope uses current tag view and falls back to selectedTag', () => {
+    const data = makeData()
+    expect(
+      resolveScopeIds(data.sites, data.categories, { kind: 'tag', id: '框架' }, [], 'tag'),
+    ).toEqual(['a', 'b'])
+    expect(
+      resolveScopeIds(data.sites, data.categories, { kind: 'all' }, [], 'tag'),
+    ).toEqual([])
+  })
+
+  it('resolveScopeIds selected scope keeps chosen ids in data order', () => {
+    expect(
+      resolveScopeIds(baseData.sites, baseData.categories, { kind: 'all' }, ['c', 'a'], 'selected'),
+    ).toEqual(['a', 'c'])
+  })
+
+  it('checkByScope checks only sites inside the requested scope', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.view = { kind: 'tag', id: '框架' }
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    vi.mocked(api.checkSite).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
+    await s.checkByScope('tag')
+    const urls = vi.mocked(api.checkSite).mock.calls.map(c => c[0]).sort()
+    expect(urls).toEqual(['https://a.dev', 'https://b.dev'])
+    expect(s.progress.total).toBe(2)
+    expect(s.progress.done).toBe(2)
+    expect(s.checking).toBe(false)
+  })
+
+  it('checkByScope defaults to settings.checkScope', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.selectedIds = ['a']
+    s.settings.checkScope = 'selected'
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    vi.mocked(api.checkSite).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
+    await s.checkByScope()
+    expect(vi.mocked(api.checkSite).mock.calls.map(c => c[0])).toEqual(['https://a.dev'])
+  })
+
+  it('checkByScope flashes and stops when the scope has no sites', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.view = { kind: 'category', id: 'missing' }
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    await s.checkByScope('category')
+    expect(api.checkSite).not.toHaveBeenCalled()
+    expect(s.flashMsg).toContain('没有可检测')
+    expect(s.checking).toBe(false)
+  })
+
+  it('checkByScope aborts when offline without marking sites', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.data.sites.forEach(x => x.status = 'unknown')
+    vi.mocked(api.checkConnectivity).mockResolvedValue(false)
+    await s.checkByScope('all')
+    expect(api.checkSite).not.toHaveBeenCalled()
+    expect(s.data.sites.every(x => x.status === 'unknown')).toBe(true)
+    expect(s.connectivityError).toBe(true)
+  })
+
+  it('settings.retryCount adds extra attempts before webview verification', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.selectedIds = ['a']
+    s.settings.retryCount = 2
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    vi.mocked(api.checkSite)
+      .mockResolvedValueOnce({ status: 'dead', usedUrl: 'x' })
+      .mockResolvedValueOnce({ status: 'dead', usedUrl: 'x' })
+      .mockResolvedValueOnce({ status: 'ok', usedUrl: 'x' })
+    await s.checkByScope('selected')
+    expect(api.checkSite).toHaveBeenCalledTimes(3)
+    expect(api.verifySiteWebview).not.toHaveBeenCalled()
+    expect(s.data.sites.find(x => x.id === 'a')!.status).toBe('ok')
+  })
+
+  it('settings.concurrency caps simultaneous checks', async () => {
+    const s = useAppStore()
+    s.data = {
+      version: 1,
+      categories: [],
+      sites: ['a', 'b', 'c', 'd'].map(id => ({
+        id, name: id.toUpperCase(), url: `https://${id}.dev`, categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '',
+      })),
+      recycleBin: [],
+      tags: [],
+    }
+    s.settings.concurrency = 2
+    let active = 0
+    let maxActive = 0
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    vi.mocked(api.checkSite).mockImplementation(async () => {
+      active++
+      maxActive = Math.max(maxActive, active)
+      await new Promise(r => setTimeout(r, 10))
+      active--
+      return { status: 'ok', usedUrl: 'x' }
+    })
+    await s.checkByScope('all')
+    expect(maxActive).toBe(2)
   })
 
   it('checkOne resets cancelled after a cancelled batch', async () => {

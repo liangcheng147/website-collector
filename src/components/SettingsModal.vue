@@ -10,6 +10,7 @@ import * as api from '../api'
 import * as updater from '../updater'
 import { PALETTES, type Palette } from '../theme'
 import { useAppStore } from '../store/app'
+import type { CheckScope } from '../types'
 const emit = defineEmits(['close'])
 const store = useAppStore()
 const filePath = ref('')
@@ -58,6 +59,36 @@ function toggleAutoCheck() {
 function toggleAutoFetchFavicon() {
   store.updateSettings({ autoFetchFavicon: !store.settings.autoFetchFavicon })
 }
+// 检查策略：统一走 updateSettings，直接写 store.settings 不会持久化
+const autoCheck = computed({
+  get: () => store.settings.autoCheck,
+  set: (v: boolean) => { store.updateSettings({ autoCheck: v }) },
+})
+const checkInterval = computed({
+  get: () => store.settings.checkInterval,
+  set: (v: number) => { store.updateSettings({ checkInterval: v }) },
+})
+const retryCount = computed({
+  get: () => store.settings.retryCount,
+  set: (v: number) => { store.updateSettings({ retryCount: v }) },
+})
+const concurrency = computed({
+  get: () => store.settings.concurrency,
+  set: (v: number) => { store.updateSettings({ concurrency: v }) },
+})
+function setCheckScope(v: string | number | null) {
+  if (v === null || v === undefined) return
+  store.updateSettings({ checkScope: String(v) as CheckScope })
+}
+function toggleAutoCheckSites() {
+  store.updateSettings({ autoCheck: !store.settings.autoCheck })
+}
+const checkScopeOptions = [
+  { label: '全部站点', value: 'all' },
+  { label: '当前分类', value: 'category' },
+  { label: '当前标签', value: 'tag' },
+  { label: '所选站点', value: 'selected' },
+]
 // 色板色块跟随当前主题（跟随系统时按系统偏好），保证预览与生效配色一致
 const isDark = computed(() => {
   const mode = store.settings.theme
@@ -177,6 +208,50 @@ async function copyDiagnostics() {
               <span id="auto-favicon-label" @click="toggleAutoFetchFavicon">自动抓取图标</span>
             </div>
             <n-text class="group-hint" depth="3">关闭后仍可点链接输入框旁的「获取图标」手动抓取。</n-text>
+          </div>
+        </n-space>
+      </n-tab-pane>
+
+      <!-- 检查 -->
+      <n-tab-pane name="check" tab="检查" :tab-props="{ 'data-testid': 'settings-tab-check' } as HTMLAttributes">
+        <n-space vertical :size="16" class="settings-pane">
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">自动检查</n-text>
+            <div class="switch-row">
+              <n-switch v-model:value="autoCheck" aria-labelledby="auto-check-label" />
+              <span id="auto-check-label" @click="toggleAutoCheckSites">启用自动检查</span>
+            </div>
+            <n-text class="group-hint" depth="3">当前版本仅保存偏好，定时调度将在后续版本接入。</n-text>
+          </div>
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">检查频率</n-text>
+            <div class="slider-row">
+              <n-text class="slider-bound" depth="3">0</n-text>
+              <n-slider v-model:value="checkInterval" :min="0" :max="120" :step="5" />
+              <n-text class="slider-value">{{ store.settings.checkInterval }} 分钟</n-text>
+            </div>
+          </div>
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">默认范围</n-text>
+            <n-select :value="store.settings.checkScope" :options="checkScopeOptions" @update:value="setCheckScope" />
+          </div>
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">重试次数</n-text>
+            <div class="slider-row">
+              <n-text class="slider-bound" depth="3">0</n-text>
+              <n-slider v-model:value="retryCount" :min="0" :max="5" :step="1" />
+              <n-text class="slider-value">{{ store.settings.retryCount }} 次</n-text>
+            </div>
+            <n-text class="group-hint" depth="3">检测失败后的额外重试次数。</n-text>
+          </div>
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">并发上限</n-text>
+            <div class="slider-row">
+              <n-text class="slider-bound" depth="3">1</n-text>
+              <n-slider v-model:value="concurrency" :min="1" :max="10" :step="1" />
+              <n-text class="slider-value">{{ store.settings.concurrency }} 路</n-text>
+            </div>
+            <n-text class="group-hint" depth="3">同时检测的站点数，限制可减轻目标站点压力。</n-text>
           </div>
         </n-space>
       </n-tab-pane>
