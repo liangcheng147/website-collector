@@ -52,7 +52,11 @@ function normalizeUrlImpl(raw: string): string {
 /** 统一 URL 归一化：scheme/host 小写、去默认端口、折叠多余斜杠并去尾斜杠、丢弃 fragment。 */
 export function normalizeUrl(url: string): string { return normalizeUrlImpl(url) }
 
-/** 导入摘要：新增（结果中此前不存在的 URL）、合并（与导入前相同的 URL）、重复（结果内部同 URL 的多余条数）。 */
+/**
+ * 导入摘要：新增（结果中此前不存在的 URL）、合并（与导入前相同的 URL）、重复（结果内部同 URL 的多余条数）。
+ * 「合并」基于归一化 URL 等价计数；Rust `merge_into` 的合并策略是标签并集、保留现有备注，
+ * 而手动「合并到所选」（`mergeDuplicateGroup`）是标签并集 + 备注追加，两者仅备注维度不同。
+ */
 export function summarizeImport(before: AppData, after: AppData): ImportSummary {
   const beforeKeys = new Set(before.sites.map(s => normalizeUrl(s.url)))
   const afterKeys = new Set(after.sites.map(s => normalizeUrl(s.url)))
@@ -303,7 +307,8 @@ export const useAppStore = defineStore('app', {
 
     resolveDuplicateGroup(key: string, keepId: string) {
       const group = this.duplicateGroups.find(g => g.key === key)
-      if (!group) return
+      // keeper 必须是该组成员，否则直接返回，避免误删整组。
+      if (!group || !group.sites.some(s => s.id === keepId)) return
       const rest = group.sites.filter(s => s.id !== keepId).map(s => s.id)
       if (rest.length) this.deleteSites(rest)
     },

@@ -99,7 +99,23 @@ fn split_host_port(authority: &str) -> (&str, Option<&str>) {
     }
 }
 
-/// 统一 URL 归一化：scheme/host 小写、去默认端口、折叠多余斜杠并去尾斜杠、丢弃 fragment。
+/// 解析开头合法的 scheme（首字符 ASCII 字母，其余为字母/数字/`+`/`-`/`.`，且必须紧跟 `://`）。
+/// 规则与前端 `/^([a-zA-Z][a-zA-Z0-9+.-]*):\/\//` 一致；不符合时整体走「无 scheme」回退路径。
+fn split_scheme(before_hash: &str) -> Option<(&str, &str)> {
+    let idx = before_hash.find("://")?;
+    let candidate = &before_hash[..idx];
+    let mut chars = candidate.chars();
+    match chars.next() {
+        Some(c) if c.is_ascii_alphabetic()
+            && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.')) =>
+        {
+            Some((candidate, &before_hash[idx + 3..]))
+        }
+        _ => None,
+    }
+}
+
+/// 统一 URL 归一化：scheme/host 小写、空端口视为无端口、去默认端口、折叠多余斜杠并去尾斜杠、丢弃 fragment。
 /// 与前端 `src/store/app.ts` 的 `normalizeUrl` 保持同语义。
 pub fn normalize_url(url: &str) -> String {
     let trimmed = url.trim();
@@ -107,12 +123,10 @@ pub fn normalize_url(url: &str) -> String {
         Some(i) => &trimmed[..i],
         None => trimmed,
     };
-    let scheme_end = match before_hash.find("://") {
-        Some(i) => i,
+    let (scheme, rest) = match split_scheme(before_hash) {
+        Some((s, r)) => (s.to_lowercase(), r),
         None => return before_hash.to_lowercase().trim_end_matches('/').to_string(),
     };
-    let scheme = before_hash[..scheme_end].to_lowercase();
-    let rest = &before_hash[scheme_end + 3..];
 
     let (authority, path_and_query) = match rest.find(['/', '?']) {
         Some(i) => (&rest[..i], &rest[i..]),
@@ -124,6 +138,8 @@ pub fn normalize_url(url: &str) -> String {
     };
     let (host, port) = split_host_port(authority);
     let host = host.to_lowercase();
+    // `host:` 等价于 `host`：空端口按无端口处理（与前端一致）。
+    let port = port.filter(|p| !p.is_empty());
     let port_str = match port {
         Some(p) if default_port(&scheme) == Some(p) => String::new(),
         Some(p) => format!(":{}", p),
@@ -191,8 +207,16 @@ pub fn merge_into(current: &mut AppData, incoming: &AppData) {
         let target_cat = s.category_id.as_ref().and_then(|id| cat_id_map.get(id)).cloned();
         let norm = normalize_url(&s.url);
         if let Some(existing) = current.sites.iter_mut().find(|x| normalize_url(&x.url) == norm) {
+            // 导入合并策略：名称/分类按 incoming 更新，标签并入 existing（并集、去重），
+            // 备注保持 existing 原值（设计文档要求已存在站点保留现有 note）。
+            // 手动「合并到所选」（`store/app.ts` 的 `mergeDuplicateGroup`）为标签并集 + 备注追加。
             existing.name = s.name.clone();
             if target_cat.is_some() { existing.category_id = target_cat.clone(); }
+            for t in &s.tags {
+                if !existing.tags.contains(t) {
+                    existing.tags.push(t.clone());
+                }
+            }
         } else {
             current.sites.push(Site {
                 id: s.id.clone(), name: s.name.clone(), url: s.url.clone(),
@@ -329,6 +353,17 @@ assert_eq!(loaded.sites[0].name, "React");
     }
 
     #[test]
+    fn normalize_url_empty_port_equals_no_port_and_scheme_rules_match_frontend() {
+        // 与前端 `normalizeUrl` 的等价性回归：空端口视为无端口。
+        assert_eq!(normalize_url("https://a.dev:/path"), normalize_url("https://a.dev/path"));
+        assert_eq!(normalize_url("https://a.dev:/path"), "https://a.dev/path");
+        assert_eq!(normalize_url("https://[::1]:/path"), normalize_url("https://[::1]/path"));
+        // scheme 非法（首字符非字母 / 含下划线）时整体走「无 scheme」回退路径。
+        assert_eq!(normalize_url("1http://x"), "1http://x");
+        assert_eq!(normalize_url("a_b://x"), "a_b://x");
+    }
+
+    #[test]
     fn merge_treats_case_and_trailing_slash_variants_as_same_url() {
         let mut current = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
         current.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "已有备注".into() });
@@ -338,6 +373,18 @@ assert_eq!(loaded.sites[0].name, "React");
         assert_eq!(current.sites.len(), 1, "大小写/尾斜杠不同的等价 URL 应合并而非新增");
         assert_eq!(current.sites[0].name, "A2", "名称更新为导入值");
         assert_eq!(current.sites[0].note, "已有备注", "保留现有备注");
+    }
+
+    #[test]
+    fn merge_unions_incoming_tags_and_keeps_existing_note() {
+        let mut current = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        current.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec!["框架".into()], status: "ok".into(), last_check: None, note: "已有备注".into() });
+        let mut incoming = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        incoming.sites.push(Site { id: "x".into(), name: "A2".into(), url: "https://a.dev/".into(), category_id: None, tags: vec!["工具".into(), "框架".into()], status: "unknown".into(), last_check: None, note: "incoming".into() });
+        merge_into(&mut current, &incoming);
+        assert_eq!(current.sites.len(), 1);
+        assert_eq!(current.sites[0].tags, vec!["框架".to_string(), "工具".to_string()], "标签取并集");
+        assert_eq!(current.sites[0].note, "已有备注", "导入合并不覆盖现有备注");
     }
 
     #[test]

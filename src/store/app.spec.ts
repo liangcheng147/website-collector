@@ -680,6 +680,16 @@ describe('app store', () => {
     expect(s.normalizeUrl('https://example.com:443/a//b/')).to.equal('https://example.com/a/b')
   })
 
+  it('normalizeUrl treats an empty port as no port (parity with Rust)', () => {
+    const s = useAppStore()
+    expect(s.normalizeUrl('https://a.dev:/path')).to.equal(s.normalizeUrl('https://a.dev/path'))
+    expect(s.normalizeUrl('https://a.dev:/path')).to.equal('https://a.dev/path')
+    expect(s.normalizeUrl('https://[::1]:/path')).to.equal(s.normalizeUrl('https://[::1]/path'))
+    // scheme 非法时整体走「无 scheme」回退路径，与 Rust split_scheme 一致。
+    expect(s.normalizeUrl('1http://x')).to.equal('1http://x')
+    expect(s.normalizeUrl('a_b://x')).to.equal('a_b://x')
+  })
+
   it('duplicateGroups groups by normalized URL and drops single-entry keys', () => {
     const s = useAppStore()
     s.data.sites = [
@@ -703,6 +713,19 @@ describe('app store', () => {
     s.resolveDuplicateGroup('https://a.dev', '2')
     expect(s.data.sites.map(x => x.id)).toEqual(['2'])
     expect(s.trashedSites.map(x => x.site.id)).toEqual(['1'])
+  })
+
+  it('duplicate group actions ignore a keeper outside the group', () => {
+    const s = useAppStore()
+    s.data.sites = [
+      { id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '' },
+      { id: '2', name: 'A2', url: 'https://a.dev/', categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '' },
+    ]
+    s.persist = async () => {}
+    s.resolveDuplicateGroup('https://a.dev', 'zzz')
+    s.mergeDuplicateGroup('https://a.dev', 'zzz')
+    expect(s.data.sites.map(x => x.id)).toEqual(['1', '2'])
+    expect(s.trashedSites).toHaveLength(0)
   })
 
   it('mergeDuplicateGroup unions tags, merges notes into keeper and trashes others', () => {

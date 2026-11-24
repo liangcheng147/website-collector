@@ -58,6 +58,18 @@ describe('ManageDuplicates', () => {
     expect(w.text()).toContain('暂无重复链接')
   })
 
+  it('切换单选后以所选站点为保留项', async () => {
+    const store = useAppStore()
+    store.data = dupData()
+    const w = mount(ManageDuplicates)
+    const inputs = w.findAll('.n-radio input[type="radio"]')
+    expect(inputs.length).toBe(2)
+    await inputs[1].setValue()
+    await actionButton(w, '保留所选')!.trigger('click')
+    expect(store.data.sites.map(s => s.id)).toEqual(['2', '3'])
+    expect(store.trashedSites.map(t => t.site.id)).toEqual(['1'])
+  })
+
   it('合并到所选汇总标签与备注', async () => {
     const store = useAppStore()
     store.data = dupData()
