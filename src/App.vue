@@ -14,6 +14,7 @@ import ImportExportModal from './components/ImportExportModal.vue'
 import SettingsModal from './components/SettingsModal.vue'
 import PickCategoryModal from './components/PickCategoryModal.vue'
 import AddTagsModal from './components/AddTagsModal.vue'
+import DeadCleanupModal from './components/DeadCleanupModal.vue'
 import ManageView from './components/ManageView.vue'
 import type { Site } from './types'
 import { checkForUpdate } from './updater'
@@ -27,6 +28,7 @@ const editing = ref<Site | undefined>()
 const modalDefaultCategoryId = ref<string | null>(null)
 const pickIds = ref<string[]>([])
 const tagIds = ref<string[]>([])
+const deadCleanup = ref(false)
 const manage = ref(false)
 function openAdd() {
   editing.value = undefined
@@ -39,6 +41,7 @@ function onKey(e: KeyboardEvent) {
   modal.value = ''
   pickIds.value = []
   tagIds.value = []
+  deadCleanup.value = false
   store.clearSelection()
 }
 onMounted(async () => {
@@ -69,12 +72,12 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
           <TitleBar />
           <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" @cancel-check="store.cancelCheck" @check-scope="(scope) => store.checkByScope(scope)" @manage="manage = true" />
           <div class="body">
-            <ManageView v-if="manage" @back="manage = false" />
+            <ManageView v-if="manage" @back="manage = false" @dead-cleanup="deadCleanup = true" />
             <template v-else>
               <Sidebar />
               <main class="content">
                 <RecycleView v-if="store.view.kind === 'recycle'" />
-                <SiteTable v-else @edit="openEdit" @check-site="(ids: string[]) => ids.length === 1 ? store.checkOne(ids[0]) : store.checkSelected()" @move="pickIds = $event" @tag="tagIds = $event" />
+                <SiteTable v-else @edit="openEdit" @check-site="(ids: string[]) => ids.length === 1 ? store.checkOne(ids[0]) : store.checkSelected()" @move="pickIds = $event" @tag="tagIds = $event" @cleanup="deadCleanup = true" />
               </main>
             </template>
           </div>
@@ -84,6 +87,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
           <SettingsModal v-if="modal === 'settings'" @close="modal = ''" />
           <PickCategoryModal v-if="pickIds.length" :site-ids="pickIds" @close="pickIds = []" />
           <AddTagsModal v-if="tagIds.length" :site-ids="tagIds" @close="tagIds = []" />
+          <DeadCleanupModal v-if="deadCleanup" @close="deadCleanup = false" />
         </div>
       </n-message-provider>
     </n-dialog-provider>

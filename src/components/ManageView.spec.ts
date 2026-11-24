@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { nextTick, h, type Component } from 'vue'
 import { NDialogProvider } from 'naive-ui'
 import ManageView from '../components/ManageView.vue'
+import { useAppStore } from '../store/app'
 
 vi.mock('../api', () => ({
   saveData: vi.fn().mockResolvedValue(undefined),
@@ -51,5 +52,29 @@ describe('ManageView', () => {
     await w.find('[data-name="duplicates"]').trigger('click')
     await nextTick()
     expect(w.text()).toContain('暂无重复链接')
+  })
+
+  it('有失效站点时显示清理入口并可触发 dead-cleanup', async () => {
+    const store = useAppStore()
+    store.data.sites = [
+      { id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'dead', lastCheck: null, note: '' },
+    ]
+    const w = mountWithDialog(ManageView)
+    const btn = w.findAll('button').find(b => b.text().includes('失效清理'))
+    expect(btn).toBeDefined()
+    expect(btn!.classes()).not.toContain('n-button--disabled')
+    await btn!.trigger('click')
+    expect(w.findComponent(ManageView).emitted('dead-cleanup')).toBeTruthy()
+  })
+
+  it('无失效站点时清理入口禁用', () => {
+    const store = useAppStore()
+    store.data.sites = [
+      { id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+    ]
+    const w = mountWithDialog(ManageView)
+    const btn = w.findAll('button').find(b => b.text().includes('失效清理'))
+    expect(btn).toBeDefined()
+    expect(btn!.classes()).toContain('n-button--disabled')
   })
 })

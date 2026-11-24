@@ -64,6 +64,7 @@ describe('app store', () => {
     s.data = baseData
     s.view = { kind: 'dead' }
     expect(s.filteredSites.map(x => x.id)).toEqual(['b'])
+    expect(s.deadCount).toBe(1)
   })
 
   it('category view includes descendants', () => {
@@ -234,6 +235,32 @@ describe('app store', () => {
     s.moveSites(['a', 'b'], null)
     expect(s.data.sites.find(x => x.id === 'a')!.categoryId).toBeNull()
     expect(s.data.sites.find(x => x.id === 'b')!.categoryId).toBeNull()
+  })
+
+  it('moveSites ignores empty and unknown ids', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.moveSites([], 'c2')
+    s.moveSites(['zzz'], 'c2')
+    expect(s.data.sites.every(x => x.categoryId === 'c1')).toBe(true)
+  })
+
+  it('addTagsToSites ignores empty ids and empty tags', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.addTagsToSites([], ['新标签'])
+    s.addTagsToSites(['zzz'], ['新标签'])
+    s.addTagsToSites(['a'], [])
+    expect(s.data.sites.every(x => !x.tags.includes('新标签'))).toBe(true)
+  })
+
+  it('deleteSites ignores empty and unknown ids', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.deleteSites([])
+    s.deleteSites(['zzz'])
+    expect(s.data.sites).toHaveLength(3)
+    expect(s.trashedSites).toHaveLength(0)
   })
 
   it('permanentlyDeleteSites removes from recycle bin only', () => {

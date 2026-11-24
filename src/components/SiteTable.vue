@@ -11,7 +11,7 @@ import SiteFavicon from './SiteFavicon.vue'
 const store = useAppStore()
 const menu = ref<{ x: number; y: number } | null>(null)
 const hoverId = ref<string | null>(null)
-const emit = defineEmits(['edit', 'check-site', 'move', 'tag'])
+const emit = defineEmits(['edit', 'check-site', 'move', 'tag', 'cleanup'])
 
 function statusLabel(s: string) { return s === 'ok' ? '正常' : s === 'dead' ? '失效' : '待检测' }
 
@@ -53,6 +53,7 @@ function onAction(kind: string) {
 const allSelected = computed(() =>
   store.filteredSites.length > 0 && store.filteredSites.every(s => store.selectedIds.includes(s.id)))
 const someSelected = computed(() => store.selectedIds.length > 0 && !allSelected.value)
+const hasSelection = computed(() => store.selectedIds.length > 0)
 
 function onRowClick(e: MouseEvent, site: Site) {
   if (e.ctrlKey || e.metaKey) store.toggleSelect(site.id)
@@ -80,14 +81,24 @@ function onRowDragOver(e: DragEvent) {
 </script>
 
 <template>
-  <div v-if="store.selectedIds.length" class="batchbar sticky-bar">
+  <div v-if="store.filteredSites.length || hasSelection" class="batchbar sticky-bar">
     <b>已选 {{ store.selectedIds.length }} 项</b>
-    <n-button v-if="store.checking" size="small" type="error" @click="store.cancelCheck()"><Square :size="14" /> 取消检测</n-button>
-    <n-button v-else size="small" @click="emit('check-site', [...store.selectedIds])"><Square :size="14" /> 检测所选</n-button>
-    <n-button size="small" :disabled="store.checking" @click="emit('move', [...store.selectedIds])">移动分类…</n-button>
-    <n-button size="small" :disabled="store.checking" @click="emit('tag', [...store.selectedIds])">添加标签…</n-button>
-    <n-button size="small" type="error" :disabled="store.checking" @click="store.deleteSites([...store.selectedIds])">删除所选</n-button>
-    <n-button size="small" class="batch-cancel" @click="store.clearSelection()"><X :size="14" /> 取消选择</n-button>
+    <template v-if="store.checking">
+      <n-button size="small" type="error" @click="store.cancelCheck()"><Square :size="14" /> 取消检测</n-button>
+    </template>
+    <template v-else>
+      <n-button size="small" :disabled="!hasSelection" @click="emit('check-site', [...store.selectedIds])"><Square :size="14" /> 检测所选</n-button>
+      <n-button size="small" :disabled="!hasSelection" @click="emit('move', [...store.selectedIds])">移动分类…</n-button>
+      <n-button size="small" :disabled="!hasSelection" @click="emit('tag', [...store.selectedIds])">添加标签…</n-button>
+      <n-button size="small" type="error" :disabled="!hasSelection" @click="store.deleteSites([...store.selectedIds])">删除所选</n-button>
+    </template>
+    <n-button
+      v-if="store.view.kind === 'dead'"
+      size="small"
+      :disabled="store.checking || !store.deadCount"
+      @click="emit('cleanup')"
+    >清理失效…</n-button>
+    <n-button size="small" class="batch-cancel" :disabled="!hasSelection" @click="store.clearSelection()"><X :size="14" /> 取消选择</n-button>
   </div>
   <div class="table-wrap">
     <table class="site-table">

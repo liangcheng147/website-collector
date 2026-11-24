@@ -99,4 +99,66 @@ describe('SiteTable', () => {
     expect(img.exists()).toBe(true)
     expect((img.element as HTMLImageElement).src).toContain('data:image/png;base64,AAAA')
   })
+  it('无选中时批量操作禁用，选中后启用', async () => {
+    const store = useAppStore()
+    store.view = { kind: 'all' }
+    store.data.sites = [
+      { id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'ok', note: '' },
+      { id: '2', name: 'B', url: 'https://b', categoryId: null, tags: [], status: 'ok', note: '' },
+    ] as unknown as Site[]
+    store.data.categories = []
+    const w = mount(SiteTable)
+    const findBtn = (text: string) =>
+      w.findAll('.batchbar button').find(b => b.text().includes(text))!
+    for (const label of ['检测所选', '移动分类', '添加标签', '删除所选']) {
+      expect(findBtn(label).classes()).toContain('n-button--disabled')
+    }
+    await w.findAll('.n-checkbox')[1].trigger('click')
+    for (const label of ['检测所选', '移动分类', '添加标签', '删除所选']) {
+      expect(findBtn(label).classes()).not.toContain('n-button--disabled')
+    }
+  })
+  it('批量移动/标签按钮以选中 id 触发事件', async () => {
+    const store = useAppStore()
+    store.view = { kind: 'all' }
+    store.data.sites = [
+      { id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'ok', note: '' },
+      { id: '2', name: 'B', url: 'https://b', categoryId: null, tags: [], status: 'ok', note: '' },
+    ] as unknown as Site[]
+    store.data.categories = []
+    const w = mount(SiteTable)
+    await w.findAll('.n-checkbox')[1].trigger('click')
+    await w.findAll('.n-checkbox')[2].trigger('click')
+    const clickBtn = async (text: string) => {
+      const btn = w.findAll('.batchbar button').find(b => b.text().includes(text))!
+      await btn.trigger('click')
+    }
+    await clickBtn('移动分类')
+    expect(w.emitted('move')![0]).toEqual([['1', '2']])
+    await clickBtn('添加标签')
+    expect(w.emitted('tag')![0]).toEqual([['1', '2']])
+  })
+  it('失效视图显示清理入口并可触发 cleanup', async () => {
+    const store = useAppStore()
+    store.view = { kind: 'dead' }
+    store.data.sites = [
+      { id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'dead', note: '' },
+      { id: '2', name: 'B', url: 'https://b', categoryId: null, tags: [], status: 'ok', note: '' },
+    ] as unknown as Site[]
+    store.data.categories = []
+    const w = mount(SiteTable)
+    const cleanup = w.findAll('.batchbar button').find(b => b.text().includes('清理失效'))
+    expect(cleanup).toBeDefined()
+    expect(cleanup!.classes()).not.toContain('n-button--disabled')
+    await cleanup!.trigger('click')
+    expect(w.emitted('cleanup')).toBeTruthy()
+  })
+  it('非失效视图不显示清理入口', () => {
+    const store = useAppStore()
+    store.view = { kind: 'all' }
+    store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'dead', note: '' }] as unknown as Site[]
+    store.data.categories = []
+    const w = mount(SiteTable)
+    expect(w.findAll('.batchbar button').some(b => b.text().includes('清理失效'))).toBe(false)
+  })
 })

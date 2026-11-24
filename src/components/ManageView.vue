@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ArrowLeft } from 'lucide-vue-next'
+import { AlertTriangle, ArrowLeft } from 'lucide-vue-next'
 import { NButton, NTabs, NTab } from 'naive-ui'
 import ManageCategories from './ManageCategories.vue'
 import ManageTags from './ManageTags.vue'
 import ManageDuplicates from './ManageDuplicates.vue'
-const emit = defineEmits(['back'])
+import { useAppStore } from '../store/app'
+const store = useAppStore()
+const emit = defineEmits(['back', 'dead-cleanup'])
 const tab = ref<'categories' | 'tags' | 'duplicates'>('categories')
 </script>
 
@@ -19,6 +21,13 @@ const tab = ref<'categories' | 'tags' | 'duplicates'>('categories')
         <n-tab name="tags" tab="标签" />
         <n-tab name="duplicates" tab="重复链接" />
       </n-tabs>
+      <n-button
+        secondary
+        size="small"
+        class="dead-entry"
+        :disabled="!store.deadCount"
+        @click="emit('dead-cleanup')"
+      ><AlertTriangle :size="14" /> 失效清理…</n-button>
     </div>
     <div class="manage-content">
       <ManageCategories v-if="tab === 'categories'" />
@@ -30,4 +39,5 @@ const tab = ref<'categories' | 'tags' | 'duplicates'>('categories')
 
 <style scoped>
 .manage-switch { width: 300px; margin-left: 8px; }
+.dead-entry { margin-left: auto; }
 </style>
