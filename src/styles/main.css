@@ -79,7 +79,22 @@ html.win-maximized .app { border-radius:0; }
 .sidebar .row { padding:5px 10px; border-radius:var(--radius-md); cursor:pointer; font-size:13px; color:var(--text); transition:background .15s var(--ease), color .15s var(--ease); }
 .sidebar .row:hover { background:var(--hover); }
 .sidebar .row.active { background:var(--primary-t); color:var(--primary); font-weight:600; box-shadow: inset 3px 0 0 var(--primary); }
-.sidebar .row.sub { padding-left:20px; }
+
+/* ---- 分类树层级：引导线 + 缩进（方向 A，见 docs/superpowers/specs/2026-11-23-settings-and-tree-design.md 4.4） ---- */
+.sidebar .tree-row { position:relative; padding-left:calc(10px + var(--depth) * 18px); }
+.sidebar .tree-row.is-child { font-size:12px; }
+/* 左侧竖向引导线；水平短横连到文字；末级在行中线收束成拐角 */
+.sidebar .tree-guide { position:absolute; top:0; bottom:0; left:calc(1px + var(--depth) * 18px); width:1px; background:var(--border); }
+.sidebar .tree-guide::after { content:""; position:absolute; left:0; top:50%; width:9px; border-top:1px solid var(--border); }
+.tree-node:last-child > .tree-row > .tree-guide { bottom:50%; }
+.tree-node:last-child > .tree-row.has-children > .tree-guide { bottom:0; }
+/* 父级有子节点：极浅主色底色（选中态仍走 .row.active 的主色底色/色条） */
+.tree-row.has-children:not(.active) { background:color-mix(in srgb, var(--primary-t) 38%, transparent); }
+.tree-row.has-children:not(.active):hover { background:color-mix(in srgb, var(--primary-t) 62%, transparent); }
+/* 计数：子级更浅更小 */
+.tree-row .cnt { float:right; color:var(--text-2); font-size:12px; }
+.tree-row.is-child .cnt { color:color-mix(in srgb, var(--text-2) 74%, transparent); font-size:11px; }
+.tree-row.active .cnt { color:var(--primary); }
 
 .collapse-arrow {
   display: inline-block;

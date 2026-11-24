@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, onUnmounted, ref } from 'vue'
+import { computed, h, onMounted, onUnmounted, ref } from 'vue'
 import { ChevronRight, ChevronDown } from 'lucide-vue-next'
 import { NButton, NInput, useDialog } from 'naive-ui'
 import { useAppStore } from '../store/app'
@@ -12,6 +12,7 @@ const props = defineProps<{ cat: Category; depth: number }>()
 const menu = ref<{ x: number; y: number } | null>(null)
 const addCat = ref(false)
 const dragOver = ref(false)
+const count = computed(() => store.categoryCounts[props.cat.id] ?? 0)
 
 function menuItems() {
   const items: { kind: string; label: string; danger?: boolean }[] = [{ kind: 'rename', label: '重命名' }]
@@ -104,10 +105,9 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div>
+  <div class="tree-node" :style="{ '--depth': depth }">
     <div
-      :class="[(depth > 0 ? 'row sub' : 'row'), { active: store.view.kind === 'category' && store.view.id === cat.id, 'drop-over': dragOver }]"
-      :style="{ paddingLeft: (depth > 0 ? 12 : 0) + depth * 14 + 'px' }"
+      :class="['row', 'tree-row', { 'is-child': depth > 0, 'has-children': cat.children.length > 0, active: store.view.kind === 'category' && store.view.id === cat.id, 'drop-over': dragOver }]"
       draggable="true"
       @click="setView('category', cat.id)"
       @contextmenu.prevent="onCatMenu($event)"
@@ -116,12 +116,14 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
       @dragleave="onDragLeave"
       @drop="onDrop"
     >
+      <span v-if="depth > 0" class="tree-guide" aria-hidden="true"></span>
       <span
         v-if="cat.children.length > 0"
         class="collapse-arrow"
         @click.stop="store.toggleCategoryCollapse(cat.id)"
       ><ChevronRight v-if="store.settings.collapsedCategories.includes(cat.id)" :size="12" /><ChevronDown v-else :size="12" /></span>
       {{ cat.name }}
+      <span v-if="count > 0" class="cnt">{{ count }}</span>
     </div>
     <div class="children" v-show="!store.settings.collapsedCategories.includes(cat.id)">
       <CategoryNode v-for="cc in cat.children" :key="cc.id" :cat="cc" :depth="depth + 1" />
