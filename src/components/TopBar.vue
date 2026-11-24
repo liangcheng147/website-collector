@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from 'vue'
 import type { HTMLAttributes } from 'vue'
-import { NInput, NSelect, NButton } from 'naive-ui'
-import { Plus, LayoutGrid, Settings, Square, Search } from 'lucide-vue-next'
-import { useAppStore } from '../store/app'
-import type { CheckScope } from '../types'
+import { NInput, NSelect, NButton, NPopover } from 'naive-ui'
+import { Plus, LayoutGrid, Settings, Square, Search, SlidersHorizontal, Trash2 } from 'lucide-vue-next'
+import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
+import type { CheckScope, FilterStatus, FilterTimeRange } from '../types'
+
 const store = useAppStore()
 const emit = defineEmits(['check-all', 'cancel-check', 'add', 'import-export', 'settings', 'manage', 'check-scope'])
 
@@ -27,13 +28,48 @@ watch(q, (v) => {
 })
 onUnmounted(() => { if (timer) clearTimeout(timer) })
 
-const tagOptions = computed(() => [
-  { label: '标签筛选 ▾', value: '' },
-  ...store.data.tags.map((t) => ({ label: t, value: t })),
-])
+// 标签多选（OR）；沿用既有 tag-filter / tag-filter-menu 选择器，避免破坏 e2e
+const tagFilter = computed<string[]>({
+  get: () => store.filters.tags,
+  set: (v) => { store.setTagFilter(Array.isArray(v) ? v.map(String) : []) },
+})
+const tagOptions = computed(() => store.data.tags.map((t) => ({ label: t, value: t })))
 const tagMenuProps = { 'data-testid': 'tag-filter-menu' } as HTMLAttributes
-function onTagChange(v: string | number | null) {
-  store.selectedTag = v === '' || v === null || v === undefined ? null : String(v)
+
+// 组合筛选面板
+const categoryFilter = computed<string>({
+  get: () => store.filters.categoryId ?? '',
+  set: (v) => { store.filters.categoryId = v === '' ? null : String(v) },
+})
+const categoryFilterOptions = computed(() => [
+  { label: '全部分类', value: '' },
+  { label: '未分类', value: UNCATEGORIZED_ID },
+  ...store.flatCategories.map((c) => ({ label: `${'　'.repeat(c.depth)}${c.name}`, value: c.id })),
+])
+const statusOptions: { label: string; value: FilterStatus }[] = [
+  { label: '全部状态', value: 'all' },
+  { label: '正常', value: 'ok' },
+  { label: '失效', value: 'dead' },
+  { label: '待检测', value: 'unknown' },
+]
+const timeOptions: { label: string; value: FilterTimeRange }[] = [
+  { label: '全部时间', value: 'all' },
+  { label: '最近 7 天检查', value: '7d' },
+  { label: '最近 30 天检查', value: '30d' },
+  { label: '从未检查', value: 'never' },
+]
+const statusFilter = computed<FilterStatus>({
+  get: () => store.filters.status,
+  set: (v) => { store.filters.status = v as FilterStatus },
+})
+const timeFilter = computed<FilterTimeRange>({
+  get: () => store.filters.timeRange,
+  set: (v) => { store.filters.timeRange = v as FilterTimeRange },
+})
+
+const newFilterName = ref('')
+function saveCurrentFilter() {
+  if (store.saveFilter(newFilterName.value)) newFilterName.value = ''
 }
 </script>
 
@@ -49,13 +85,53 @@ function onTagChange(v: string | number | null) {
       <template #prefix><Search :size="14" class="topbar-icon" /></template>
     </n-input>
     <n-select
-      :value="store.selectedTag ?? ''"
+      v-model:value="tagFilter"
+      multiple
       data-testid="tag-filter"
       :options="tagOptions"
       class="topbar-select"
       :menu-props="tagMenuProps"
-      @update:value="onTagChange"
+      placeholder="标签"
     />
+    <n-popover trigger="click" placement="bottom-start" :width="320">
+      <template #trigger>
+        <n-button
+          quaternary
+          size="small"
+          data-testid="filter-toggle"
+          :type="store.activeFilterCount ? 'primary' : 'default'"
+        ><SlidersHorizontal :size="14" /> 筛选<span v-if="store.activeFilterCount" class="filter-badge">{{ store.activeFilterCount }}</span></n-button>
+      </template>
+      <div class="filter-panel" data-testid="filter-panel">
+        <div class="filter-head">
+          <b>组合筛选</b>
+          <n-button quaternary size="tiny" data-testid="filter-reset" @click="store.resetFilters()">重置</n-button>
+        </div>
+        <label class="filter-label">分类</label>
+        <n-select v-model:value="categoryFilter" data-testid="filter-category" size="small" :options="categoryFilterOptions" />
+        <label class="filter-label">状态</label>
+        <n-select v-model:value="statusFilter" data-testid="filter-status" size="small" :options="statusOptions" />
+        <label class="filter-label">时间</label>
+        <n-select v-model:value="timeFilter" data-testid="filter-time" size="small" :options="timeOptions" />
+        <div class="filter-save">
+          <n-input
+            v-model:value="newFilterName"
+            data-testid="filter-name"
+            size="small"
+            placeholder="筛选名称"
+            @keyup.enter="saveCurrentFilter"
+          />
+          <n-button size="small" type="primary" data-testid="filter-save" @click="saveCurrentFilter">保存</n-button>
+        </div>
+        <div v-if="store.savedFilters.length" class="saved-list">
+          <div v-for="f in store.savedFilters" :key="f.id" class="saved-row">
+            <span class="saved-name" :title="f.name">{{ f.name }}</span>
+            <n-button quaternary size="tiny" :data-testid="'filter-apply-' + f.id" @click="store.applySavedFilter(f.id)">应用</n-button>
+            <n-button quaternary size="tiny" :data-testid="'filter-delete-' + f.id" @click="store.deleteSavedFilter(f.id)"><Trash2 :size="12" /></n-button>
+          </div>
+        </div>
+      </div>
+    </n-popover>
     <n-select
       class="topbar-select"
       data-testid="check-scope"

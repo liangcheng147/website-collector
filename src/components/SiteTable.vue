@@ -14,6 +14,9 @@ const hoverId = ref<string | null>(null)
 const emit = defineEmits(['edit', 'check-site', 'move', 'tag', 'cleanup'])
 
 function statusLabel(s: string) { return s === 'ok' ? '正常' : s === 'dead' ? '失效' : '待检测' }
+// 表头排序状态：主排序同值时按名称/ID 稳定兜底，方向不影响次要排序
+const ariaSort = (key: string) => store.sortKey === key ? (store.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'
+const sortTitle = (label: string) => `按${label}排序（同值按名称/ID 稳定排序）`
 
 function onRight(e: MouseEvent, siteId: string) {
   if (!store.selectedIds.includes(siteId)) { store.clearSelection(); store.toggleSelect(siteId) }
@@ -105,13 +108,13 @@ function onRowDragOver(e: DragEvent) {
       <thead>
         <tr>
           <th><n-checkbox :checked="allSelected" :indeterminate="someSelected" @update:checked="store.selectAllVisible()" /></th>
-          <th @click="store.toggleSort('name')" class="sortable">名称 <span v-if="store.sortKey==='name'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
-          <th @click="store.toggleSort('url')" class="sortable">链接 <span v-if="store.sortKey==='url'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
-          <th @click="store.toggleSort('category')" class="sortable">分类 <span v-if="store.sortKey==='category'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('name')" class="sortable" :aria-sort="ariaSort('name')" :title="sortTitle('名称')">名称 <span v-if="store.sortKey==='name'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('url')" class="sortable" :aria-sort="ariaSort('url')" :title="sortTitle('链接')">链接 <span v-if="store.sortKey==='url'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('category')" class="sortable" :aria-sort="ariaSort('category')" :title="sortTitle('分类')">分类 <span v-if="store.sortKey==='category'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
           <th>标签</th>
-          <th @click="store.toggleSort('status')" class="sortable">状态 <span v-if="store.sortKey==='status'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
-          <th @click="store.toggleSort('lastCheck')" class="sortable">检测时间 <span v-if="store.sortKey==='lastCheck'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
-          <th @click="store.toggleSort('note')" class="sortable">备注 <span v-if="store.sortKey==='note'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('status')" class="sortable" :aria-sort="ariaSort('status')" :title="sortTitle('状态')">状态 <span v-if="store.sortKey==='status'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('lastCheck')" class="sortable" :aria-sort="ariaSort('lastCheck')" :title="sortTitle('检测时间')">检测时间 <span v-if="store.sortKey==='lastCheck'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
+          <th @click="store.toggleSort('note')" class="sortable" :aria-sort="ariaSort('note')" :title="sortTitle('备注')">备注 <span v-if="store.sortKey==='note'"><ChevronUp v-if="store.sortDir==='asc'" :size="12" /><ChevronDown v-else :size="12" /></span></th>
         </tr>
       </thead>
       <tbody>

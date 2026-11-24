@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia'
-import type { AppData, Site, TrashedSite, View, Category, Settings, DuplicateGroup, ImportSummary, CheckScope } from '../types'
+import type {
+  AppData, Site, TrashedSite, View, Category, Settings, DuplicateGroup, ImportSummary, CheckScope,
+  CombinedFilters, FilterStatus, FilterTimeRange, SavedFilter,
+} from '../types'
 import * as api from '../api'
 import { resolveTheme, applyShellVars } from '../theme'
 
@@ -7,6 +10,44 @@ const FLASH_DURATION_MS = 2500
 const MAX_CATEGORY_DEPTH = 2
 export const UNCATEGORIZED_ID = '__uncategorized__'
 export const DUPLICATE_TAG = '重复'
+/** 常用筛选存 localStorage：纯前端偏好，不参与 Rust JSON 持久化 */
+export const SAVED_FILTERS_STORAGE_KEY = 'site-collector-saved-filters'
+
+const DEFAULT_FILTERS: CombinedFilters = { categoryId: null, tags: [], status: 'all', timeRange: 'all' }
+
+function cloneFilters(f: CombinedFilters): CombinedFilters {
+  return { categoryId: f.categoryId, tags: [...f.tags], status: f.status, timeRange: f.timeRange }
+}
+
+function isFilterStatus(v: unknown): v is FilterStatus {
+  return v === 'all' || v === 'ok' || v === 'dead' || v === 'unknown'
+}
+function isFilterTimeRange(v: unknown): v is FilterTimeRange {
+  return v === 'all' || v === '7d' || v === '30d' || v === 'never'
+}
+/** 读取时兜底：旧版本/脏数据只保留合法维度，避免整个列表不可用。 */
+function sanitizeFilters(input: unknown): CombinedFilters {
+  const f = (input ?? {}) as Partial<CombinedFilters>
+  return {
+    categoryId: typeof f.categoryId === 'string' ? f.categoryId : null,
+    tags: Array.isArray(f.tags) ? f.tags.filter((t): t is string => typeof t === 'string') : [],
+    status: isFilterStatus(f.status) ? f.status : 'all',
+    timeRange: isFilterTimeRange(f.timeRange) ? f.timeRange : 'all',
+  }
+}
+function sanitizeSavedFilters(raw: unknown): SavedFilter[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const f = item as Record<string, unknown>
+    if (typeof f.name !== 'string' || !f.name.trim()) return []
+    return [{
+      id: typeof f.id === 'string' && f.id ? f.id : 'saved_' + Math.random().toString(36).slice(2),
+      name: f.name,
+      filters: sanitizeFilters(f.filters),
+    }]
+  })
+}
 
 const DEFAULT_PORTS: Record<string, string> = { http: '80', https: '443', ws: '80', wss: '443', ftp: '21' }
 
@@ -131,7 +172,10 @@ export const useAppStore = defineStore('app', {
     data: { version: 1, categories: [], sites: [], recycleBin: [], tags: [] } as AppData,
     view: { kind: 'all' } as View,
     search: '',
+    // 旧版单标签快捷筛选，保留用于 checkByScope 的 tag 回退与兼容；filters.tags 非空时以多选为准
     selectedTag: null as string | null,
+    filters: cloneFilters(DEFAULT_FILTERS) as CombinedFilters,
+    savedFilters: [] as SavedFilter[],
     selectedIds: [] as string[],
     activeId: null as string | null,
     lastSelectedId: null as string | null,
@@ -151,6 +195,11 @@ export const useAppStore = defineStore('app', {
     sortDir: 'asc' as 'asc' | 'desc',
   }),
   getters: {
+    /**
+     * 组合筛选优先级（全部 AND）：
+     * view 决定基础集合 → search 关键词 → selectedTag（仅在 filters.tags 为空时生效）→
+     * filters（分类子树 / 标签 OR / 状态 / 时间）→ sort（主排序 + 名称/ID 稳定兜底）。
+     */
     filteredSites(state): Site[] {
       let list = [...state.data.sites]
       if (state.view.kind === 'dead') list = list.filter(s => s.status === 'dead')
@@ -170,30 +219,65 @@ export const useAppStore = defineStore('app', {
           s.url.toLowerCase().includes(q) ||
           s.tags.some(t => t.toLowerCase().includes(q)))
       }
-      if (state.selectedTag) list = list.filter(s => s.tags.includes(state.selectedTag!))
+      // 旧快捷标签：filters.tags 非空时以多选为准，避免先窄化导致 OR 失效
+      const tagSet = state.filters.tags.length
+        ? state.filters.tags
+        : (state.selectedTag ? [state.selectedTag] : [])
+      if (tagSet.length) list = list.filter(s => s.tags.some(t => tagSet.includes(t)))
+
+      const f = state.filters
+      if (f.categoryId) {
+        if (f.categoryId === UNCATEGORIZED_ID) list = list.filter(s => !s.categoryId)
+        else {
+          const ids = new Set(collectCategoryIds(state.data.categories, f.categoryId))
+          list = list.filter(s => s.categoryId && ids.has(s.categoryId))
+        }
+      }
+      if (f.status !== 'all') list = list.filter(s => s.status === f.status)
+      if (f.timeRange !== 'all') {
+        if (f.timeRange === 'never') {
+          list = list.filter(s => !s.lastCheck)
+        } else {
+          const days = f.timeRange === '7d' ? 7 : 30
+          const cutoff = Date.now() - days * 86400_000
+          list = list.filter(s => !!s.lastCheck && +new Date(s.lastCheck) >= cutoff)
+        }
+      }
+
       const sortKey = state.sortKey
       if (sortKey) {
         const dir = state.sortDir === 'asc' ? 1 : -1
         list = [...list].sort((a, b) => {
-          let av: string, bv: string
-          if (sortKey === 'category') {
-            av = getCategoryDisplayName(state.data.categories, a.categoryId)
-            bv = getCategoryDisplayName(state.data.categories, b.categoryId)
-          } else if (sortKey === 'lastCheck') {
-            av = a.lastCheck ?? ''
-            bv = b.lastCheck ?? ''
-          } else {
-            av = String(a[sortKey] ?? '')
-            bv = String(b[sortKey] ?? '')
-          }
+          let primary: number
           if (sortKey === 'status') {
             const order: Record<string, number> = { unknown: 0, ok: 1, dead: 2 }
-            return (order[av] - order[bv]) * dir
+            primary = order[a.status] - order[b.status]
+          } else if (sortKey === 'category') {
+            primary = getCategoryDisplayName(state.data.categories, a.categoryId)
+              .localeCompare(getCategoryDisplayName(state.data.categories, b.categoryId), 'zh')
+          } else if (sortKey === 'lastCheck') {
+            primary = (a.lastCheck ?? '').localeCompare(b.lastCheck ?? '')
+          } else {
+            primary = String(a[sortKey] ?? '').localeCompare(String(b[sortKey] ?? ''), 'zh')
           }
-          return av.localeCompare(bv, 'zh') * dir
+          if (primary !== 0) return primary * dir
+          // 次要排序固定为名称升序、再按 id：主排序同值时结果确定且方向无关
+          const byName = a.name.localeCompare(b.name, 'zh')
+          if (byName !== 0) return byName
+          return a.id.localeCompare(b.id)
         })
       }
       return list
+    },
+    /** 非默认筛选维度数量，用于顶栏角标 */
+    activeFilterCount(): number {
+      const f = this.filters
+      let n = 0
+      if (f.categoryId !== null) n++
+      if (f.tags.length) n++
+      if (f.status !== 'all') n++
+      if (f.timeRange !== 'all') n++
+      return n
     },
     deadCount(state) { return state.data.sites.filter(s => s.status === 'dead').length },
     uncategorizedCount(state) { return state.data.sites.filter(s => !s.categoryId).length },
@@ -244,6 +328,7 @@ export const useAppStore = defineStore('app', {
       const loc = await api.getDataLocation()
       this.location = loc
       this.settings = { ...this.settings, ...(await api.getSettings()) }
+      this.loadSavedFilters()
       this.applyAppearance()
     },
     async persist() { await api.saveData(this.data) },
@@ -639,6 +724,50 @@ export const useAppStore = defineStore('app', {
     deleteSelectedToRecycle() {
       this.deleteSites([...this.selectedIds])
       this.clearSelection()
+    },
+
+    /** 标签多选（OR）；同步 selectedTag 兼容别名，供 checkByScope 的 tag 回退使用。 */
+    setTagFilter(tags: string[]) {
+      const clean = [...new Set(tags)]
+      this.filters.tags = clean
+      this.selectedTag = clean[0] ?? null
+    },
+    resetFilters() {
+      this.filters = cloneFilters(DEFAULT_FILTERS)
+      this.selectedTag = null
+    },
+
+    loadSavedFilters() {
+      try {
+        const raw = localStorage.getItem(SAVED_FILTERS_STORAGE_KEY)
+        this.savedFilters = raw ? sanitizeSavedFilters(JSON.parse(raw)) : []
+      } catch {
+        this.savedFilters = []
+      }
+    },
+    persistSavedFilters() {
+      try { localStorage.setItem(SAVED_FILTERS_STORAGE_KEY, JSON.stringify(this.savedFilters)) } catch { /* ignore */ }
+    },
+    /** 保存当前组合筛选；同名覆盖。返回是否成功。 */
+    saveFilter(name: string): boolean {
+      const trimmed = name.trim()
+      if (!trimmed) return false
+      const entry: SavedFilter = { id: this.id_gen(), name: trimmed, filters: cloneFilters(this.filters) }
+      const idx = this.savedFilters.findIndex(f => f.name === trimmed)
+      if (idx >= 0) this.savedFilters[idx] = entry
+      else this.savedFilters.push(entry)
+      this.persistSavedFilters()
+      return true
+    },
+    applySavedFilter(id: string) {
+      const found = this.savedFilters.find(f => f.id === id)
+      if (!found) return
+      this.filters = cloneFilters(found.filters)
+      this.selectedTag = found.filters.tags[0] ?? null
+    },
+    deleteSavedFilter(id: string) {
+      this.savedFilters = this.savedFilters.filter(f => f.id !== id)
+      this.persistSavedFilters()
     },
 
     toggleSort(key: 'name' | 'url' | 'status' | 'category' | 'note' | 'lastCheck') {

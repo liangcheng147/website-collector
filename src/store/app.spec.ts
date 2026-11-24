@@ -1071,3 +1071,197 @@ describe('app store', () => {
       .toBe(getPalette('teal').light.primary)
   })
 })
+
+describe('组合筛选', () => {
+  const DAY_MS = 86400_000
+  const isoDaysAgo = (days: number) => new Date(Date.now() - days * DAY_MS).toISOString()
+
+  function filterData(): AppData {
+    return {
+      version: 1,
+      categories: [
+        { id: 'c1', name: '开发', children: [{ id: 'c2', name: '前端', children: [] }] },
+        { id: 'c3', name: '工具', children: [] },
+      ],
+      sites: [
+        { id: 'a', name: 'Alpha', url: 'https://alpha.dev', categoryId: 'c2', tags: ['框架', '前端'], status: 'ok', lastCheck: isoDaysAgo(1), note: '' },
+        { id: 'b', name: 'Beta', url: 'https://beta.dev', categoryId: 'c1', tags: ['框架'], status: 'dead', lastCheck: isoDaysAgo(10), note: '' },
+        { id: 'c', name: 'Gamma', url: 'https://gamma.dev', categoryId: null, tags: ['工具'], status: 'unknown', lastCheck: null, note: '' },
+        { id: 'd', name: 'Delta', url: 'https://delta.dev', categoryId: 'c3', tags: ['工具', '框架'], status: 'ok', lastCheck: isoDaysAgo(40), note: '' },
+      ],
+      recycleBin: [],
+      tags: ['框架', '前端', '工具'],
+    }
+  }
+
+  const defaults = () => ({ categoryId: null, tags: [], status: 'all' as const, timeRange: 'all' as const })
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+  })
+
+  it('关键词 + 分类 + 标签 + 状态逐层组合过滤', () => {
+    const s = useAppStore()
+    s.data = filterData()
+    s.view = { kind: 'all' }
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'b', 'c', 'd'])
+
+    s.search = 'ta'
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['b', 'd'])
+
+    s.filters.categoryId = 'c1'
+    expect(s.filteredSites.map(x => x.id)).toEqual(['b'])
+
+    s.filters.tags = ['框架']
+    expect(s.filteredSites.map(x => x.id)).toEqual(['b'])
+
+    s.filters.status = 'dead'
+    expect(s.filteredSites.map(x => x.id)).toEqual(['b'])
+
+    s.filters.status = 'ok'
+    expect(s.filteredSites).toHaveLength(0)
+  })
+
+  it('标签多选为 OR（包含任一选中标签）', () => {
+    const s = useAppStore()
+    s.data = filterData()
+    s.filters.tags = ['工具', '前端']
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'c', 'd'])
+    s.filters.tags = ['框架']
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'b', 'd'])
+  })
+
+  it('时间筛选：最近 7 天 / 30 天 / 从未检查', () => {
+    const s = useAppStore()
+    s.data = filterData()
+    s.filters.timeRange = '7d'
+    expect(s.filteredSites.map(x => x.id)).toEqual(['a'])
+    s.filters.timeRange = '30d'
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'b'])
+    s.filters.timeRange = 'never'
+    expect(s.filteredSites.map(x => x.id)).toEqual(['c'])
+    s.filters.timeRange = 'all'
+    expect(s.filteredSites).toHaveLength(4)
+  })
+
+  it('分类筛选支持未分类，并与视图/关键词叠加', () => {
+    const s = useAppStore()
+    s.data = filterData()
+    s.filters.categoryId = UNCATEGORIZED_ID
+    expect(s.filteredSites.map(x => x.id)).toEqual(['c'])
+
+    // 视图先决定基础集合，组合筛选在其上继续过滤
+    s.filters = defaults()
+    s.view = { kind: 'category', id: 'c1' }
+    s.filters.tags = ['框架']
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'b'])
+
+    s.view = { kind: 'tag', id: '工具' }
+    s.filters.status = 'ok'
+    expect(s.filteredSites.map(x => x.id)).toEqual(['d'])
+
+    s.view = { kind: 'dead' }
+    s.filters.status = 'ok'
+    expect(s.filteredSites).toHaveLength(0)
+  })
+
+  it('selectedTag 在组合标签为空时仍作为单标签快捷筛选生效', () => {
+    const s = useAppStore()
+    s.data = filterData()
+    s.selectedTag = '框架'
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'b', 'd'])
+    // 多选标签优先于旧的 selectedTag
+    s.filters.tags = ['工具']
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['c', 'd'])
+  })
+
+  it('保存筛选写入 localStorage，可恢复并重新应用', () => {
+    const s = useAppStore()
+    s.data = filterData()
+    s.filters = { categoryId: 'c1', tags: ['框架'], status: 'dead', timeRange: 'all' }
+    expect(s.saveFilter('常用')).toBe(true)
+
+    const raw = localStorage.getItem('site-collector-saved-filters')
+    expect(raw).toBeTruthy()
+    const parsed = JSON.parse(raw!)
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0].name).toBe('常用')
+    expect(parsed[0].filters).toEqual({ categoryId: 'c1', tags: ['框架'], status: 'dead', timeRange: 'all' })
+
+    // 同名保存覆盖而不是追加
+    s.filters.status = 'ok'
+    s.saveFilter('常用')
+    expect(JSON.parse(localStorage.getItem('site-collector-saved-filters')!)).toHaveLength(1)
+
+    // 模拟重启：新 pinia 从 localStorage 恢复
+    setActivePinia(createPinia())
+    const s2 = useAppStore()
+    expect(s2.savedFilters).toHaveLength(0)
+    s2.loadSavedFilters()
+    expect(s2.savedFilters).toHaveLength(1)
+
+    s2.data = filterData()
+    s2.filters = defaults()
+    expect(s2.filteredSites).toHaveLength(4)
+    s2.applySavedFilter(s2.savedFilters[0].id)
+    expect(s2.filters).toEqual({ categoryId: 'c1', tags: ['框架'], status: 'ok', timeRange: 'all' })
+    expect(s2.filteredSites.map(x => x.id)).toEqual(['a'])
+
+    s2.deleteSavedFilter(s2.savedFilters[0].id)
+    expect(s2.savedFilters).toHaveLength(0)
+    expect(JSON.parse(localStorage.getItem('site-collector-saved-filters')!)).toHaveLength(0)
+  })
+
+  it('空名称不保存且返回 false', () => {
+    const s = useAppStore()
+    expect(s.saveFilter('   ')).toBe(false)
+    expect(localStorage.getItem('site-collector-saved-filters')).toBeNull()
+  })
+
+  it('activeFilterCount 统计非默认筛选维度', () => {
+    const s = useAppStore()
+    expect(s.activeFilterCount).toBe(0)
+    s.filters = { categoryId: 'c1', tags: ['框架'], status: 'all', timeRange: '7d' }
+    expect(s.activeFilterCount).toBe(3)
+    s.resetFilters()
+    expect(s.activeFilterCount).toBe(0)
+    expect(s.filters).toEqual(defaults())
+  })
+
+  it('同值按名称升序、再按 id 兜底（方向不影响次要排序）', () => {
+    const s = useAppStore()
+    s.data = {
+      version: 1,
+      categories: [],
+      sites: [
+        { id: '2', name: 'Banana', url: 'https://b.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+        { id: '1', name: 'Apple', url: 'https://a.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+        { id: '3', name: 'Cherry', url: 'https://c.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+      ],
+      recycleBin: [],
+      tags: [],
+    }
+    s.toggleSort('status')
+    expect(s.filteredSites.map(x => x.name)).toEqual(['Apple', 'Banana', 'Cherry'])
+    s.toggleSort('status')
+    expect(s.sortDir).toBe('desc')
+    expect(s.filteredSites.map(x => x.name)).toEqual(['Apple', 'Banana', 'Cherry'])
+  })
+
+  it('名称相同按 id 升序兜底', () => {
+    const s = useAppStore()
+    s.data = {
+      version: 1,
+      categories: [],
+      sites: [
+        { id: 'z', name: 'Same', url: 'https://z.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+        { id: 'y', name: 'Same', url: 'https://y.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+      ],
+      recycleBin: [],
+      tags: [],
+    }
+    s.toggleSort('name')
+    expect(s.filteredSites.map(x => x.id)).toEqual(['y', 'z'])
+  })
+})

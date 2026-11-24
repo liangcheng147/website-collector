@@ -29,6 +29,17 @@ export interface Settings {
   /** 并发检测上限（默认 3） */
   concurrency: number
 }
+/** 组合筛选状态：分类（null=全部）/标签（多选，OR）/状态/时间 */
+export type FilterStatus = 'all' | 'ok' | 'dead' | 'unknown'
+export type FilterTimeRange = 'all' | '7d' | '30d' | 'never'
+export interface CombinedFilters {
+  categoryId: string | null
+  tags: string[]
+  status: FilterStatus
+  timeRange: FilterTimeRange
+}
+/** 保存的常用筛选（仅含组合筛选，不含关键词/视图/排序） */
+export interface SavedFilter { id: string; name: string; filters: CombinedFilters }
 export interface TrashedSite { site: Site; deletedAt: string }
 export interface AppData {
   version: number; categories: Category[]
