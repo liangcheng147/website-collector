@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -74,6 +75,222 @@ pub fn import_json_from_path(app_data_dir: &Path, path: &Path) -> Result<AppData
     let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
     let incoming: AppData = serde_json::from_str(&text).map_err(|e| format!("JSON 解析失败：{}", e))?;
     backup_data_file(app_data_dir)?;
+    save_data(app_data_dir, &incoming)?;
+    Ok(incoming)
+}
+
+/// 本地备份目录/文件命名与保留策略。
+pub const BACKUP_DIR_NAME: &str = "backups";
+pub const BACKUP_FILE_PREFIX: &str = "backup-";
+pub const BACKUP_FILE_SUFFIX: &str = ".json";
+/// 最多保留的备份份数，超出删除最旧。前端设置页文案需与此保持一致。
+pub const MAX_BACKUPS: usize = 10;
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupInfo {
+    pub path: String,
+    pub file_name: String,
+    pub size: u64,
+    /// 创建时间（Unix 毫秒）。由文件名时间戳解析，保证排序稳定、跨语言易格式化。
+    pub created_at: i64,
+}
+
+fn backup_dir(app_data_dir: &Path) -> PathBuf { app_data_dir.join(BACKUP_DIR_NAME) }
+
+/// Howard Hinnant 的 civil↔days 换算，仅用 std，避免引入时间依赖。
+fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = (y - era * 400) as u64;
+    let mp = if m > 2 { m - 3 } else { m + 9 } as u64;
+    let doy = (153 * mp + 2) / 5 + d as u64 - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe as i64 - 719_468
+}
+
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = (z - era * 146_097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (if m <= 2 { y + 1 } else { y }, m, d)
+}
+
+/// 文件名时间戳 `YYYYMMDD-HHMMSS-mmm`（UTC，毫秒）；不引入时区依赖，前端按本地时区展示。
+fn now_millis() -> i64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
+}
+
+fn backup_stem() -> String {
+    let ms = now_millis();
+    let secs = ms.div_euclid(1000);
+    let days = secs.div_euclid(86_400);
+    let sod = secs.rem_euclid(86_400);
+    let (y, m, d) = civil_from_days(days);
+    format!(
+        "{:04}{:02}{:02}-{:02}{:02}{:02}-{:03}",
+        y, m, d, sod / 3600, (sod % 3600) / 60, sod % 60, ms.rem_euclid(1000)
+    )
+}
+
+fn is_backup_file_name(name: &std::ffi::OsStr) -> bool {
+    let s = name.to_string_lossy();
+    s.starts_with(BACKUP_FILE_PREFIX) && s.ends_with(BACKUP_FILE_SUFFIX)
+}
+
+/// 解析备份文件名，返回 `(创建时间毫秒, 同毫秒序号)`。
+/// 支持 `backup-<ts>.json`、`backup-<ts>-<mmm>.json` 与可选的 `-NN` 冲突后缀。
+fn parse_backup_name(name: &str) -> Option<(i64, u32)> {
+    let rest = name.strip_prefix(BACKUP_FILE_PREFIX)?;
+    let dot = rest.find(BACKUP_FILE_SUFFIX)?;
+    let body = &rest[..dot];
+    if body.len() < 15 || body.as_bytes()[8] != b'-' { return None; }
+    let ascii_digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    if !(ascii_digits(&body[0..8]) && ascii_digits(&body[9..15])) { return None; }
+    let year = body[0..4].parse::<i64>().ok()?;
+    let month = body[4..6].parse::<u32>().ok()?;
+    let day = body[6..8].parse::<u32>().ok()?;
+    let hour = body[9..11].parse::<u32>().ok()?;
+    let minute = body[11..13].parse::<u32>().ok()?;
+    let second = body[13..15].parse::<u32>().ok()?;
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) || hour > 23 || minute > 59 || second > 59 {
+        return None;
+    }
+    let mut millis = days_from_civil(year, month, day) * 86_400_000
+        + (hour * 3600 + minute * 60 + second) as i64 * 1000;
+    let mut seq = 0u32;
+    let tail = &body[15..];
+    if let Some(t) = tail.strip_prefix('-') {
+        let parts: Vec<&str> = t.split('-').collect();
+        match parts.as_slice() {
+            // 兼容旧命名：`-NN`
+            [only] if only.len() == 3 && ascii_digits(only) => millis += only.parse::<i64>().ok()?,
+            [only] if ascii_digits(only) => seq = only.parse::<u32>().ok()?,
+            [ms, n] if ms.len() == 3 && ascii_digits(ms) && ascii_digits(n) => {
+                millis += ms.parse::<i64>().ok()?;
+                seq = n.parse::<u32>().ok()?;
+            }
+            _ => return None,
+        }
+    } else if !tail.is_empty() {
+        return None;
+    }
+    Some((millis, seq))
+}
+
+/// 在同一时间戳基础上递增序号；即使旧文件已被保留策略删除也不复用序号，
+/// 保证按 (时间, 序号) 排序始终与创建顺序一致。
+fn unique_backup_path(dir: &Path) -> PathBuf {
+    let head = format!("{}{}", BACKUP_FILE_PREFIX, backup_stem());
+    let mut seq = 0u32;
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let os_name = entry.file_name();
+            let name = os_name.to_string_lossy();
+            if !name.starts_with(&head) { continue; }
+            if let Some((_, existing)) = parse_backup_name(&name) { seq = seq.max(existing); }
+        }
+    }
+    if seq == 0 {
+        dir.join(format!("{}{}", head, BACKUP_FILE_SUFFIX))
+    } else {
+        dir.join(format!("{}-{:02}{}", head, seq, BACKUP_FILE_SUFFIX))
+    }
+}
+
+fn copy_atomic(src: &Path, dst: &Path) -> Result<(), String> {
+    if let Some(parent) = dst.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+    let tmp = dst.with_extension("json.tmp");
+    fs::copy(src, &tmp).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, dst).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        e.to_string()
+    })
+}
+
+fn backup_info(path: &Path) -> Option<BackupInfo> {
+    let meta = fs::metadata(path).ok()?;
+    let name = path.file_name()?.to_string_lossy().to_string();
+    let created_at = parse_backup_name(&name)
+        .map(|(millis, _)| millis)
+        .or_else(|| meta.modified().ok()?.duration_since(UNIX_EPOCH).ok().map(|d| d.as_millis() as i64))?;
+    Some(BackupInfo {
+        path: path.to_string_lossy().to_string(),
+        file_name: name,
+        size: meta.len(),
+        created_at,
+    })
+}
+
+fn scan_backups(dir: &Path) -> Vec<BackupInfo> {
+    let Ok(entries) = fs::read_dir(dir) else { return Vec::new(); };
+    entries
+        .flatten()
+        .filter(|e| e.path().is_file())
+        .filter(|e| is_backup_file_name(&e.file_name()))
+        .filter_map(|e| backup_info(&e.path()))
+        .collect()
+}
+
+fn sort_newest_first(list: &mut [BackupInfo]) {
+    // 同毫秒多份按序号排序；序号由目录内已有最大值递增，删除后不复用。
+    list.sort_by(|a, b| {
+        let ka = parse_backup_name(&a.file_name).unwrap_or((a.created_at, 0));
+        let kb = parse_backup_name(&b.file_name).unwrap_or((b.created_at, 0));
+        kb.0.cmp(&ka.0).then_with(|| kb.1.cmp(&ka.1))
+    });
+}
+
+/// 列出备份目录中的备份，按创建时间倒序；目录不存在返回空数组。
+pub fn list_backups(app_data_dir: &Path) -> Vec<BackupInfo> {
+    let mut out = scan_backups(&backup_dir(app_data_dir));
+    sort_newest_first(&mut out);
+    out
+}
+
+fn prune_old_backups(dir: &Path) {
+    let mut all = scan_backups(dir);
+    sort_newest_first(&mut all);
+    for info in all.into_iter().skip(MAX_BACKUPS) {
+        let _ = fs::remove_file(&info.path);
+    }
+}
+
+/// 手动备份：把当前数据文件原子复制到 `<data_dir>/backups/`，并应用保留策略。
+/// 当前数据文件不存在时报错，避免生成无意义的空备份。
+pub fn create_backup(app_data_dir: &Path) -> Result<BackupInfo, String> {
+    let src = data_file_path(app_data_dir);
+    if !src.exists() { return Err("当前数据文件不存在，无法备份".to_string()); }
+    let dir = backup_dir(app_data_dir);
+    let target = unique_backup_path(&dir);
+    copy_atomic(&src, &target)?;
+    prune_old_backups(&dir);
+    backup_info(&target).ok_or_else(|| "备份已写入但读取信息失败".to_string())
+}
+
+/// 恢复备份：先校验目标真实位于 `backups/` 内（拒绝 `../` 穿越与目录外绝对路径），
+/// 再把当前数据快照进备份目录，最后用校验通过的备份内容原子覆盖当前数据文件。
+pub fn restore_backup(app_data_dir: &Path, target: &Path) -> Result<AppData, String> {
+    let dir = backup_dir(app_data_dir);
+    let canonical_dir = fs::canonicalize(&dir).map_err(|e| format!("备份目录不可用：{}", e))?;
+    let canonical_target = fs::canonicalize(target).map_err(|e| format!("备份文件不存在：{}", e))?;
+    if !crate::favicon::path_is_within(&canonical_dir, &canonical_target) {
+        return Err("恢复失败：目标不在备份目录内".to_string());
+    }
+    let text = fs::read_to_string(&canonical_target).map_err(|e| format!("读取备份失败：{}", e))?;
+    let incoming: AppData = serde_json::from_str(&text).map_err(|e| format!("备份内容解析失败：{}", e))?;
+    let current = data_file_path(app_data_dir);
+    if current.exists() {
+        let snapshot = unique_backup_path(&dir);
+        copy_atomic(&current, &snapshot)?;
+        prune_old_backups(&dir);
+    }
     save_data(app_data_dir, &incoming)?;
     Ok(incoming)
 }
@@ -406,6 +623,138 @@ assert_eq!(loaded.sites[0].name, "React");
         assert_eq!(current.sites.len(), 1);
         assert_eq!(current.sites[0].tags, vec!["框架".to_string(), "工具".to_string()], "标签取并集");
         assert_eq!(current.sites[0].note, "已有备注", "导入合并不覆盖现有备注");
+    }
+
+    fn backup_sample(site_name: &str) -> AppData {
+        let mut data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        data.sites.push(Site {
+            id: "s1".into(), name: site_name.into(), url: "https://a.dev".into(),
+            category_id: None, tags: vec![], status: "ok".into(), last_check: None,
+            note: "".into(), favicon_path: None,
+        });
+        data
+    }
+
+    fn read_backup_json(path: &Path) -> AppData {
+        serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn backup_list_empty_when_dir_missing() {
+        let d = tmp_dir("bk_list_missing");
+        assert!(list_backups(&d).is_empty());
+    }
+
+    #[test]
+    fn backup_list_ignores_non_backup_files() {
+        let d = tmp_dir("bk_list_filter");
+        save_data(&d, &backup_sample("A")).unwrap();
+        create_backup(&d).unwrap();
+        let dir = d.join("backups");
+        fs::write(dir.join("notes.txt"), b"x").unwrap();
+        fs::create_dir_all(dir.join("backup-dir.json")).unwrap();
+        let list = list_backups(&d);
+        assert_eq!(list.len(), 1, "只统计 backup-*.json 普通文件");
+    }
+
+    #[test]
+    fn backup_create_copies_file_and_lists_desc() {
+        let d = tmp_dir("bk_create");
+        save_data(&d, &backup_sample("A")).unwrap();
+        let first = create_backup(&d).unwrap();
+        let second = create_backup(&d).unwrap();
+        assert_ne!(first.path, second.path, "同秒创建也不应覆盖");
+        let list = list_backups(&d);
+        assert_eq!(list.len(), 2);
+        assert_eq!(list[0].file_name, second.file_name, "最新备份应排在最前");
+        assert_eq!(list[1].file_name, first.file_name);
+        for info in &list {
+            assert!(Path::new(&info.path).exists());
+            assert_eq!(info.size, fs::metadata(data_file_path(&d)).unwrap().len());
+            assert!(info.created_at > 0);
+        }
+        assert_eq!(read_backup_json(Path::new(&second.path)).sites[0].name, "A");
+    }
+
+    #[test]
+    fn backup_create_fails_without_data_file() {
+        let d = tmp_dir("bk_nodata");
+        let err = create_backup(&d).unwrap_err();
+        assert!(err.contains("不存在"));
+        assert!(list_backups(&d).is_empty());
+    }
+
+    #[test]
+    fn backup_restore_replaces_data_and_snapshots_current() {
+        let d = tmp_dir("bk_restore");
+        save_data(&d, &backup_sample("A")).unwrap();
+        let bk = create_backup(&d).unwrap();
+        save_data(&d, &backup_sample("B")).unwrap();
+        let restored = restore_backup(&d, Path::new(&bk.path)).unwrap();
+        assert_eq!(restored.sites[0].name, "A");
+        assert_eq!(load_data(&d).sites[0].name, "A", "恢复后磁盘数据应为备份内容");
+        let list = list_backups(&d);
+        assert_eq!(list.len(), 2, "恢复前应先把当前数据快照进备份目录");
+        let names: Vec<String> = list.iter()
+            .map(|i| read_backup_json(Path::new(&i.path)).sites[0].name.clone())
+            .collect();
+        assert!(names.contains(&"A".to_string()) && names.contains(&"B".to_string()));
+    }
+
+    #[test]
+    fn backup_restore_rejects_paths_outside_backup_dir() {
+        let d = tmp_dir("bk_trav");
+        save_data(&d, &backup_sample("A")).unwrap();
+        create_backup(&d).unwrap();
+        let outside = d.join("outside.json");
+        export_json_to_path(&backup_sample("X"), &outside).unwrap();
+        let err = restore_backup(&d, &outside).unwrap_err();
+        assert!(err.contains("备份目录"), "目录外绝对路径应被拒绝：{}", err);
+        let traversal = d.join("backups").join("../outside.json");
+        assert!(restore_backup(&d, &traversal).is_err(), "../ 穿越到目录外应被拒绝");
+        assert_eq!(load_data(&d).sites[0].name, "A", "拒绝后数据不应变化");
+    }
+
+    #[test]
+    fn backup_restore_rejects_invalid_json() {
+        let d = tmp_dir("bk_bad");
+        save_data(&d, &backup_sample("A")).unwrap();
+        create_backup(&d).unwrap();
+        let bad = d.join("backups").join("backup-20260101-000000.json");
+        fs::write(&bad, "{ not json").unwrap();
+        let err = restore_backup(&d, &bad).unwrap_err();
+        assert!(err.contains("解析失败"));
+        assert_eq!(load_data(&d).sites[0].name, "A", "无效备份不应覆盖当前数据");
+    }
+
+    #[test]
+    fn backup_retention_keeps_newest_ten() {
+        let d = tmp_dir("bk_prune");
+        save_data(&d, &backup_sample("A")).unwrap();
+        let mut names = Vec::new();
+        for _ in 0..12 {
+            names.push(create_backup(&d).unwrap().file_name);
+        }
+        let list = list_backups(&d);
+        assert_eq!(list.len(), 10, "默认最多保留 10 份");
+        let listed: Vec<&str> = list.iter().map(|i| i.file_name.as_str()).collect();
+        assert!(!listed.contains(&names[0].as_str()), "最早的两份应被删除");
+        assert!(!listed.contains(&names[1].as_str()));
+        assert!(listed.contains(&names[11].as_str()), "最新一份必须保留");
+    }
+
+    #[test]
+    fn backup_restore_snapshot_respects_retention() {
+        let d = tmp_dir("bk_restore_prune");
+        save_data(&d, &backup_sample("A")).unwrap();
+        for _ in 0..10 { create_backup(&d).unwrap(); }
+        let oldest_before = list_backups(&d).last().unwrap().file_name.clone();
+        let target = list_backups(&d).last().unwrap().path.clone();
+        save_data(&d, &backup_sample("B")).unwrap();
+        restore_backup(&d, Path::new(&target)).unwrap();
+        let list = list_backups(&d);
+        assert_eq!(list.len(), 10, "恢复产生快照后仍受保留上限约束");
+        assert!(!list.iter().any(|i| i.file_name == oldest_before), "超限时最旧快照应被删除");
     }
 
     #[test]

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import type { AppData, CheckResult, Settings, SiteCheckResult } from './types'
+import type { AppData, BackupInfo, CheckResult, Settings, SiteCheckResult } from './types'
 
 export const loadData = () => invoke<AppData>('load_data')
 export const saveData = (data: AppData) => invoke<void>('save_data', { data })
@@ -28,6 +28,9 @@ export const importMdFromFile = (path: string, mode: string) => invoke<AppData>(
 export const importJsonFromFile = (path: string) => invoke<AppData>('import_json_from_file', { path })
 export const importBookmarksHtml = (html: string) => invoke<AppData>('import_bookmarks_html', { html })
 export const exportBookmarksHtmlToFile = (path: string) => invoke<void>('export_bookmarks_html_to_file', { path })
+export const listBackups = () => invoke<BackupInfo[]>('list_backups')
+export const createBackup = () => invoke<BackupInfo>('create_backup')
+export const restoreBackup = (path: string) => invoke<AppData>('restore_backup', { path })
 export const readTextFile = (path: string) => invoke<string>('read_text_file', { path })
 export const getSettings = () => invoke<Settings>('get_settings')
 export const setSettings = (settings: Settings) => invoke<void>('set_settings', { settings })

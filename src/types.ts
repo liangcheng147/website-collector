@@ -49,5 +49,7 @@ export type View = { kind: 'all' | 'category' | 'dead' | 'tag' | 'recycle'; id?:
 export interface CheckResult { status: 'ok' | 'dead'; usedUrl: string }
 /** 批量检测单项结果：请求 URL + 最终状态 + 实际生效 URL */
 export interface SiteCheckResult { url: string; status: 'ok' | 'dead'; usedUrl: string }
+/** 本地备份条目；createdAt 为 Unix 毫秒（UTC），前端按本地时区展示 */
+export interface BackupInfo { path: string; fileName: string; size: number; createdAt: number }
 export interface DuplicateGroup { key: string; sites: Site[] }
 export interface ImportSummary { added: number; merged: number; duplicates: number }

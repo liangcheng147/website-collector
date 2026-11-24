@@ -37,7 +37,7 @@ fn os_eq(a: &std::ffi::OsStr, b: &std::ffi::OsStr) -> bool {
 
 /// 逐组件判断 `candidate` 是否位于 `base` 之内（含相等）。
 /// 不用字符串前缀，避免 `/data/favicons-evil` 被误判为在 `/data/favicons` 内。
-fn path_is_within(base: &Path, candidate: &Path) -> bool {
+pub(crate) fn path_is_within(base: &Path, candidate: &Path) -> bool {
     let mut base_components = base.components();
     for component in candidate.components() {
         match base_components.next() {

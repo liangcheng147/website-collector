@@ -1,11 +1,13 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { nextTick } from 'vue'
+import { h, nextTick, type Component } from 'vue'
 import { mount } from '@vue/test-utils'
+import { NDialogProvider } from 'naive-ui'
 import { useAppStore } from '../store/app'
 import { PALETTES } from '../theme'
 import SettingsModal from './SettingsModal.vue'
+import type { AppData, BackupInfo } from '../types'
 
 const getDataFilePathMock = vi.fn()
 const openDataDirMock = vi.fn()
@@ -15,12 +17,18 @@ const getVersionMock = vi.fn()
 const checkForUpdateMock = vi.fn()
 const downloadAndInstallMock = vi.fn()
 const relaunchAppMock = vi.fn()
+const listBackupsMock = vi.fn()
+const createBackupMock = vi.fn()
+const restoreBackupMock = vi.fn()
 
 vi.mock('../api', () => ({
   getDataFilePath: () => getDataFilePathMock(),
   openDataDir: () => openDataDirMock(),
   openLink: (...args: unknown[]) => openLinkMock(...args),
   setSettings: (...args: unknown[]) => setSettingsMock(...args),
+  listBackups: () => listBackupsMock(),
+  createBackup: () => createBackupMock(),
+  restoreBackup: (...args: unknown[]) => restoreBackupMock(...args),
 }))
 vi.mock('../updater', () => ({
   checkForUpdate: () => checkForUpdateMock(),
@@ -28,6 +36,23 @@ vi.mock('../updater', () => ({
   relaunchApp: () => relaunchAppMock(),
 }))
 vi.mock('@tauri-apps/api/app', () => ({ getVersion: () => getVersionMock() }))
+
+function backupInfo(name: string, size = 2048, createdAt = 0): BackupInfo {
+  return { path: 'C:/data/backups/' + name, fileName: name, size, createdAt }
+}
+
+function seedData(ids: string[] = []): AppData {
+  return {
+    version: 1,
+    categories: [],
+    sites: ids.map((id) => ({
+      id, name: '站点' + id, url: `https://${id}.dev`, categoryId: null,
+      tags: [], status: 'unknown' as const, lastCheck: null, note: '',
+    })),
+    recycleBin: [],
+    tags: [],
+  }
+}
 
 // n-modal teleports into document.body, so assert against document.body
 describe('SettingsModal', () => {
@@ -40,12 +65,22 @@ describe('SettingsModal', () => {
     downloadAndInstallMock.mockReset().mockResolvedValue(undefined)
     relaunchAppMock.mockReset().mockResolvedValue(undefined)
     setSettingsMock.mockReset().mockResolvedValue(undefined)
+    listBackupsMock.mockReset().mockResolvedValue([])
+    createBackupMock.mockReset().mockResolvedValue(backupInfo('backup-20260101-000000.json'))
+    restoreBackupMock.mockReset().mockResolvedValue(seedData([]))
   })
+
+  // useDialog 与 n-modal 都需要 provider；modal 内容 teleport 到 document.body
+  function mountWithProvider(component: Component) {
+    return mount({
+      setup: () => () => h(NDialogProvider, null, { default: () => h(component) }),
+    })
+  }
 
   async function mountModal() {
     const store = useAppStore()
     store.location = { dir: 'C:/data', isFallback: false }
-    mount(SettingsModal)
+    mountWithProvider(SettingsModal)
     await nextTick()
     await nextTick()
     return store
@@ -291,5 +326,100 @@ describe('SettingsModal', () => {
     expect(setSettingsMock).toHaveBeenCalledWith(
       expect.objectContaining({ autoCheck: true, checkInterval: 0, checkScope: 'all', retryCount: 1, concurrency: 3 }),
     )
+  })
+
+  it('renders the backup group with retention hint and empty state', async () => {
+    await mountModal()
+    await openTab('settings-tab-storage')
+    const text = document.body.textContent || ''
+    expect(text).toContain('本地备份')
+    expect(text).toContain('最近 10 份')
+    expect(text).toContain('暂无备份')
+    expect(listBackupsMock).toHaveBeenCalled()
+  })
+
+  it('lists backups with file name and size', async () => {
+    listBackupsMock.mockResolvedValue([
+      backupInfo('backup-20260102-030405.json', 2048),
+      backupInfo('backup-20260101-000000.json', 512),
+    ])
+    await mountModal()
+    await openTab('settings-tab-storage')
+    const text = document.body.textContent || ''
+    expect(text).toContain('backup-20260102-030405.json')
+    expect(text).toContain('backup-20260101-000000.json')
+    expect(text).toContain('2 KB')
+    expect(text).toContain('512 B')
+    expect(document.body.querySelectorAll('[data-testid="backup-row"]')).toHaveLength(2)
+  })
+
+  it('does not restore until the warning dialog is confirmed', async () => {
+    const target = backupInfo('backup-20260101-000000.json')
+    listBackupsMock.mockResolvedValue([target])
+    const store = useAppStore()
+    store.data = seedData(['a'])
+    await mountModal()
+    await openTab('settings-tab-storage')
+    const restoreBtn = document.body.querySelector('[aria-label="恢复备份 backup-20260101-000000.json"]') as HTMLElement
+    restoreBtn.click()
+    await nextTick()
+    expect(restoreBackupMock).not.toHaveBeenCalled()
+    const negative = Array.from(document.body.querySelectorAll('.n-dialog button'))
+      .find(el => el.textContent?.includes('取消')) as HTMLElement
+    negative.click()
+    await nextTick()
+    expect(restoreBackupMock).not.toHaveBeenCalled()
+    expect(store.data.sites.map(s => s.id)).toEqual(['a'])
+  })
+
+  it('replaces store data and refreshes the list after a successful restore', async () => {
+    const target = backupInfo('backup-20260101-000000.json')
+    listBackupsMock.mockResolvedValue([target])
+    restoreBackupMock.mockResolvedValue(seedData(['restored']))
+    const store = useAppStore()
+    store.data = seedData(['a'])
+    await mountModal()
+    await openTab('settings-tab-storage')
+    ;(document.body.querySelector('[aria-label="恢复备份 backup-20260101-000000.json"]') as HTMLElement).click()
+    await nextTick()
+    const positive = Array.from(document.body.querySelectorAll('.n-dialog button'))
+      .find(el => el.textContent?.trim() === '恢复') as HTMLElement
+    positive.click()
+    await nextTick()
+    await nextTick()
+    expect(restoreBackupMock).toHaveBeenCalledWith(target.path)
+    expect(store.data.sites.map(s => s.id)).toEqual(['restored'])
+    expect(document.body.textContent).toContain('已恢复备份：backup-20260101-000000.json')
+    expect(listBackupsMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('keeps current data and shows an error when restore fails', async () => {
+    const target = backupInfo('backup-20260101-000000.json')
+    listBackupsMock.mockResolvedValue([target])
+    restoreBackupMock.mockRejectedValue(new Error('boom'))
+    const store = useAppStore()
+    store.data = seedData(['a'])
+    await mountModal()
+    await openTab('settings-tab-storage')
+    ;(document.body.querySelector('[aria-label="恢复备份 backup-20260101-000000.json"]') as HTMLElement).click()
+    await nextTick()
+    const positive = Array.from(document.body.querySelectorAll('.n-dialog button'))
+      .find(el => el.textContent?.trim() === '恢复') as HTMLElement
+    positive.click()
+    await nextTick()
+    await nextTick()
+    expect(store.data.sites.map(s => s.id)).toEqual(['a'])
+    expect(document.body.textContent).toContain('恢复失败')
+  })
+
+  it('creates a manual backup and reloads the list', async () => {
+    await mountModal()
+    await openTab('settings-tab-storage')
+    ;(document.body.querySelector('[data-testid="btn-create-backup"]') as HTMLElement).click()
+    await nextTick()
+    await nextTick()
+    expect(createBackupMock).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain('已创建备份')
+    expect(listBackupsMock.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 })

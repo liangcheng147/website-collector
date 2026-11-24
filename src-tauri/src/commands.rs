@@ -121,6 +121,24 @@ pub fn export_bookmarks_html_to_file(app: tauri::AppHandle, path: String) -> Res
     std::fs::write(&path, html).map_err(|e| e.to_string())
 }
 
+/// 列出本地备份（按时间倒序）；备份目录不存在时返回空数组。
+#[tauri::command]
+pub fn list_backups(app: tauri::AppHandle) -> Vec<data::BackupInfo> {
+    data::list_backups(&active_data_dir(&app))
+}
+
+/// 手动备份：复制当前数据文件到 backups/，并应用保留策略。
+#[tauri::command]
+pub fn create_backup(app: tauri::AppHandle) -> Result<data::BackupInfo, String> {
+    data::create_backup(&active_data_dir(&app))
+}
+
+/// 恢复指定备份：恢复前自动快照当前数据，返回恢复后的 AppData 供前端直接替换。
+#[tauri::command]
+pub fn restore_backup(app: tauri::AppHandle, path: String) -> Result<data::AppData, String> {
+    data::restore_backup(&active_data_dir(&app), std::path::Path::new(&path))
+}
+
 #[tauri::command]
 pub fn read_text_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())

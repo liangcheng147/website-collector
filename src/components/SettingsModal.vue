@@ -4,21 +4,23 @@ import type { HTMLAttributes } from 'vue'
 import { getVersion } from '@tauri-apps/api/app'
 import {
   NModal, NTabs, NTabPane, NSelect, NSlider, NSwitch, NProgress, NButton,
-  NInput, NRadioGroup, NRadio, NText, NSpace, NAlert,
+  NInput, NRadioGroup, NRadio, NText, NSpace, NAlert, useDialog,
 } from 'naive-ui'
 import * as api from '../api'
 import * as updater from '../updater'
 import { PALETTES, type Palette } from '../theme'
 import { useAppStore } from '../store/app'
-import type { CheckScope } from '../types'
+import type { BackupInfo, CheckScope } from '../types'
 const emit = defineEmits(['close'])
 const store = useAppStore()
+const dialog = useDialog()
 const filePath = ref('')
 const msg = ref('')
 const section = ref('theme')
 onMounted(async () => {
   filePath.value = await api.getDataFilePath()
   appVersion.value = await getVersion()
+  await refreshBackups()
 })
 const appVersion = ref('')
 const updateState = ref<'idle' | 'checking' | 'available' | 'none' | 'downloading' | 'ready' | 'error'>('idle')
@@ -138,6 +140,52 @@ async function copyDiagnostics() {
   } catch {
     copyHint.value = '复制失败，请手动复制'
   }
+}
+
+/** 与 Rust `data::MAX_BACKUPS` 保持一致；保留策略在备份目录侧强制执行。 */
+const MAX_LOCAL_BACKUPS = 10
+const backups = ref<BackupInfo[]>([])
+const backupBusy = ref(false)
+const backupMsg = ref('')
+
+async function refreshBackups() {
+  try { backups.value = await api.listBackups() }
+  catch (e) { backupMsg.value = '读取备份失败：' + e }
+}
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${Math.round(bytes / 1024 / 1024)} MB`
+}
+function formatBackupTime(ms: number): string {
+  return new Date(ms).toLocaleString()
+}
+async function makeBackup() {
+  if (backupBusy.value) return
+  backupBusy.value = true
+  backupMsg.value = ''
+  try {
+    await api.createBackup()
+    backupMsg.value = '已创建备份'
+    await refreshBackups()
+  } catch (e) { backupMsg.value = '备份失败：' + e }
+  finally { backupBusy.value = false }
+}
+function askRestore(b: BackupInfo) {
+  dialog.warning({
+    title: '恢复备份',
+    content: `确定用 ${b.fileName}（${formatBackupTime(b.createdAt)}）覆盖当前数据？恢复前会自动为当前数据创建一份快照。`,
+    positiveText: '恢复',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        const restored = await api.restoreBackup(b.path)
+        store.data = restored
+        backupMsg.value = `已恢复备份：${b.fileName}`
+        await refreshBackups()
+      } catch (e) { backupMsg.value = '恢复失败：' + e }
+    },
+  })
 }
 </script>
 
@@ -276,6 +324,26 @@ async function copyDiagnostics() {
             当前正使用系统目录（安装位置无写入权限）。
           </n-alert>
           <n-text v-if="msg" class="group-hint" depth="3">{{ msg }}</n-text>
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">本地备份</n-text>
+            <n-text class="group-hint" depth="3">
+              备份保存在数据目录的 <code>backups/</code>，仅保留最近 {{ MAX_LOCAL_BACKUPS }} 份，超出自动删除最旧的一份。
+            </n-text>
+            <div class="backup-actions">
+              <n-button size="small" type="primary" :loading="backupBusy" data-testid="btn-create-backup" @click="makeBackup">立即备份</n-button>
+              <n-text v-if="backupMsg" class="group-hint" depth="3">{{ backupMsg }}</n-text>
+            </div>
+            <div v-if="backups.length" class="backup-list" data-testid="backup-list">
+              <div v-for="b in backups" :key="b.path" class="backup-row" data-testid="backup-row">
+                <div class="backup-meta">
+                  <span class="backup-name" :title="b.fileName">{{ b.fileName }}</span>
+                  <span class="backup-sub">{{ formatBackupTime(b.createdAt) }} · {{ formatSize(b.size) }}</span>
+                </div>
+                <n-button size="tiny" quaternary class="backup-restore" :aria-label="`恢复备份 ${b.fileName}`" @click="askRestore(b)">恢复</n-button>
+              </div>
+            </div>
+            <n-text v-else class="group-hint" depth="3">暂无备份。点击「立即备份」创建第一份；恢复前也会自动为当前数据留一份快照。</n-text>
+          </div>
         </n-space>
       </n-tab-pane>
 
@@ -349,6 +417,29 @@ async function copyDiagnostics() {
 .path-row { display: flex; gap: 8px; align-items: center; width: 100%; }
 .path-row .n-input { flex: 1; min-width: 0; width: auto; }
 .path-row .n-button { flex: none; }
+.backup-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.backup-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.backup-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.backup-row:last-child { border-bottom: none; }
+.backup-meta { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 2px; }
+.backup-name {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.backup-sub { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.backup-restore { flex: none; }
 .group-title { font-size: 12px; font-weight: 600; }
 .group-hint { display: block; }
 .group-hint code {
