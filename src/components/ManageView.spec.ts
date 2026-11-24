@@ -44,4 +44,12 @@ describe('ManageView', () => {
     await nextTick()
     expect(w.text()).toContain('标签列表')
   })
+
+  it('点击重复链接页签切换到重复管理', async () => {
+    const w = mountWithDialog(ManageView)
+    expect(w.text()).toContain('重复链接')
+    await w.find('[data-name="duplicates"]').trigger('click')
+    await nextTick()
+    expect(w.text()).toContain('暂无重复链接')
+  })
 })

@@ -69,7 +69,7 @@ pub fn parse_bookmarks_html(html: &str) -> Result<ParsedBookmarks, String> {
                             }
                         } else if let Some(url) = link_url {
                             if let Some(name) = link_name {
-                                if seen_urls.insert(url.clone()) {
+                                if seen_urls.insert(crate::data::normalize_url(&url)) {
                                     let mut cat_path = path.clone();
                                     if cat_path.len() > 3 {
                                         cat_path.truncate(3);
@@ -297,6 +297,14 @@ mod tests {
         let html = "<DL><p>\n    <DT><H3>Folder1</H3>\n    <DL><p>\n        <DT><A HREF=\"https://dup.com\">First</A>\n    </DL><p>\n    <DT><H3>Folder2</H3>\n    <DL><p>\n        <DT><A HREF=\"https://dup.com\">Second</A>\n    </DL><p>\n</DL>\n";
         let result = parse_bookmarks_html(html).unwrap();
         assert_eq!(result.sites.len(), 1);
+        assert_eq!(result.sites[0].name, "First");
+    }
+
+    #[test]
+    fn parse_duplicate_urls_normalized_case_and_slash() {
+        let html = "<DL><p>\n    <DT><H3>Folder1</H3>\n    <DL><p>\n        <DT><A HREF=\"https://dup.com/\">First</A>\n        <DT><A HREF=\"HTTPS://DUP.com\">Second</A>\n    </DL><p>\n</DL>\n";
+        let result = parse_bookmarks_html(html).unwrap();
+        assert_eq!(result.sites.len(), 1, "大小写/尾斜杠不同的等价 URL 只保留首个");
         assert_eq!(result.sites[0].name, "First");
     }
 

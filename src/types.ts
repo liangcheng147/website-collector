@@ -20,3 +20,5 @@ export interface AppData {
 }
 export type View = { kind: 'all' | 'category' | 'dead' | 'tag' | 'recycle'; id?: string }
 export interface CheckResult { status: 'ok' | 'dead'; usedUrl: string }
+export interface DuplicateGroup { key: string; sites: Site[] }
+export interface ImportSummary { added: number; merged: number; duplicates: number }

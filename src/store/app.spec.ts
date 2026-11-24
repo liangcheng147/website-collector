@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { setActivePinia, createPinia } from 'pinia'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useAppStore, UNCATEGORIZED_ID } from './app'
+import { useAppStore, UNCATEGORIZED_ID, summarizeImport } from './app'
 vi.mock('../api', () => ({
   saveData: vi.fn().mockResolvedValue(undefined),
   loadData: vi.fn().mockResolvedValue(undefined),
@@ -670,11 +670,85 @@ describe('app store', () => {
   expect(s.trashedSites.some(x => x.site.id === '2')).toBe(true)
 })
 
-  it('normalizeUrlForCompare lowercases and strips trailing slash', () => {
+  it('normalizeUrl unifies scheme/host case, default port, extra and trailing slashes', () => {
     const s = useAppStore()
-    expect(s.normalizeUrlForCompare('https://GitHub.com/')).to.equal('https://github.com')
-    expect(s.normalizeUrlForCompare('https://example.com')).to.equal('https://example.com')
-    expect(s.normalizeUrlForCompare('https://Example.COM/path/')).to.equal('https://example.com/path')
+    expect(s.normalizeUrl('HTTPS://Example.com///')).to.equal(s.normalizeUrl('https://example.com'))
+    expect(s.normalizeUrl('https://GitHub.com/')).to.equal('https://github.com')
+    expect(s.normalizeUrl('https://example.com')).to.equal('https://example.com')
+    expect(s.normalizeUrl('https://Example.COM/path/')).to.equal('https://example.com/path')
+    expect(s.normalizeUrl('http://example.com:80')).to.equal('http://example.com')
+    expect(s.normalizeUrl('https://example.com:443/a//b/')).to.equal('https://example.com/a/b')
+  })
+
+  it('duplicateGroups groups by normalized URL and drops single-entry keys', () => {
+    const s = useAppStore()
+    s.data.sites = [
+      { id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '' },
+      { id: '2', name: 'A2', url: 'HTTPS://A.dev/', categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '' },
+      { id: '3', name: 'B', url: 'https://b.dev', categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '' },
+    ]
+    const groups = s.duplicateGroups
+    expect(groups).toHaveLength(1)
+    expect(groups[0].key).toBe('https://a.dev')
+    expect(groups[0].sites.map(x => x.id)).toEqual(['1', '2'])
+  })
+
+  it('resolveDuplicateGroup keeps chosen site and trashes the rest', () => {
+    const s = useAppStore()
+    s.data.sites = [
+      { id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '' },
+      { id: '2', name: 'A2', url: 'https://a.dev/', categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '' },
+    ]
+    s.persist = async () => {}
+    s.resolveDuplicateGroup('https://a.dev', '2')
+    expect(s.data.sites.map(x => x.id)).toEqual(['2'])
+    expect(s.trashedSites.map(x => x.site.id)).toEqual(['1'])
+  })
+
+  it('mergeDuplicateGroup unions tags, merges notes into keeper and trashes others', () => {
+    const s = useAppStore()
+    s.data.sites = [
+      { id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: ['框架'], status: 'ok', lastCheck: null, note: '第一条' },
+      { id: '2', name: 'A2', url: 'https://a.dev/', categoryId: null, tags: ['工具', '框架'], status: 'dead', lastCheck: null, note: '第二条' },
+    ]
+    s.persist = async () => {}
+    s.mergeDuplicateGroup('https://a.dev', '2')
+    expect(s.data.sites).toHaveLength(1)
+    const keeper = s.data.sites[0]
+    expect(keeper.id).toBe('2')
+    expect(keeper.tags.slice().sort()).toEqual(['工具', '框架'])
+    expect(keeper.note).toContain('第一条')
+    expect(keeper.note).toContain('第二条')
+    expect(s.trashedSites.map(x => x.site.id)).toEqual(['1'])
+  })
+
+  it('markDuplicateGroup tags every site in the group', () => {
+    const s = useAppStore()
+    s.data.sites = [
+      { id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '' },
+      { id: '2', name: 'A2', url: 'https://a.dev/', categoryId: null, tags: [], status: 'unknown', lastCheck: null, note: '' },
+    ]
+    s.markDuplicateGroup('https://a.dev')
+    expect(s.data.sites.every(x => x.tags.includes('重复'))).toBe(true)
+    expect(s.data.tags).toContain('重复')
+  })
+
+  it('summarizeImport counts added, merged and leftover duplicates', () => {
+    const before: AppData = {
+      version: 1, categories: [], tags: [],
+      sites: [{ id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' }],
+      recycleBin: [],
+    }
+    const after: AppData = {
+      version: 1, categories: [], tags: [],
+      sites: [
+        { id: '1', name: 'A', url: 'https://a.dev/', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+        { id: '2', name: 'B', url: 'https://b.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+        { id: '3', name: 'B2', url: 'https://b.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '' },
+      ],
+      recycleBin: [],
+    }
+    expect(summarizeImport(before, after)).toEqual({ added: 1, merged: 1, duplicates: 1 })
   })
 
   it('isDuplicateUrl excludes given id', () => {

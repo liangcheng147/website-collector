@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { NModal, NButton, NRadioGroup, NRadio, NGrid, NGi, NSpace, NText, NAlert } from 'naive-ui'
-import { useAppStore } from '../store/app'
+import { useAppStore, summarizeImport } from '../store/app'
+import type { AppData } from '../types'
 import * as api from '../api'
 const store = useAppStore()
 const emit = defineEmits(['close'])
@@ -10,6 +11,13 @@ const jsonPath = ref<string | null>(null)
 const msg = ref('')
 
 function dateStr() { return new Date().toISOString().slice(0, 10) }
+
+function applyImport(data: AppData, verb: string) {
+  const before = store.data
+  store.setData(data)
+  const sum = summarizeImport(before, data)
+  store.flash(`${verb}：新增 ${sum.added}，合并 ${sum.merged}，重复 ${sum.duplicates}`)
+}
 
 async function exportMd() {
   const { save } = await import('@tauri-apps/plugin-dialog')
@@ -33,8 +41,7 @@ async function importMd() {
   if (!path) return
   try {
     const data = await api.importMdFromFile(String(path), mode.value)
-    store.setData(data)
-    store.flash(mode.value === 'overwrite' ? '已覆盖导入 md' : '已合并导入 md')
+    applyImport(data, mode.value === 'overwrite' ? '已覆盖导入 md' : '已合并导入 md')
     emit('close')
   } catch (e) { msg.value = '导入失败：' + e }
 }
@@ -55,8 +62,7 @@ async function importHtml() {
   try {
     const text = await api.readTextFile(String(path))
     const data = await api.importBookmarksHtml(text)
-    store.setData(data)
-    store.flash('已合并导入 HTML 书签')
+    applyImport(data, '已合并导入 HTML 书签')
     emit('close')
   } catch (e) { msg.value = '导入失败：' + e }
 }
@@ -72,8 +78,7 @@ async function confirmJsonImport() {
   if (!p) return
   try {
     const data = await api.importJsonFromFile(p)
-    store.setData(data)
-    store.flash('已从 JSON 备份恢复')
+    applyImport(data, '已从 JSON 备份恢复')
     emit('close')
   } catch (e) { msg.value = '导入失败：' + e }
 }

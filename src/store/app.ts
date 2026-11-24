@@ -1,11 +1,66 @@
 import { defineStore } from 'pinia'
-import type { AppData, Site, TrashedSite, View, Category, Settings } from '../types'
+import type { AppData, Site, TrashedSite, View, Category, Settings, DuplicateGroup, ImportSummary } from '../types'
 import * as api from '../api'
 import { resolveTheme, applyShellVars } from '../theme'
 
 const FLASH_DURATION_MS = 2500
 const MAX_CATEGORY_DEPTH = 2
 export const UNCATEGORIZED_ID = '__uncategorized__'
+export const DUPLICATE_TAG = '重复'
+
+const DEFAULT_PORTS: Record<string, string> = { http: '80', https: '443', ws: '80', wss: '443', ftp: '21' }
+
+function normalizeUrlImpl(raw: string): string {
+  const trimmed = (raw ?? '').trim()
+  const hashIdx = trimmed.indexOf('#')
+  const beforeHash = hashIdx >= 0 ? trimmed.slice(0, hashIdx) : trimmed
+  const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\//.exec(beforeHash)
+  if (!schemeMatch) return beforeHash.toLowerCase().replace(/\/+$/, '')
+  const scheme = schemeMatch[1].toLowerCase()
+  let rest = beforeHash.slice(schemeMatch[0].length)
+  let query = ''
+  const qIdx = rest.indexOf('?')
+  if (qIdx >= 0) {
+    query = rest.slice(qIdx)
+    rest = rest.slice(0, qIdx)
+    if (query === '?') query = ''
+  }
+  const slashIdx = rest.indexOf('/')
+  let authority = slashIdx >= 0 ? rest.slice(0, slashIdx) : rest
+  const pathRaw = slashIdx >= 0 ? rest.slice(slashIdx) : ''
+  const atIdx = authority.lastIndexOf('@')
+  if (atIdx >= 0) authority = authority.slice(atIdx + 1)
+  let host = authority
+  let port = ''
+  if (authority.startsWith('[')) {
+    const closeIdx = authority.indexOf(']')
+    if (closeIdx >= 0) {
+      host = authority.slice(0, closeIdx + 1)
+      const tail = authority.slice(closeIdx + 1)
+      if (tail.startsWith(':')) port = tail.slice(1)
+    }
+  } else {
+    const colonIdx = authority.lastIndexOf(':')
+    if (colonIdx >= 0) { host = authority.slice(0, colonIdx); port = authority.slice(colonIdx + 1) }
+  }
+  host = host.toLowerCase()
+  if (DEFAULT_PORTS[scheme] === port) port = ''
+  const path = pathRaw.replace(/\/{2,}/g, '/').replace(/\/+$/, '')
+  return `${scheme}://${host}${port ? ':' + port : ''}${path}${query}`
+}
+
+/** 统一 URL 归一化：scheme/host 小写、去默认端口、折叠多余斜杠并去尾斜杠、丢弃 fragment。 */
+export function normalizeUrl(url: string): string { return normalizeUrlImpl(url) }
+
+/** 导入摘要：新增（结果中此前不存在的 URL）、合并（与导入前相同的 URL）、重复（结果内部同 URL 的多余条数）。 */
+export function summarizeImport(before: AppData, after: AppData): ImportSummary {
+  const beforeKeys = new Set(before.sites.map(s => normalizeUrl(s.url)))
+  const afterKeys = new Set(after.sites.map(s => normalizeUrl(s.url)))
+  let added = 0
+  let merged = 0
+  afterKeys.forEach(k => { if (beforeKeys.has(k)) merged++; else added++ })
+  return { added, merged, duplicates: after.sites.length - afterKeys.size }
+}
 
 function collectAllIds(cats: Category[], acc: string[] = []): string[] {
   for (const c of cats) { acc.push(c.id); collectAllIds(c.children, acc) }
@@ -131,6 +186,19 @@ export const useAppStore = defineStore('app', {
       }
       return counts
     },
+    duplicateGroups(state): DuplicateGroup[] {
+      const groups = new Map<string, Site[]>()
+      for (const s of state.data.sites) {
+        const key = normalizeUrl(s.url)
+        const list = groups.get(key)
+        if (list) list.push(s)
+        else groups.set(key, [s])
+      }
+      return [...groups.entries()]
+        .filter(([, list]) => list.length > 1)
+        .map(([key, sites]) => ({ key, sites }))
+        .sort((a, b) => b.sites.length - a.sites.length || a.key.localeCompare(b.key))
+    },
   },
   actions: {
     async init() {
@@ -199,15 +267,13 @@ export const useAppStore = defineStore('app', {
       return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7)
     },
 
-    normalizeUrlForCompare(url: string): string {
-      return url.toLowerCase().replace(/\/+$/, '')
+    normalizeUrl(url: string): string {
+      return normalizeUrlImpl(url)
     },
 
     isDuplicateUrl(url: string, excludeId?: string): boolean {
-      const norm = this.normalizeUrlForCompare(url)
-      return this.data.sites.some(s =>
-        s.id !== excludeId && this.normalizeUrlForCompare(s.url) === norm
-      )
+      const norm = normalizeUrl(url)
+      return this.data.sites.some(s => s.id !== excludeId && normalizeUrl(s.url) === norm)
     },
 
     addSite(input: { name: string; url: string; categoryId: string | null; tags: string[]; note: string }) {
@@ -233,6 +299,38 @@ export const useAppStore = defineStore('app', {
         return true
       })
       this.persist()
+    },
+
+    resolveDuplicateGroup(key: string, keepId: string) {
+      const group = this.duplicateGroups.find(g => g.key === key)
+      if (!group) return
+      const rest = group.sites.filter(s => s.id !== keepId).map(s => s.id)
+      if (rest.length) this.deleteSites(rest)
+    },
+
+    mergeDuplicateGroup(key: string, keepId: string) {
+      const group = this.duplicateGroups.find(g => g.key === key)
+      const keeper = group?.sites.find(s => s.id === keepId)
+      if (!group || !keeper) return
+      const tagSet = new Set(keeper.tags)
+      const notes: string[] = keeper.note.trim() ? [keeper.note.trim()] : []
+      for (const s of group.sites) {
+        if (s.id === keeper.id) continue
+        s.tags.forEach(t => tagSet.add(t))
+        const n = s.note.trim()
+        if (n && !notes.includes(n)) notes.push(n)
+      }
+      keeper.tags = [...tagSet]
+      keeper.note = notes.join('\n')
+      this.refreshTags()
+      const rest = group.sites.filter(s => s.id !== keepId).map(s => s.id)
+      if (rest.length) this.deleteSites(rest)
+    },
+
+    markDuplicateGroup(key: string) {
+      const group = this.duplicateGroups.find(g => g.key === key)
+      if (!group) return
+      this.addTagsToSites(group.sites.map(s => s.id), [DUPLICATE_TAG])
     },
 
     restoreSite(siteId: string) {
