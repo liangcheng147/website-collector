@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { AlertTriangle, Trash2 } from 'lucide-vue-next'
 import { NButton, NCheckbox, NModal, NText, useDialog } from 'naive-ui'
 import { useAppStore } from '../store/app'
@@ -10,6 +10,11 @@ const emit = defineEmits(['close'])
 
 const selected = ref<string[]>([])
 const deadSites = computed(() => store.data.sites.filter(s => s.status === 'dead'))
+// dead 集合变化（检测恢复、外部删除）时裁剪本地选择，避免计数/全选残留 stale id。
+watch(deadSites, (sites) => {
+  const alive = new Set(sites.map(s => s.id))
+  selected.value = selected.value.filter(id => alive.has(id))
+}, { immediate: true })
 const allSelected = computed(() =>
   deadSites.value.length > 0 && deadSites.value.every(s => selected.value.includes(s.id)),
 )
@@ -68,7 +73,7 @@ function askTrash() {
           class="cleanup-row"
           :class="{ selected: selected.includes(s.id) }"
         >
-          <n-checkbox :checked="selected.includes(s.id)" @update:checked="toggle(s.id)" />
+          <n-checkbox :checked="selected.includes(s.id)" :aria-label="`选择站点 ${s.name}`" @update:checked="toggle(s.id)" />
           <span class="cleanup-name">{{ s.name }}</span>
           <span class="cleanup-url">{{ s.url }}</span>
         </div>

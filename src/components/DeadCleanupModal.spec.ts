@@ -109,6 +109,39 @@ describe('DeadCleanupModal', () => {
     expect(store.deadCount).toBe(1)
   })
 
+  it('点击否定按钮（取消）后 sites/trashedSites 不变', async () => {
+    const store = useAppStore()
+    store.data = seed()
+    await mountModal()
+    const boxes = Array.from(document.body.querySelectorAll('.n-checkbox'))
+    ;(boxes[1] as HTMLElement).click()
+    await nextTick()
+    ;(bodyButton('移入回收站')!).click()
+    await nextTick()
+    const negativeBtn = Array.from(document.body.querySelectorAll('.n-dialog button'))
+      .find(el => el.textContent?.includes('取消')) as HTMLElement
+    expect(negativeBtn).toBeDefined()
+    negativeBtn.click()
+    await nextTick()
+    expect(store.data.sites.map(s => s.id)).toEqual(['a', 'b', 'c', 'd'])
+    expect(store.trashedSites).toHaveLength(0)
+  })
+
+  it('dead 集合收缩时本地选中随之裁剪（外部变更模拟）', async () => {
+    const store = useAppStore()
+    store.data = seed()
+    await mountModal()
+    const headerBox = document.body.querySelector('.n-checkbox') as HTMLElement
+    headerBox.click() // 全选 a、c
+    await nextTick()
+    expect(document.body.textContent).toContain('已选 2')
+    store.updateSite('a', { status: 'ok' }) // 模拟检测恢复导致 a 不再是 dead
+    await nextTick()
+    expect(document.body.querySelectorAll('.cleanup-row')).toHaveLength(1)
+    expect(document.body.textContent).toContain('已选 1')
+    expect(document.body.textContent).not.toContain('已选 2')
+  })
+
   it('全部移入回收站后自动关闭', async () => {
     const store = useAppStore()
     store.data = seed()

@@ -337,6 +337,11 @@ export const useAppStore = defineStore('app', {
         if (set.has(s.id)) { this.data.recycleBin.push({ site: s, deletedAt: now }); return false }
         return true
       })
+      // 同步裁剪选择状态：否则批量栏会残留已删 id，后续移动/标签/拖拽会作用于不存在的站点。
+      if (set.size) {
+        this.selectedIds = this.selectedIds.filter(id => !set.has(id))
+        if (this.lastSelectedId && set.has(this.lastSelectedId)) this.lastSelectedId = null
+      }
       this.persist()
     },
 

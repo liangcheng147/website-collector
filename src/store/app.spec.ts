@@ -263,6 +263,32 @@ describe('app store', () => {
     expect(s.trashedSites).toHaveLength(0)
   })
 
+  it('deleteSites prunes selectedIds and lastSelectedId of removed sites', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.selectOne('a')
+    s.toggleSelect('b') // 选中 [a, b]，锚点为 b
+    s.deleteSites(['a'])
+    expect(s.selectedIds).toEqual(['b'])
+    expect(s.lastSelectedId).toBe('b')
+    s.deleteSites(['b'])
+    expect(s.selectedIds).toEqual([])
+    expect(s.lastSelectedId).toBeNull() // 锚点被删时一并清理
+  })
+
+  it('deleteSelected removes exactly the selection and clears it', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.view = { kind: 'all' }
+    s.selectedIds = ['a', 'c']
+    s.lastSelectedId = 'a'
+    s.deleteSelected()
+    expect(s.data.sites.map(x => x.id)).toEqual(['b'])
+    expect(s.trashedSites.map(t => t.site.id)).toEqual(['a', 'c'])
+    expect(s.selectedIds).toEqual([])
+    expect(s.lastSelectedId).toBeNull()
+  })
+
   it('permanentlyDeleteSites removes from recycle bin only', () => {
     const s = useAppStore()
     s.data = baseData
