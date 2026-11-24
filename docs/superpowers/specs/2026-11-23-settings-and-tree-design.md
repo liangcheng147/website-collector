@@ -120,7 +120,7 @@
 ```text
 关于
 ┌─ 应用信息 ─────────────────────────────┐
-│ SiteCollector                v0.3.3     │  （版本动态）
+│ SiteCollector                v0.4.0     │  （版本动态）
 │ 本地优先的网站收藏与可用性检测桌面应用   │  （简介，弱化）
 │ GitHub 仓库 · 问题反馈 · 发布页          │
 │ MIT License · Copyright (c) 2026 fan-root│
