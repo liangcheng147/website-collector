@@ -23,7 +23,7 @@ async function onMaxClick() {
 <template>
   <header class="titlebar" data-tauri-drag-region="deep">
     <span class="mark"><Bookmark :size="14" /><span class="tip">归集</span></span>
-    <span style="font-weight:700;font-size:14px;margin-left:6px;">归集</span>
+    <span class="brand">归集</span>
     <div class="btns" data-tauri-drag-region="false">
       <span class="min" @click="api.minimizeWindow"><Minus :size="14" /></span>
       <span class="max" @click="onMaxClick"><Copy v-if="maximized" :size="12" /><Square v-else :size="12" /></span>
