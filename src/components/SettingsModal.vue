@@ -55,6 +55,9 @@ function setPalette(id: string | number | boolean | null) {
 function toggleAutoCheck() {
   store.updateSettings({ autoCheckUpdate: !store.settings.autoCheckUpdate })
 }
+function toggleAutoFetchFavicon() {
+  store.updateSettings({ autoFetchFavicon: !store.settings.autoFetchFavicon })
+}
 // 色板色块跟随当前主题（跟随系统时按系统偏好），保证预览与生效配色一致
 const isDark = computed(() => {
   const mode = store.settings.theme
@@ -166,6 +169,14 @@ async function copyDiagnostics() {
               <n-text class="slider-value">{{ store.settings.zoom }}%</n-text>
             </div>
             <n-text class="group-hint" depth="3">整体放大或缩小界面文字与控件，步进 10%。</n-text>
+          </div>
+          <div class="settings-group">
+            <n-text class="group-title" depth="1">站点图标</n-text>
+            <div class="switch-row">
+              <n-switch :value="store.settings.autoFetchFavicon" @update:value="toggleAutoFetchFavicon" />
+              <span id="auto-favicon-label" @click="toggleAutoFetchFavicon">自动抓取图标</span>
+            </div>
+            <n-text class="group-hint" depth="3">关闭后仍可点链接输入框旁的「获取图标」手动抓取。</n-text>
           </div>
         </n-space>
       </n-tab-pane>

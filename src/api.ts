@@ -8,6 +8,8 @@ export const checkSite = (url: string) => invoke<CheckResult>('check_site_cmd', 
 export const verifySiteWebview = (url: string) => invoke<CheckResult>('verify_site_webview_cmd', { url })
 export const checkConnectivity = () => invoke<boolean>('check_connectivity_cmd')
 export const fetchSiteTitle = (url: string) => invoke<string>('fetch_site_title_cmd', { url })
+export const fetchFavicon = (url: string) => invoke<{ faviconPath: string } | null>('fetch_favicon_cmd', { url })
+export const readFavicon = (path: string) => invoke<string | null>('read_favicon_cmd', { path })
 export const getDataDir = () => invoke<string>('get_data_dir')
 export const getDataFilePath = () => invoke<string>('get_data_file_path')
 export const getDataLocation = () => invoke<{ dir: string; isFallback: boolean }>('get_data_location')

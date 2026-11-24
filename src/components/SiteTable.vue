@@ -6,6 +6,7 @@ import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
 import type { Site } from '../types'
 import * as api from '../api'
 import ContextMenu from './ContextMenu.vue'
+import SiteFavicon from './SiteFavicon.vue'
 
 const store = useAppStore()
 const menu = ref<{ x: number; y: number } | null>(null)
@@ -119,7 +120,12 @@ function onRowDragOver(e: DragEvent) {
             :class="{ 'name-dead': s.status === 'dead' }"
             draggable="true"
             @dragstart="onSiteDragStart($event, s.id)"
-          >{{ s.name }}</td>
+          >
+            <div class="name-cell">
+              <SiteFavicon :path="s.faviconPath" />
+              <span class="name-text">{{ s.name }}</span>
+            </div>
+          </td>
           <td class="muted link-cell">
             <span class="link-text">{{ s.url }}</span>
             <span v-if="hoverId === s.id" class="open-btn" title="打开链接" @click.stop="api.openLink(s.url)"><ExternalLink :size="12" /></span>
@@ -147,4 +153,6 @@ function onRowDragOver(e: DragEvent) {
 
 <style scoped>
 .batchbar .batch-cancel { margin-left: auto; }
+.name-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

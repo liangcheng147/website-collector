@@ -1,4 +1,4 @@
-use crate::{bookmarks_html, check, config, data, md, settings};
+use crate::{bookmarks_html, check, config, data, favicon, md, settings};
 use tauri::Manager;
 
 fn exe_dir() -> std::path::PathBuf {
@@ -50,6 +50,18 @@ pub async fn check_connectivity_cmd() -> bool {
 #[tauri::command]
 pub async fn fetch_site_title_cmd(url: String) -> Result<String, String> {
     crate::check::fetch_site_title(&url).await
+}
+
+/// 抓取并缓存 favicon，返回本地路径。失败静默返回 Ok(None)，不阻塞前端。
+#[tauri::command]
+pub async fn fetch_favicon_cmd(app: tauri::AppHandle, url: String) -> Result<Option<favicon::FaviconResult>, String> {
+    Ok(favicon::fetch_favicon(&active_data_dir(&app), &url).await)
+}
+
+/// 把已缓存的 favicon 读成 base64 data URL，供 `<img>` 直接加载。
+#[tauri::command]
+pub fn read_favicon_cmd(path: String) -> Result<Option<String>, String> {
+    Ok(favicon::read_favicon_data_url(&path))
 }
 
 #[tauri::command]

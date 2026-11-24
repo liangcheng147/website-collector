@@ -72,6 +72,7 @@ pub fn import_from_md(text: &str) -> AppData {
                     name, url, category_id,
                     tags: vec![], status: "unknown".into(), last_check: None,
                     note: "".into(),
+                    favicon_path: None,
                 });
                 site_seq += 1;
                 last_site = Some(sites.len() - 1);
@@ -132,6 +133,7 @@ use crate::data::{self, AppData, Category, Site};
                 category_id: Some("c2".into()), tags: vec!["框架".into()],
                 status: "ok".into(), last_check: Some("2026-08-15".into()),
                 note: "React 官方文档与教程站".into(),
+                favicon_path: None,
             }],
             recycle_bin: vec![], tags: vec![],
         };
@@ -155,6 +157,7 @@ use crate::data::{self, AppData, Category, Site};
                 category_id: Some("c1".into()), tags: vec![],
                 status: "ok".into(), last_check: Some("2026-08-15".into()),
                 note: "React 官方文档与教程站".into(),
+                favicon_path: None,
             }],
             recycle_bin: vec![], tags: vec![],
         };
@@ -186,6 +189,7 @@ use crate::data::{self, AppData, Category, Site};
                 id: "s1".into(), name: "A".into(), url: "https://a.dev".into(),
                 category_id: Some("c1".into()), tags: vec![], status: "ok".into(),
                 last_check: Some("2026-08-15".into()), note: "多\t列\n换行\r备注".into(),
+                favicon_path: None,
             }],
             recycle_bin: vec![], tags: vec![],
         };
@@ -220,7 +224,7 @@ use crate::data::{self, AppData, Category, Site};
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         let mut data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "".into() });
+        data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "".into(), favicon_path: None });
         data::save_data(&d, &data).unwrap();
         let in_path = d.join("in.md");
         std::fs::write(&in_path, "# 新分类\n- [X](https://x.dev)\n").unwrap();

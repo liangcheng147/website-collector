@@ -1,13 +1,26 @@
 // @vitest-environment happy-dom
-import { mount } from '@vue/test-utils'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import SiteTable from '../components/SiteTable.vue'
 import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
 import type { Site } from '../types'
 
+const { openLinkMock, readFaviconMock } = vi.hoisted(() => ({
+  openLinkMock: vi.fn(),
+  readFaviconMock: vi.fn(),
+}))
+vi.mock('../api', () => ({
+  openLink: openLinkMock,
+  readFavicon: readFaviconMock,
+}))
+
 describe('SiteTable', () => {
-  beforeEach(() => { setActivePinia(createPinia()) })
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    openLinkMock.mockReset()
+    readFaviconMock.mockReset().mockResolvedValue(null)
+  })
   it('表头第6列显示"状态"而非"生命"', () => {
     const w = mount(SiteTable)
     const heads = w.findAll('th').map(h => h.text())
@@ -63,5 +76,27 @@ describe('SiteTable', () => {
     expect(deleteBtn).toBeDefined()
     expect(deleteBtn!.classes()).toContain('n-button')
     expect(deleteBtn!.classes()).toContain('n-button--error-type')
+  })
+  it('名称列在无 faviconPath 时渲染图标占位', () => {
+    const store = useAppStore()
+    store.view = { kind: 'all' }
+    store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'ok', note: '' } as unknown as Site]
+    store.data.categories = []
+    const w = mount(SiteTable)
+    expect(w.find('[data-testid="site-favicon-placeholder"]').exists()).toBe(true)
+    expect(w.find('[data-testid="site-favicon"]').exists()).toBe(false)
+  })
+  it('名称列在有 faviconPath 时显示缓存的图标', async () => {
+    const store = useAppStore()
+    store.view = { kind: 'all' }
+    readFaviconMock.mockResolvedValue('data:image/png;base64,AAAA')
+    store.data.sites = [{ id: '1', name: 'A', url: 'https://a', categoryId: null, tags: [], status: 'ok', note: '', faviconPath: 'C:/data/favicons/a.png' } as unknown as Site]
+    store.data.categories = []
+    const w = mount(SiteTable)
+    await flushPromises()
+    expect(readFaviconMock).toHaveBeenCalledWith('C:/data/favicons/a.png')
+    const img = w.find('[data-testid="site-favicon"]')
+    expect(img.exists()).toBe(true)
+    expect((img.element as HTMLImageElement).src).toContain('data:image/png;base64,AAAA')
   })
 })

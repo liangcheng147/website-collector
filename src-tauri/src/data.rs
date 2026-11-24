@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -15,6 +15,8 @@ pub struct Site {
     #[serde(default)] pub status: String,
     pub last_check: Option<String>,
     #[serde(default)] pub note: String,
+    /// 本地缓存的 favicon 绝对路径，旧数据缺失时为 None。
+    #[serde(default)] pub favicon_path: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -223,6 +225,7 @@ pub fn merge_into(current: &mut AppData, incoming: &AppData) {
                 category_id: target_cat, tags: s.tags.clone(),
                 status: "unknown".into(), last_check: None,
                 note: s.note.clone(),
+                favicon_path: s.favicon_path.clone(),
             });
         }
     }
@@ -259,6 +262,7 @@ mod tests {
             id: "s1".into(), name: "React".into(), url: "https://react.dev".into(),
             category_id: None, tags: vec!["框架".into()], status: "ok".into(), last_check: None,
             note: "".into(),
+            favicon_path: None,
         });
         save_data(&d, &data).unwrap();
         let loaded = load_data(&d);
@@ -304,10 +308,10 @@ assert_eq!(loaded.sites[0].name, "React");
     fn import_json_backs_up_and_replaces() {
         let d = tmp_dir("json_bak");
         let mut data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "".into() });
+        data.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "".into(), favicon_path: None });
         save_data(&d, &data).unwrap();
         let mut fresh = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        fresh.sites.push(Site { id: "s2".into(), name: "B".into(), url: "https://b.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "".into() });
+        fresh.sites.push(Site { id: "s2".into(), name: "B".into(), url: "https://b.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "".into(), favicon_path: None });
         let in_path = d.join("in.json");
         export_json_to_path(&fresh, &in_path).unwrap();
         let back = import_json_from_path(&d, &in_path).unwrap();
@@ -325,6 +329,7 @@ assert_eq!(loaded.sites[0].name, "React");
             id: "s1".into(), name: "React".into(), url: "https://react.dev".into(),
             category_id: None, tags: vec![], status: "ok".into(), last_check: None,
             note: "官方文档".into(),
+            favicon_path: None,
         });
         save_data(&d, &data).unwrap();
         let loaded = load_data(&d);
@@ -339,6 +344,22 @@ assert_eq!(loaded.sites[0].name, "React");
         std::fs::write(&p, r#"{"version":1,"categories":[],"sites":[{"id":"s1","name":"A","url":"https://a.dev","categoryId":null,"tags":[],"status":"ok","lastCheck":null}],"recycleBin":[],"tags":[]}"#).unwrap();
         let data = load_data(&d);
         assert_eq!(data.sites[0].note, "");
+        assert_eq!(data.sites[0].favicon_path, None, "旧数据缺少 faviconPath 时应为 None");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn site_favicon_path_roundtrip() {
+        let d = tmp_dir("favicon_rt");
+        let mut data = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
+        data.sites.push(Site {
+            id: "s1".into(), name: "React".into(), url: "https://react.dev".into(),
+            category_id: None, tags: vec![], status: "ok".into(), last_check: None,
+            note: "".into(), favicon_path: Some("C:/data/favicons/abc.png".into()),
+        });
+        save_data(&d, &data).unwrap();
+        let loaded = load_data(&d);
+        assert_eq!(loaded.sites[0].favicon_path.as_deref(), Some("C:/data/favicons/abc.png"));
         let _ = std::fs::remove_dir_all(&d);
     }
 
@@ -366,9 +387,9 @@ assert_eq!(loaded.sites[0].name, "React");
     #[test]
     fn merge_treats_case_and_trailing_slash_variants_as_same_url() {
         let mut current = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        current.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "已有备注".into() });
+        current.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "已有备注".into(), favicon_path: None });
         let mut incoming = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        incoming.sites.push(Site { id: "x".into(), name: "A2".into(), url: "HTTPS://A.dev/".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "incoming".into() });
+        incoming.sites.push(Site { id: "x".into(), name: "A2".into(), url: "HTTPS://A.dev/".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "incoming".into(), favicon_path: None });
         merge_into(&mut current, &incoming);
         assert_eq!(current.sites.len(), 1, "大小写/尾斜杠不同的等价 URL 应合并而非新增");
         assert_eq!(current.sites[0].name, "A2", "名称更新为导入值");
@@ -378,9 +399,9 @@ assert_eq!(loaded.sites[0].name, "React");
     #[test]
     fn merge_unions_incoming_tags_and_keeps_existing_note() {
         let mut current = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        current.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec!["框架".into()], status: "ok".into(), last_check: None, note: "已有备注".into() });
+        current.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec!["框架".into()], status: "ok".into(), last_check: None, note: "已有备注".into(), favicon_path: None });
         let mut incoming = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        incoming.sites.push(Site { id: "x".into(), name: "A2".into(), url: "https://a.dev/".into(), category_id: None, tags: vec!["工具".into(), "框架".into()], status: "unknown".into(), last_check: None, note: "incoming".into() });
+        incoming.sites.push(Site { id: "x".into(), name: "A2".into(), url: "https://a.dev/".into(), category_id: None, tags: vec!["工具".into(), "框架".into()], status: "unknown".into(), last_check: None, note: "incoming".into(), favicon_path: None });
         merge_into(&mut current, &incoming);
         assert_eq!(current.sites.len(), 1);
         assert_eq!(current.sites[0].tags, vec!["框架".to_string(), "工具".to_string()], "标签取并集");
@@ -390,10 +411,10 @@ assert_eq!(loaded.sites[0].name, "React");
     #[test]
     fn merge_keeps_existing_note_and_copies_new() {
         let mut current = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        current.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "已有备注".into() });
+        current.sites.push(Site { id: "s1".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "ok".into(), last_check: None, note: "已有备注".into(), favicon_path: None });
         let mut incoming = AppData { version: 1, categories: vec![], sites: vec![], recycle_bin: vec![], tags: vec![] };
-        incoming.sites.push(Site { id: "x".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "incoming 备注".into() });
-        incoming.sites.push(Site { id: "y".into(), name: "B".into(), url: "https://b.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "新站点备注".into() });
+        incoming.sites.push(Site { id: "x".into(), name: "A".into(), url: "https://a.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "incoming 备注".into(), favicon_path: None });
+        incoming.sites.push(Site { id: "y".into(), name: "B".into(), url: "https://b.dev".into(), category_id: None, tags: vec![], status: "unknown".into(), last_check: None, note: "新站点备注".into(), favicon_path: None });
         merge_into(&mut current, &incoming);
         assert_eq!(current.sites[0].note, "已有备注", "已存在站点保留原备注");
         assert_eq!(current.sites[1].note, "新站点备注", "新站点拷贝备注");

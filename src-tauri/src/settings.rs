@@ -11,6 +11,7 @@ pub struct Settings {
     #[serde(default)] pub sidebar_collapsed: Vec<String>,
     #[serde(default)] pub collapsed_categories: Vec<String>,
     #[serde(default = "default_true")] pub auto_check_update: bool,
+    #[serde(default = "default_true")] pub auto_fetch_favicon: bool,
 }
 
 fn default_palette() -> String { "teal".into() }
@@ -19,7 +20,7 @@ fn default_true() -> bool { true }
 
 impl Settings {
     pub fn defaults() -> Self {
-        Settings { theme: "system".into(), palette: "teal".into(), zoom: 100, sidebar_collapsed: vec![], collapsed_categories: vec![], auto_check_update: true }
+        Settings { theme: "system".into(), palette: "teal".into(), zoom: 100, sidebar_collapsed: vec![], collapsed_categories: vec![], auto_check_update: true, auto_fetch_favicon: true }
     }
 }
 
@@ -162,11 +163,30 @@ mod tests {
     }
 
     #[test]
+    fn missing_auto_fetch_favicon_defaults_true() {
+        let d = tmp_dir("auto_favicon_missing");
+        fs::write(settings_file_path(&d), r#"{"theme":"dark","zoom":110}"#).unwrap();
+        assert!(load_settings(&d).auto_fetch_favicon);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn auto_fetch_favicon_roundtrip() {
+        let d = tmp_dir("auto_favicon_roundtrip");
+        let mut s = Settings::defaults();
+        s.auto_fetch_favicon = false;
+        save_settings(&d, &s).unwrap();
+        assert!(!load_settings(&d).auto_fetch_favicon);
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
     fn serialized_keys_are_camel_case() {
         let d = tmp_dir("camel_case_keys");
         save_settings(&d, &Settings::defaults()).unwrap();
         let raw = fs::read_to_string(settings_file_path(&d)).unwrap();
         assert!(raw.contains("\"autoCheckUpdate\""), "settings.json should use camelCase keys, got: {}", raw);
+        assert!(raw.contains("\"autoFetchFavicon\""), "settings.json should persist autoFetchFavicon, got: {}", raw);
         let _ = fs::remove_dir_all(&d);
     }
 }

@@ -146,6 +146,7 @@ pub fn to_app_data(parsed: &ParsedBookmarks, existing: &crate::data::AppData) ->
             status: "unknown".into(),
             last_check: None,
             note: "".into(),
+            favicon_path: None,
         }
     }).collect();
 
@@ -321,11 +322,13 @@ mod tests {
                     id: "s1".into(), name: "React".into(), url: "https://react.dev".into(),
                     category_id: Some("c2".into()), tags: vec![], status: "ok".into(),
                     last_check: Some("2026-08-15".into()), note: "".into(),
+                    favicon_path: None,
                 },
                 crate::data::Site {
                     id: "s2".into(), name: "百度".into(), url: "https://baidu.com".into(),
                     category_id: None, tags: vec![], status: "ok".into(),
                     last_check: None, note: "".into(),
+                    favicon_path: None,
                 },
             ],
             recycle_bin: vec![], tags: vec![],
@@ -351,6 +354,7 @@ mod tests {
                     id: "s1".into(), name: "Deleted".into(), url: "https://deleted.com".into(),
                     category_id: None, tags: vec![], status: "ok".into(),
                     last_check: None, note: "".into(),
+                    favicon_path: None,
                 },
                 deleted_at: "2026-01-01".into(),
             }],

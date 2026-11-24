@@ -137,6 +137,13 @@ describe('app store', () => {
     expect(s.data.sites[s.data.sites.length - 1]!.note).toBe('构建工具')
   })
 
+  it('addSite carries faviconPath', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.addSite({ name: 'Vite', url: 'https://vite.dev', categoryId: 'c2', tags: [], note: '', faviconPath: 'C:/data/favicons/vite.png' })
+    expect(s.data.sites[s.data.sites.length - 1]!.faviconPath).toBe('C:/data/favicons/vite.png')
+  })
+
   it('updateSite sets note', () => {
     const s = useAppStore()
     s.data = baseData
@@ -157,14 +164,14 @@ describe('app store', () => {
     const s = useAppStore()
     await s.updateSettings({ zoom: 150 })
     expect(s.settings.zoom).toBe(150)
-    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', palette: 'teal', zoom: 150, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true })
+    expect(api.setSettings).toHaveBeenCalledWith({ theme: 'system', palette: 'teal', zoom: 150, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: true })
   })
 
   it('init loads settings', async () => {
-    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true })
+    vi.mocked(api.getSettings).mockResolvedValue({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: false })
     const s = useAppStore()
     await s.init()
-    expect(s.settings).toEqual({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true })
+    expect(s.settings).toEqual({ theme: 'dark', palette: 'teal', zoom: 130, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: false })
   })
 
   it('init keeps defaults when getSettings omits collapsedCategories', async () => {

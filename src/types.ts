@@ -4,6 +4,8 @@ export interface Site {
   categoryId: string | null; tags: string[]
   status: 'ok' | 'dead' | 'unknown'; lastCheck: string | null
   note: string
+  /** 本地缓存的 favicon 绝对路径；未抓取时为 null/undefined */
+  faviconPath?: string | null
 }
 export interface Settings {
   theme: 'system' | 'light' | 'dark'
@@ -12,6 +14,8 @@ export interface Settings {
   sidebarCollapsed: string[]
   collapsedCategories: string[]
   autoCheckUpdate: boolean
+  /** 添加/编辑站点时自动抓取 favicon（默认开） */
+  autoFetchFavicon: boolean
 }
 export interface TrashedSite { site: Site; deletedAt: string }
 export interface AppData {

@@ -4,6 +4,7 @@ mod check;
 mod commands;
 mod config;
 mod data;
+mod favicon;
 mod md;
 mod settings;
 mod verify;
@@ -31,6 +32,8 @@ pub fn run() {
             commands::check_site_cmd,
             commands::check_connectivity_cmd,
             commands::fetch_site_title_cmd,
+            commands::fetch_favicon_cmd,
+            commands::read_favicon_cmd,
             commands::verify_site_webview_cmd,
             commands::export_md_to_file,
             commands::export_json_to_file,

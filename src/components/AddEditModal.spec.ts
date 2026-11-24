@@ -1,10 +1,21 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import { useAppStore } from '../store/app'
 import AddEditModal from './AddEditModal.vue'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
+
+const { fetchSiteTitleMock, fetchFaviconMock, saveDataMock } = vi.hoisted(() => ({
+  fetchSiteTitleMock: vi.fn(),
+  fetchFaviconMock: vi.fn(),
+  saveDataMock: vi.fn(),
+}))
+vi.mock('../api', () => ({
+  fetchSiteTitle: fetchSiteTitleMock,
+  fetchFavicon: fetchFaviconMock,
+  saveData: saveDataMock,
+}))
 
 // n-modal teleports into document.body, so modal content renders in document.body
 // Query body directly instead of wrapper
@@ -12,6 +23,9 @@ describe('AddEditModal', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     document.body.innerHTML = ''
+    fetchSiteTitleMock.mockReset().mockResolvedValue('Fetched Title')
+    fetchFaviconMock.mockReset().mockResolvedValue({ faviconPath: 'C:/data/favicons/abc.png' })
+    saveDataMock.mockReset().mockResolvedValue(undefined)
   })
 
   // Helper: get text inputs (those without explicit type="text" attr, just plain <input>)
@@ -177,5 +191,94 @@ describe('AddEditModal', () => {
     expect(cancel?.classList.contains('n-button')).toBe(true)
     const fetchBtn = document.body.querySelector('[data-testid="btn-fetch-title"]') as HTMLElement
     expect(fetchBtn.classList.contains('n-button')).toBe(true)
+  })
+
+  it('shows a fetch favicon button next to fetch title', async () => {
+    const store = useAppStore()
+    store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    mount(AddEditModal)
+    await nextTick()
+    const btn = document.body.querySelector('[data-testid="btn-fetch-favicon"]') as HTMLElement
+    expect(btn).not.toBeNull()
+    expect(btn.classList.contains('n-button')).toBe(true)
+    expect(btn.textContent).toContain('获取图标')
+  })
+
+  it('fetching favicon updates the saved site faviconPath', async () => {
+    const store = useAppStore()
+    store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    mount(AddEditModal)
+    await nextTick()
+    const inputs = textInputs()
+    ;(inputs[0] as HTMLInputElement).value = 'Test Site'
+    inputs[0].dispatchEvent(new Event('input'))
+    ;(inputs[1] as HTMLInputElement).value = 'https://test.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    await nextTick()
+    ;(document.body.querySelector('[data-testid="btn-fetch-favicon"]') as HTMLElement).click()
+    await flushPromises()
+    expect(fetchFaviconMock).toHaveBeenCalledWith('https://test.dev')
+    saveBtn().click()
+    await nextTick()
+    expect(store.data.sites).toHaveLength(1)
+    expect(store.data.sites[0].faviconPath).toBe('C:/data/favicons/abc.png')
+  })
+
+  it('keeps faviconPath when editing an existing site', async () => {
+    const store = useAppStore()
+    store.data = {
+      version: 1,
+      categories: [],
+      sites: [{ id: '1', name: 'A', url: 'https://a.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '', faviconPath: 'C:/data/favicons/old.png' }],
+      recycleBin: [],
+      tags: [],
+    }
+    mount(AddEditModal, { props: { editing: store.data.sites[0] } })
+    await nextTick()
+    fetchFaviconMock.mockResolvedValue({ faviconPath: 'C:/data/favicons/new.png' })
+    ;(document.body.querySelector('[data-testid="btn-fetch-favicon"]') as HTMLElement).click()
+    await flushPromises()
+    saveBtn().click()
+    await nextTick()
+    expect(store.data.sites[0].faviconPath).toBe('C:/data/favicons/new.png')
+  })
+
+  it('favicon failure is silent and does not block saving', async () => {
+    const store = useAppStore()
+    store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    fetchFaviconMock.mockRejectedValue(new Error('offline'))
+    mount(AddEditModal)
+    await nextTick()
+    const inputs = textInputs()
+    ;(inputs[0] as HTMLInputElement).value = 'Test Site'
+    inputs[0].dispatchEvent(new Event('input'))
+    ;(inputs[1] as HTMLInputElement).value = 'https://test.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    await nextTick()
+    ;(document.body.querySelector('[data-testid="btn-fetch-favicon"]') as HTMLElement).click()
+    await flushPromises()
+    saveBtn().click()
+    await nextTick()
+    expect(store.data.sites).toHaveLength(1)
+    expect(store.data.sites[0].faviconPath ?? null).toBeNull()
+  })
+
+  it('auto-fetches favicon on url blur only when the setting is enabled', async () => {
+    const store = useAppStore()
+    store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    store.settings.autoFetchFavicon = false
+    mount(AddEditModal)
+    await nextTick()
+    const inputs = textInputs()
+    ;(inputs[1] as HTMLInputElement).value = 'https://test.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    inputs[1].dispatchEvent(new Event('blur'))
+    await flushPromises()
+    expect(fetchFaviconMock).not.toHaveBeenCalled()
+
+    store.settings.autoFetchFavicon = true
+    inputs[1].dispatchEvent(new Event('blur'))
+    await flushPromises()
+    expect(fetchFaviconMock).toHaveBeenCalledWith('https://test.dev')
   })
 })

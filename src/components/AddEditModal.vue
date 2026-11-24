@@ -20,6 +20,8 @@ const showAddCat = ref(false)
 const pendingCat = ref<string | null>(null)
 const titleError = ref('')
 const fetchingTitle = ref(false)
+const fetchingFavicon = ref(false)
+const faviconPath = ref<string | null>(props.editing?.faviconPath ?? null)
 const NEW_CAT = '__new_cat__'
 let lastCat: string | null = categoryId.value
 const categoryOptions = computed(() => [
@@ -61,6 +63,25 @@ async function fetchTitle() {
   }
 }
 
+/** 抓取 favicon 并缓存到本地；失败静默忽略，不打断编辑。 */
+async function fetchFavicon() {
+  if (!url.value.trim()) return
+  fetchingFavicon.value = true
+  try {
+    const result = await api.fetchFavicon(url.value.trim())
+    if (result?.faviconPath) faviconPath.value = result.faviconPath
+  } catch {
+    // 离线/站点无图标时保持现状
+  } finally {
+    fetchingFavicon.value = false
+  }
+}
+
+function onUrlBlur() {
+  fetchTitle()
+  if (store.settings.autoFetchFavicon) void fetchFavicon()
+}
+
 function save() {
   validationMsg.value = ''
   const err = store.validateSite(name.value, url.value, note.value)
@@ -70,11 +91,11 @@ function save() {
       validationMsg.value = '该链接已存在'
       return
     }
-    store.updateSite(props.editing.id, { name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value })
+    store.updateSite(props.editing.id, { name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value, faviconPath: faviconPath.value })
   } else {
     dup.value = store.isDuplicateUrl(url.value)
     if (dup.value) return
-    store.addSite({ name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value })
+    store.addSite({ name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value, faviconPath: faviconPath.value })
   }
   emit('close')
 }
@@ -102,9 +123,12 @@ function save() {
           </n-form-item>
           <n-form-item label="链接" required>
             <div class="url-row">
-              <n-input v-model:value="url" data-testid="input-url" placeholder="https://..." @blur="fetchTitle" />
+              <n-input v-model:value="url" data-testid="input-url" placeholder="https://..." @blur="onUrlBlur" />
               <n-button size="small" data-testid="btn-fetch-title" :disabled="fetchingTitle" @click="fetchTitle">
                 {{ fetchingTitle ? '...' : '获取名称' }}
+              </n-button>
+              <n-button size="small" data-testid="btn-fetch-favicon" :disabled="fetchingFavicon" @click="fetchFavicon">
+                {{ fetchingFavicon ? '...' : '获取图标' }}
               </n-button>
             </div>
           </n-form-item>

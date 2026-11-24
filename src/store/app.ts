@@ -112,7 +112,7 @@ export const useAppStore = defineStore('app', {
     connectivityError: false,
     flashMsg: '',
     location: { dir: '', isFallback: false },
-    settings: { theme: 'system', palette: 'teal', zoom: 100, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true } as Settings,
+    settings: { theme: 'system', palette: 'teal', zoom: 100, sidebarCollapsed: [], collapsedCategories: [], autoCheckUpdate: true, autoFetchFavicon: true } as Settings,
     sortKey: null as 'name' | 'url' | 'status' | 'category' | 'note' | 'lastCheck' | null,
     sortDir: 'asc' as 'asc' | 'desc',
   }),
@@ -280,12 +280,13 @@ export const useAppStore = defineStore('app', {
       return this.data.sites.some(s => s.id !== excludeId && normalizeUrl(s.url) === norm)
     },
 
-    addSite(input: { name: string; url: string; categoryId: string | null; tags: string[]; note: string }) {
+    addSite(input: { name: string; url: string; categoryId: string | null; tags: string[]; note: string; faviconPath?: string | null }) {
       if (this.isDuplicateUrl(input.url)) return
       this.data.sites.push({
         id: this.id_gen(), name: input.name, url: input.url,
         categoryId: input.categoryId, tags: [...input.tags],
         status: 'unknown', lastCheck: null, note: input.note,
+        faviconPath: input.faviconPath ?? null,
       })
       this.refreshTags()
     },

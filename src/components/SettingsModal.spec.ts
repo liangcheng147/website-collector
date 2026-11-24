@@ -248,4 +248,16 @@ describe('SettingsModal', () => {
     await nextTick()
     expect(store.settings.palette).toBe(PALETTES[1].id)
   })
+
+  it('renders an auto-fetch favicon switch defaulting to on in the display section', async () => {
+    const store = await mountModal()
+    await openTab('settings-tab-display')
+    expect(store.settings.autoFetchFavicon).toBe(true)
+    const label = document.body.querySelector('#auto-favicon-label') as HTMLElement
+    expect(label).not.toBeNull()
+    expect(label.textContent).toContain('自动抓取图标')
+    label.click()
+    await nextTick()
+    expect(store.settings.autoFetchFavicon).toBe(false)
+  })
 })
