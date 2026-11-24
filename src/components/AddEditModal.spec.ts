@@ -258,7 +258,7 @@ describe('AddEditModal', () => {
     ;(document.body.querySelector('[data-testid="btn-fetch-favicon"]') as HTMLElement).click()
     await flushPromises()
     saveBtn().click()
-    await nextTick()
+    await flushPromises()
     expect(store.data.sites).toHaveLength(1)
     expect(store.data.sites[0].faviconPath ?? null).toBeNull()
   })
@@ -280,5 +280,136 @@ describe('AddEditModal', () => {
     inputs[1].dispatchEvent(new Event('blur'))
     await flushPromises()
     expect(fetchFaviconMock).toHaveBeenCalledWith('https://test.dev')
+  })
+
+  it('save awaits a favicon fetch started by blur before persisting', async () => {
+    const store = useAppStore()
+    store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    store.settings.autoFetchFavicon = true
+    let resolveFetch!: (value: { faviconPath: string } | null) => void
+    fetchFaviconMock.mockReturnValue(new Promise((resolve) => { resolveFetch = resolve }))
+    mount(AddEditModal)
+    await nextTick()
+    const inputs = textInputs()
+    ;(inputs[0] as HTMLInputElement).value = 'Test Site'
+    inputs[0].dispatchEvent(new Event('input'))
+    ;(inputs[1] as HTMLInputElement).value = 'https://test.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    inputs[1].dispatchEvent(new Event('blur'))
+    await nextTick()
+    expect(fetchFaviconMock).toHaveBeenCalledWith('https://test.dev')
+
+    saveBtn().click()
+    await nextTick()
+    expect(store.data.sites).toHaveLength(0)
+
+    resolveFetch({ faviconPath: 'C:/data/favicons/late.png' })
+    await flushPromises()
+    expect(store.data.sites).toHaveLength(1)
+    expect(store.data.sites[0].faviconPath).toBe('C:/data/favicons/late.png')
+  })
+
+  it('fetches the favicon before saving when none exists and auto-fetch is on', async () => {
+    const store = useAppStore()
+    store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    store.settings.autoFetchFavicon = true
+    mount(AddEditModal)
+    await nextTick()
+    const inputs = textInputs()
+    ;(inputs[0] as HTMLInputElement).value = 'Test Site'
+    inputs[0].dispatchEvent(new Event('input'))
+    ;(inputs[1] as HTMLInputElement).value = 'https://test.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    await nextTick()
+    expect(fetchFaviconMock).not.toHaveBeenCalled()
+
+    saveBtn().click()
+    await flushPromises()
+    expect(fetchFaviconMock).toHaveBeenCalledWith('https://test.dev')
+    expect(store.data.sites).toHaveLength(1)
+    expect(store.data.sites[0].faviconPath).toBe('C:/data/favicons/abc.png')
+  })
+
+  it('drops the old faviconPath when the URL changes and fetching fails', async () => {
+    const store = useAppStore()
+    store.data = {
+      version: 1,
+      categories: [],
+      sites: [{ id: '1', name: 'A', url: 'https://old.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '', faviconPath: 'C:/data/favicons/old.png' }],
+      recycleBin: [],
+      tags: [],
+    }
+    store.settings.autoFetchFavicon = true
+    fetchFaviconMock.mockResolvedValue(null)
+    mount(AddEditModal, { props: { editing: store.data.sites[0] } })
+    await nextTick()
+    const inputs = textInputs()
+    ;(inputs[1] as HTMLInputElement).value = 'https://new.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    inputs[1].dispatchEvent(new Event('blur'))
+    await flushPromises()
+    saveBtn().click()
+    await flushPromises()
+    expect(store.data.sites[0].faviconPath ?? null).toBeNull()
+  })
+
+  it('clears a favicon bound to a different URL when saving without blur', async () => {
+    const store = useAppStore()
+    store.data = {
+      version: 1,
+      categories: [],
+      sites: [{ id: '1', name: 'A', url: 'https://old.dev', categoryId: null, tags: [], status: 'ok', lastCheck: null, note: '', faviconPath: 'C:/data/favicons/old.png' }],
+      recycleBin: [],
+      tags: [],
+    }
+    store.settings.autoFetchFavicon = false
+    mount(AddEditModal, { props: { editing: store.data.sites[0] } })
+    await nextTick()
+    const inputs = textInputs()
+    ;(inputs[1] as HTMLInputElement).value = 'https://new.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    await nextTick()
+    saveBtn().click()
+    await flushPromises()
+    expect(fetchFaviconMock).not.toHaveBeenCalled()
+    expect(store.data.sites[0].faviconPath ?? null).toBeNull()
+  })
+
+  it('ignores a late fetch result for a URL the user has already left', async () => {
+    const store = useAppStore()
+    store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    store.settings.autoFetchFavicon = true
+    let resolveA!: (value: { faviconPath: string }) => void
+    let resolveB!: (value: { faviconPath: string }) => void
+    fetchFaviconMock
+      .mockReturnValueOnce(new Promise((resolve) => { resolveA = resolve }))
+      .mockReturnValueOnce(new Promise((resolve) => { resolveB = resolve }))
+      .mockRejectedValue(new Error('offline'))
+    mount(AddEditModal)
+    await nextTick()
+    const inputs = textInputs()
+    ;(inputs[0] as HTMLInputElement).value = 'Test Site'
+    inputs[0].dispatchEvent(new Event('input'))
+    ;(inputs[1] as HTMLInputElement).value = 'https://a.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    ;(document.body.querySelector('[data-testid="btn-fetch-favicon"]') as HTMLElement).click()
+    await nextTick()
+
+    // 使用者离开 a.dev，失焦触发针对 b.dev 的抓取
+    ;(inputs[1] as HTMLInputElement).value = 'https://b.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    inputs[1].dispatchEvent(new Event('blur'))
+    await nextTick()
+
+    // b.dev 先回来并应用，a.dev 迟到的结果不应覆盖
+    resolveB({ faviconPath: 'C:/data/favicons/b.png' })
+    await flushPromises()
+    resolveA({ faviconPath: 'C:/data/favicons/a.png' })
+    await flushPromises()
+
+    saveBtn().click()
+    await flushPromises()
+    expect(store.data.sites).toHaveLength(1)
+    expect(store.data.sites[0].faviconPath).toBe('C:/data/favicons/b.png')
   })
 })

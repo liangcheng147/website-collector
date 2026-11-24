@@ -16,11 +16,40 @@ pub struct FaviconResult {
 }
 
 const MAX_FAVICON_BYTES: usize = 2 * 1024 * 1024;
+const MAX_PAGE_BYTES: usize = 1024 * 1024;
 const FETCH_TIMEOUT: Duration = Duration::from_secs(8);
 const BROWSER_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
 pub fn favicon_dir(data_dir: &Path) -> PathBuf {
     data_dir.join("favicons")
+}
+
+/// Windows 文件系统路径大小写不敏感；其他平台保持精确语义。
+#[cfg(windows)]
+fn os_eq(a: &std::ffi::OsStr, b: &std::ffi::OsStr) -> bool {
+    a.to_string_lossy().eq_ignore_ascii_case(&b.to_string_lossy())
+}
+
+#[cfg(not(windows))]
+fn os_eq(a: &std::ffi::OsStr, b: &std::ffi::OsStr) -> bool {
+    a == b
+}
+
+/// 逐组件判断 `candidate` 是否位于 `base` 之内（含相等）。
+/// 不用字符串前缀，避免 `/data/favicons-evil` 被误判为在 `/data/favicons` 内。
+fn path_is_within(base: &Path, candidate: &Path) -> bool {
+    let mut base_components = base.components();
+    for component in candidate.components() {
+        match base_components.next() {
+            Some(expected) => {
+                if !os_eq(expected.as_os_str(), component.as_os_str()) {
+                    return false;
+                }
+            }
+            None => return true,
+        }
+    }
+    base_components.next().is_none()
 }
 
 fn client() -> reqwest::Client {
@@ -125,7 +154,7 @@ pub(crate) fn extract_favicon_href(html: &str) -> Option<String> {
             continue;
         };
         if best.as_ref().map(|(s, _)| score < *s).unwrap_or(true) {
-            best = Some((score, href.to_string()));
+            best = Some((score, crate::check::html_decode_simple(href)));
             if score == 0 {
                 break;
             }
@@ -191,24 +220,36 @@ fn base64_encode(input: &[u8]) -> String {
 }
 
 async fn fetch_page(c: &reqwest::Client, url: &str) -> Option<String> {
-    let resp = c.get(url).send().await.ok()?;
+    let mut resp = c.get(url).send().await.ok()?;
     if !resp.status().is_success() {
         return None;
     }
-    let bytes = resp.bytes().await.ok()?;
-    Some(String::from_utf8_lossy(&bytes).to_string())
+    let mut buf: Vec<u8> = Vec::new();
+    while let Some(chunk) = resp.chunk().await.ok()? {
+        if buf.len() + chunk.len() > MAX_PAGE_BYTES {
+            return None;
+        }
+        buf.extend_from_slice(&chunk);
+    }
+    Some(String::from_utf8_lossy(&buf).to_string())
 }
 
 async fn download(c: &reqwest::Client, url: &str) -> Option<Vec<u8>> {
-    let resp = c.get(url).send().await.ok()?;
+    let mut resp = c.get(url).send().await.ok()?;
     if !resp.status().is_success() {
         return None;
     }
-    let bytes = resp.bytes().await.ok()?;
-    if bytes.is_empty() || bytes.len() > MAX_FAVICON_BYTES {
+    let mut buf: Vec<u8> = Vec::new();
+    while let Some(chunk) = resp.chunk().await.ok()? {
+        if buf.len() + chunk.len() > MAX_FAVICON_BYTES {
+            return None;
+        }
+        buf.extend_from_slice(&chunk);
+    }
+    if buf.is_empty() {
         return None;
     }
-    Some(bytes.to_vec())
+    Some(buf)
 }
 
 /// 抓取并缓存 favicon，返回本地绝对路径。任何失败返回 `None`，不抛错。
@@ -262,6 +303,17 @@ pub fn read_favicon_data_url(path: &str) -> Option<String> {
     Some(format!("data:{};base64,{}", mime, base64_encode(&bytes)))
 }
 
+/// 带目录约束的缓存读取入口：目标文件必须真实位于 `<data_dir>/favicons/` 内，
+/// 拒绝 `../` 穿越、符号链接指向外部以及任意绝对路径。校验失败返回 `None`。
+pub fn read_cached_favicon(data_dir: &Path, path: &str) -> Option<String> {
+    let dir = std::fs::canonicalize(favicon_dir(data_dir)).ok()?;
+    let target = std::fs::canonicalize(path).ok()?;
+    if !path_is_within(&dir, &target) {
+        return None;
+    }
+    read_favicon_data_url(&target.to_string_lossy())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -269,6 +321,7 @@ mod tests {
     use std::io::{Read, Write};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::time::Duration;
 
     fn tmp_dir(label: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("favicon_test_{}_{}", std::process::id(), label));
@@ -299,6 +352,12 @@ mod tests {
     fn extract_handles_uppercase_single_quotes() {
         let html = r#"<LINK REL='apple-touch-icon' HREF='/apple.png'>"#;
         assert_eq!(extract_favicon_href(html).as_deref(), Some("/apple.png"));
+    }
+
+    #[test]
+    fn extract_decodes_html_entities_in_href() {
+        let html = r#"<link rel="icon" href="/a.png?x=1&amp;y=2">"#;
+        assert_eq!(extract_favicon_href(html).as_deref(), Some("/a.png?x=1&y=2"));
     }
 
     #[test]
@@ -444,5 +503,111 @@ mod tests {
         let txt = d.join("a.txt");
         fs::write(&txt, b"plain text").unwrap();
         assert!(read_favicon_data_url(txt.to_str().unwrap()).is_none());
+    }
+
+    #[test]
+    fn cached_reader_confines_to_favicon_dir() {
+        let d = tmp_dir("confine");
+        let fav = favicon_dir(&d);
+        fs::create_dir_all(&fav).unwrap();
+        let png = fav.join("a.png");
+        fs::write(&png, b"\x89PNG\r\n\x1a\nxx").unwrap();
+
+        let url = read_cached_favicon(&d, png.to_str().unwrap()).expect("目录内文件应可读");
+        assert!(url.starts_with("data:image/png;base64,"));
+
+        // 缓存目录不存在：拒绝
+        let empty = tmp_dir("confine_empty");
+        assert!(read_cached_favicon(&empty, png.to_str().unwrap()).is_none());
+
+        // ../ 穿越到数据目录外：拒绝
+        let outside = d.join("outside.png");
+        fs::write(&outside, b"\x89PNG\r\n\x1a\nxx").unwrap();
+        let traversal = fav.join("../outside.png");
+        assert!(read_cached_favicon(&d, traversal.to_str().unwrap()).is_none());
+
+        // 目录外的绝对路径：拒绝
+        assert!(read_cached_favicon(&d, outside.to_str().unwrap()).is_none());
+
+        // 不存在的路径：None
+        assert!(read_cached_favicon(&d, fav.join("nope.png").to_str().unwrap()).is_none());
+    }
+
+    #[test]
+    fn rejects_oversized_icon_download_without_reading_it_all() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let (written_tx, written_rx) = std::sync::mpsc::channel::<usize>();
+        std::thread::spawn(move || {
+            let mut body = b"\x89PNG\r\n\x1a\n".to_vec();
+            body.resize(8 * 1024 * 1024, 0x41);
+            for _ in 0..2 {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut buf = [0u8; 4096];
+                    let n = stream.read(&mut buf).unwrap_or(0);
+                    let text = String::from_utf8_lossy(&buf[..n]).to_string();
+                    if text.contains("GET /page") {
+                        let resp = http_response("200 OK", "text/html", br#"<html><head><link rel="icon" href="/big.png"></head></html>"#);
+                        let _ = stream.write_all(&resp);
+                    } else {
+                        let head = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            body.len()
+                        );
+                        if stream.write_all(head.as_bytes()).is_err() {
+                            break;
+                        }
+                        let mut written = 0usize;
+                        for chunk in body.chunks(16 * 1024) {
+                            if stream.write_all(chunk).is_err() {
+                                break;
+                            }
+                            written += chunk.len();
+                        }
+                        let _ = written_tx.send(written);
+                    }
+                }
+            }
+        });
+
+        let d = tmp_dir("oversize_icon");
+        let url = format!("http://{}/page", addr);
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        assert!(rt.block_on(fetch_favicon(&d, &url)).is_none());
+        let written = written_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("服务器应报告成功写入的字节数");
+        assert!(written < 8 * 1024 * 1024, "客户端应在读满响应前中止，实际写入 {written} 字节");
+        assert!(!favicon_dir(&d).exists(), "超限响应不应落盘");
+    }
+
+    #[test]
+    fn rejects_oversized_page_html() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let png = b"\x89PNG\r\n\x1a\nfakeimagedata".to_vec();
+        std::thread::spawn(move || {
+            let body = format!("<html><body>{}</body></html>", "x".repeat(MAX_PAGE_BYTES));
+            for _ in 0..2 {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    let mut buf = [0u8; 4096];
+                    let n = stream.read(&mut buf).unwrap_or(0);
+                    let text = String::from_utf8_lossy(&buf[..n]).to_string();
+                    // 回退路径返回合法图标：旧实现（无页面大小上限）会走这条并成功
+                    let resp = if text.contains("GET /page") {
+                        http_response("200 OK", "text/html", body.as_bytes())
+                    } else {
+                        http_response("200 OK", "image/png", &png)
+                    };
+                    let _ = stream.write_all(&resp);
+                }
+            }
+        });
+
+        let d = tmp_dir("oversize_page");
+        let url = format!("http://{}/page", addr);
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        assert!(rt.block_on(fetch_favicon(&d, &url)).is_none());
+        assert!(!favicon_dir(&d).exists());
     }
 }

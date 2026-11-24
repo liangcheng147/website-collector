@@ -118,7 +118,7 @@ pub async fn fetch_site_title(url: &str) -> Result<String, String> {
     Ok(cleaned)
 }
 
-fn html_decode_simple(input: &str) -> String {
+pub(crate) fn html_decode_simple(input: &str) -> String {
     input.replace("&amp;", "&")
         .replace("&lt;", "<")
         .replace("&gt;", ">")

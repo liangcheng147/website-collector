@@ -22,6 +22,10 @@ const titleError = ref('')
 const fetchingTitle = ref(false)
 const fetchingFavicon = ref(false)
 const faviconPath = ref<string | null>(props.editing?.faviconPath ?? null)
+// faviconPath 归属的页面 URL，用于在 URL 变化时丢弃错配的旧图标
+const faviconUrl = ref<string | null>(props.editing?.url ?? null)
+let faviconRequestSeq = 0
+let pendingFavicon: { url: string; promise: Promise<void> } | null = null
 const NEW_CAT = '__new_cat__'
 let lastCat: string | null = categoryId.value
 const categoryOptions = computed(() => [
@@ -63,26 +67,65 @@ async function fetchTitle() {
   }
 }
 
-/** 抓取 favicon 并缓存到本地；失败静默忽略，不打断编辑。 */
-async function fetchFavicon() {
-  if (!url.value.trim()) return
+/**
+ * 抓取 favicon 并缓存到本地；失败静默忽略，不打断编辑。
+ * 只在使用者仍停留在发起抓取时的 URL 才应用结果，避免旧请求覆盖新 URL。
+ */
+function fetchFavicon(target?: string): Promise<void> {
+  const targetUrl = (target ?? url.value).trim()
+  if (!targetUrl) return Promise.resolve()
+  if (pendingFavicon && pendingFavicon.url === targetUrl) return pendingFavicon.promise
+  const seq = ++faviconRequestSeq
   fetchingFavicon.value = true
-  try {
-    const result = await api.fetchFavicon(url.value.trim())
-    if (result?.faviconPath) faviconPath.value = result.faviconPath
-  } catch {
-    // 离线/站点无图标时保持现状
-  } finally {
-    fetchingFavicon.value = false
+  const promise = (async () => {
+    try {
+      const result = await api.fetchFavicon(targetUrl)
+      if (url.value.trim() === targetUrl && result?.faviconPath) {
+        faviconPath.value = result.faviconPath
+        faviconUrl.value = targetUrl
+      }
+    } catch {
+      // 离线/站点无图标时保持现状，保存前会按当前 URL 对齐
+    } finally {
+      if (seq === faviconRequestSeq) {
+        pendingFavicon = null
+        fetchingFavicon.value = false
+      }
+    }
+  })()
+  pendingFavicon = { url: targetUrl, promise }
+  return promise
+}
+
+/** URL 变化后丢弃上一 URL 的图标，避免旧图标错配到新链接。 */
+function discardStaleFavicon() {
+  if (url.value.trim() !== faviconUrl.value) {
+    faviconPath.value = null
+    faviconUrl.value = null
   }
 }
 
 function onUrlBlur() {
+  discardStaleFavicon()
   fetchTitle()
   if (store.settings.autoFetchFavicon) void fetchFavicon()
 }
 
-function save() {
+/** 保存前把 faviconPath 对齐到当前 URL：等待进行中的抓取；开启自动抓取且仍无图标时补抓一次。 */
+async function alignFaviconBeforeSave() {
+  const target = url.value.trim()
+  discardStaleFavicon()
+  if (!target) return
+  if (pendingFavicon && pendingFavicon.url === target) {
+    await pendingFavicon.promise
+    return
+  }
+  if (!faviconPath.value && store.settings.autoFetchFavicon) {
+    await fetchFavicon(target)
+  }
+}
+
+async function save() {
   validationMsg.value = ''
   const err = store.validateSite(name.value, url.value, note.value)
   if (err) { validationMsg.value = err; return }
@@ -91,10 +134,14 @@ function save() {
       validationMsg.value = '该链接已存在'
       return
     }
-    store.updateSite(props.editing.id, { name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value, faviconPath: faviconPath.value })
   } else {
     dup.value = store.isDuplicateUrl(url.value)
     if (dup.value) return
+  }
+  await alignFaviconBeforeSave()
+  if (props.editing) {
+    store.updateSite(props.editing.id, { name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value, faviconPath: faviconPath.value })
+  } else {
     store.addSite({ name: name.value, url: url.value, categoryId: categoryId.value, tags: tags.value, note: note.value, faviconPath: faviconPath.value })
   }
   emit('close')
@@ -127,7 +174,7 @@ function save() {
               <n-button size="small" data-testid="btn-fetch-title" :disabled="fetchingTitle" @click="fetchTitle">
                 {{ fetchingTitle ? '...' : '获取名称' }}
               </n-button>
-              <n-button size="small" data-testid="btn-fetch-favicon" :disabled="fetchingFavicon" @click="fetchFavicon">
+              <n-button size="small" data-testid="btn-fetch-favicon" :disabled="fetchingFavicon" @click="() => fetchFavicon()">
                 {{ fetchingFavicon ? '...' : '获取图标' }}
               </n-button>
             </div>

@@ -9,7 +9,11 @@ const cache = new Map<string, Promise<string | null>>()
 export function faviconDataUrl(path: string): Promise<string | null> {
   const hit = cache.get(path)
   if (hit) return hit
-  const task = api.readFavicon(path).catch(() => null)
+  const task = api.readFavicon(path).catch(() => {
+    // 失败不缓存：缓存文件可能被清理或重建，允许后续重试
+    cache.delete(path)
+    return null
+  })
   cache.set(path, task)
   return task
 }

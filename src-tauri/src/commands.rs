@@ -60,8 +60,8 @@ pub async fn fetch_favicon_cmd(app: tauri::AppHandle, url: String) -> Result<Opt
 
 /// 把已缓存的 favicon 读成 base64 data URL，供 `<img>` 直接加载。
 #[tauri::command]
-pub fn read_favicon_cmd(path: String) -> Result<Option<String>, String> {
-    Ok(favicon::read_favicon_data_url(&path))
+pub fn read_favicon_cmd(app: tauri::AppHandle, path: String) -> Result<Option<String>, String> {
+    Ok(favicon::read_cached_favicon(&active_data_dir(&app), &path))
 }
 
 #[tauri::command]

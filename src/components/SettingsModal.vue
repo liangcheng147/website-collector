@@ -173,7 +173,7 @@ async function copyDiagnostics() {
           <div class="settings-group">
             <n-text class="group-title" depth="1">站点图标</n-text>
             <div class="switch-row">
-              <n-switch :value="store.settings.autoFetchFavicon" @update:value="toggleAutoFetchFavicon" />
+              <n-switch :value="store.settings.autoFetchFavicon" aria-labelledby="auto-favicon-label" @update:value="toggleAutoFetchFavicon" />
               <span id="auto-favicon-label" @click="toggleAutoFetchFavicon">自动抓取图标</span>
             </div>
             <n-text class="group-hint" depth="3">关闭后仍可点链接输入框旁的「获取图标」手动抓取。</n-text>
