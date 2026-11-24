@@ -59,6 +59,7 @@ function onTagChange(v: string | number | null) {
     <n-select
       class="topbar-select"
       data-testid="check-scope"
+      :value="null"
       :options="scopeOptions"
       :disabled="store.checking"
       @update:value="onScopeChange"

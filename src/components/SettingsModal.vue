@@ -224,31 +224,36 @@ async function copyDiagnostics() {
             <n-text class="group-hint" depth="3">当前版本仅保存偏好，定时调度将在后续版本接入。</n-text>
           </div>
           <div class="settings-group">
-            <n-text class="group-title" depth="1">检查频率</n-text>
+            <n-text class="group-title" depth="1" id="settings-interval-label">检查频率</n-text>
             <div class="slider-row">
               <n-text class="slider-bound" depth="3">0</n-text>
-              <n-slider v-model:value="checkInterval" :min="0" :max="120" :step="5" />
+              <n-slider v-model:value="checkInterval" :min="0" :max="120" :step="5" aria-labelledby="settings-interval-label" />
               <n-text class="slider-value">{{ store.settings.checkInterval }} 分钟</n-text>
             </div>
           </div>
           <div class="settings-group">
-            <n-text class="group-title" depth="1">默认范围</n-text>
-            <n-select :value="store.settings.checkScope" :options="checkScopeOptions" @update:value="setCheckScope" />
+            <n-text class="group-title" depth="1" id="settings-check-scope-label">默认范围</n-text>
+            <n-select
+              :value="store.settings.checkScope"
+              :options="checkScopeOptions"
+              aria-labelledby="settings-check-scope-label"
+              @update:value="setCheckScope"
+            />
           </div>
           <div class="settings-group">
-            <n-text class="group-title" depth="1">重试次数</n-text>
+            <n-text class="group-title" depth="1" id="settings-retry-label">重试次数</n-text>
             <div class="slider-row">
               <n-text class="slider-bound" depth="3">0</n-text>
-              <n-slider v-model:value="retryCount" :min="0" :max="5" :step="1" />
+              <n-slider v-model:value="retryCount" :min="0" :max="5" :step="1" aria-labelledby="settings-retry-label" />
               <n-text class="slider-value">{{ store.settings.retryCount }} 次</n-text>
             </div>
             <n-text class="group-hint" depth="3">检测失败后的额外重试次数。</n-text>
           </div>
           <div class="settings-group">
-            <n-text class="group-title" depth="1">并发上限</n-text>
+            <n-text class="group-title" depth="1" id="settings-concurrency-label">并发上限</n-text>
             <div class="slider-row">
               <n-text class="slider-bound" depth="3">1</n-text>
-              <n-slider v-model:value="concurrency" :min="1" :max="10" :step="1" />
+              <n-slider v-model:value="concurrency" :min="1" :max="10" :step="1" aria-labelledby="settings-concurrency-label" />
               <n-text class="slider-value">{{ store.settings.concurrency }} 路</n-text>
             </div>
             <n-text class="group-hint" depth="3">同时检测的站点数，限制可减轻目标站点压力。</n-text>

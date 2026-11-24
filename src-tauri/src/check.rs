@@ -144,14 +144,39 @@ async fn check_site_with_retries(url: &str, retry_count: u32) -> CheckResult {
 }
 
 pub async fn check_site(url: &str) -> CheckResult {
-    // 保持既有语义：失败后再试一次。
+    // 保持既有语义：失败后再试一次。仍含内置一次重试，非交互主流程使用。
     check_site_with_retries(url, 1).await
+}
+
+/// 单次尝试原语：不内建任何重试，由调用方按设置决定额外重试次数。
+pub async fn check_site_once(url: &str) -> CheckResult {
+    check_site_attempt(url).await
+}
+
+/// 与前端 `checkLimits()` 对齐的参数钳制：重试 0–5、并发 1–10。
+fn clamp_params(retry_count: u32, concurrency: usize) -> (u32, usize) {
+    (retry_count.min(5), concurrency.clamp(1, 10))
+}
+
+/// spawn join 失败（panic/abort）时回填 dead，保证返回长度与顺序恒等于输入。
+fn finalize_results(results: Vec<Option<SiteCheckResult>>, urls: &[String]) -> Vec<SiteCheckResult> {
+    results
+        .into_iter()
+        .enumerate()
+        .map(|(i, r)| {
+            r.unwrap_or_else(|| SiteCheckResult {
+                url: urls[i].clone(),
+                status: "dead".into(),
+                used_url: normalize_url(&urls[i]),
+            })
+        })
+        .collect()
 }
 
 /// 在 `concurrency` 上限内批量检测，失败项按 `retry_count` 额外重试。
 /// 返回顺序与输入一致；调用方需先自行确认在线（见 check_connectivity）。
 pub async fn check_sites(urls: &[String], retry_count: u32, concurrency: usize) -> Vec<SiteCheckResult> {
-    let limit = concurrency.max(1);
+    let (retry_count, limit) = clamp_params(retry_count, concurrency);
     let mut results: Vec<Option<SiteCheckResult>> = urls.iter().map(|_| None).collect();
     let mut start = 0usize;
     while start < urls.len() {
@@ -171,7 +196,7 @@ pub async fn check_sites(urls: &[String], retry_count: u32, concurrency: usize) 
         }
         start = end;
     }
-    results.into_iter().flatten().collect()
+    finalize_results(results, urls)
 }
 
 #[cfg(test)]
@@ -435,6 +460,58 @@ mod tests {
             }
         });
         (addr, idx, active, max_active)
+    }
+
+    #[test]
+    fn clamp_params_matches_frontend_limits() {
+        assert_eq!(clamp_params(0, 0), (0, 1));
+        assert_eq!(clamp_params(2, 4), (2, 4));
+        assert_eq!(clamp_params(99, 0), (5, 1));
+        assert_eq!(clamp_params(99, 99), (5, 10));
+    }
+
+    #[test]
+    fn finalize_backfills_missing_results_as_dead() {
+        let urls = vec![
+            "https://a.dev".to_string(),
+            "https://b.dev".to_string(),
+            "https://c.dev/sub".to_string(),
+        ];
+        let results = vec![
+            Some(SiteCheckResult { url: urls[0].clone(), status: "ok".into(), used_url: urls[0].clone() }),
+            None,
+            Some(SiteCheckResult { url: urls[2].clone(), status: "dead".into(), used_url: urls[2].clone() }),
+        ];
+        let out = finalize_results(results, &urls);
+        assert_eq!(out.len(), urls.len(), "返回长度必须等于输入长度");
+        assert_eq!(out[0].status, "ok");
+        assert_eq!(out[1].url, urls[1]);
+        assert_eq!(out[1].status, "dead", "缺失项必须回填 dead");
+        assert_eq!(out[1].used_url, normalize_url(&urls[1]));
+        assert_eq!(out[2].status, "dead");
+    }
+
+    #[test]
+    fn check_site_once_does_not_retry() {
+        // 单次尝试固定产生 4 个连接（http/https × 原路径/根）；全部 404 时即便后续会成功也必须判 dead
+        let (addr, idx, _active, _max) =
+            spawn_test_server(vec!["404 Not Found"], Duration::from_millis(1), 8);
+        let url = format!("http://{}/", addr);
+        let res = tokio::runtime::Runtime::new().unwrap().block_on(async { check_site_once(&url).await });
+        assert_eq!(res.status, "dead");
+        assert_eq!(idx.load(Ordering::SeqCst), 4, "单次尝试不应触发额外重试轮");
+    }
+
+    #[test]
+    fn check_sites_clamps_zero_concurrency_to_serial() {
+        let (addr, _idx, _active, max_active) =
+            spawn_test_server(vec!["200 OK"], Duration::from_millis(80), 8);
+        let url_a = format!("http://{}/a", addr);
+        let url_b = format!("http://{}/b", addr);
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let results = rt.block_on(check_sites(&[url_a, url_b], 0, 0));
+        assert_eq!(results.len(), 2);
+        assert_eq!(max_active.load(Ordering::SeqCst), 1, "concurrency=0 必须钳制为 1 串行");
     }
 
     #[test]

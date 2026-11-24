@@ -39,7 +39,14 @@ pub fn get_data_file_path(app: tauri::AppHandle) -> String {
 
 #[tauri::command]
 pub async fn check_site_cmd(url: String) -> check::CheckResult {
+    // 保留旧入口（含内置一次重试），非交互主流程；新代码请用 check_site_once_cmd。
     check::check_site(&url).await
+}
+
+/// 单次尝试，不内建重试；前端按 settings.retryCount 自行控制额外重试。
+#[tauri::command]
+pub async fn check_site_once_cmd(url: String) -> check::CheckResult {
+    check::check_site_once(&url).await
 }
 
 #[tauri::command]

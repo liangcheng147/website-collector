@@ -651,7 +651,13 @@ export const useAppStore = defineStore('app', {
       return { concurrency, retryCount }
     },
 
-    /** 按目标站点列表执行检测：并发受限、可取消、进度可追踪。 */
+    /**
+     * 按目标站点列表执行检测：并发受限、可取消、进度可追踪。
+     *
+     * Rust `check_sites_cmd` 为预留批量原语（有测试、无交互调用）；交互主路径刻意保持逐站管线，
+     * 因为需要保留 cancelCheck / progress / WebView 复核。两条路径必须共享同一 retry/concurrency
+     * 上限语义：前端 `checkLimits()`（retry 0–5、并发 1–10）与 `check::clamp_params` 一致。
+     */
     async checkQueue(sites: Site[]) {
       this.checking = true
       this.progress = { done: 0, total: sites.length }
@@ -707,10 +713,10 @@ export const useAppStore = defineStore('app', {
 
     async checkSiteWithVerify(s: Site) {
       const { retryCount } = this.checkLimits()
-      let r = await api.checkSite(s.url)
-      // 失败按设置额外重试；仍失败再交给 WebView 复核
+      // 单次尝试原语：首次 + retryCount 次额外重试，语义与设置文案一致（不叠加底层内置重试）
+      let r = await api.checkSiteOnce(s.url)
       for (let i = 0; i < retryCount && r.status === 'dead'; i++) {
-        r = await api.checkSite(s.url)
+        r = await api.checkSiteOnce(s.url)
       }
       if (r.status === 'dead') {
         r = await api.verifySiteWebview(s.url)

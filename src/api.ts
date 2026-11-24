@@ -4,7 +4,9 @@ import type { AppData, CheckResult, Settings, SiteCheckResult } from './types'
 
 export const loadData = () => invoke<AppData>('load_data')
 export const saveData = (data: AppData) => invoke<void>('save_data', { data })
+/** 保留旧入口（含内置一次重试），非交互主流程；新代码请用 checkSiteOnce。 */
 export const checkSite = (url: string) => invoke<CheckResult>('check_site_cmd', { url })
+export const checkSiteOnce = (url: string) => invoke<CheckResult>('check_site_once_cmd', { url })
 export const checkSites = (urls: string[], retryCount: number, concurrency: number) =>
   invoke<SiteCheckResult[]>('check_sites_cmd', { urls, retryCount, concurrency })
 export const verifySiteWebview = (url: string) => invoke<CheckResult>('verify_site_webview_cmd', { url })

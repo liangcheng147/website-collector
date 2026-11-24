@@ -7,6 +7,7 @@ vi.mock('../api', () => ({
   loadData: vi.fn().mockResolvedValue(undefined),
   checkConnectivity: vi.fn().mockResolvedValue(true),
   checkSite: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
+  checkSiteOnce: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
   verifySiteWebview: vi.fn().mockResolvedValue({ status: 'ok', usedUrl: 'https://x.dev' }),
   getDataLocation: vi.fn().mockResolvedValue({ dir: 'C:\\data', isFallback: false }),
   getSettings: vi.fn().mockResolvedValue({ theme: 'system', zoom: 100, sidebarCollapsed: [], collapsedCategories: [] }),
@@ -282,7 +283,7 @@ describe('app store', () => {
     const s = useAppStore()
     s.data = baseData
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
-    vi.mocked(api.checkSite).mockResolvedValue({ status: 'dead', usedUrl: 'https://x.dev' })
+    vi.mocked(api.checkSiteOnce).mockResolvedValue({ status: 'dead', usedUrl: 'https://x.dev' })
     vi.mocked(api.verifySiteWebview).mockResolvedValue({ status: 'dead', usedUrl: 'https://x.dev' })
     await s.checkAll()
     expect(s.data.sites.every(x => x.status === 'dead')).toBe(true)
@@ -306,7 +307,7 @@ describe('app store', () => {
     let callCount = 0
     let active = 0
     let maxActive = 0
-    vi.mocked(api.checkSite).mockImplementation(async () => {
+    vi.mocked(api.checkSiteOnce).mockImplementation(async () => {
       callCount++
       active++
       maxActive = Math.max(maxActive, active)
@@ -327,10 +328,10 @@ describe('app store', () => {
     const s = useAppStore()
     s.data = baseData
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
-    vi.mocked(api.checkSite).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
+    vi.mocked(api.checkSiteOnce).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
     s.selectedIds = ['a', 'c']
     await s.checkSelected()
-    expect(api.checkSite).toHaveBeenCalledTimes(2)
+    expect(api.checkSiteOnce).toHaveBeenCalledTimes(2)
     expect(s.data.sites.find(x => x.id === 'b')!.status).toBe('dead') // 未选中的 b 保持原状态
     expect(s.progress.done).toBe(2)
     expect(s.selectedIds).toEqual([])
@@ -562,14 +563,14 @@ describe('app store', () => {
     s.settings.concurrency = 5 // 显式恢复旧测试的 5 worker 取消语义
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
     const resolvers: ((v: CheckResult) => void)[] = []
-    vi.mocked(api.checkSite).mockImplementation(() => new Promise<CheckResult>(res => resolvers.push(res)))
+    vi.mocked(api.checkSiteOnce).mockImplementation(() => new Promise<CheckResult>(res => resolvers.push(res)))
     const promise = s.checkAll()
     for (let i = 0; i < 10; i++) await Promise.resolve()
     expect(resolvers.length).toBe(5) // 5 个 worker 同时在检，剩余 2 个未开始
     s.cancelCheck()
     resolvers.forEach(r => r({ status: 'ok', usedUrl: 'x' }))
     await promise
-    expect(api.checkSite).toHaveBeenCalledTimes(5) // f、g 不再发起
+    expect(api.checkSiteOnce).toHaveBeenCalledTimes(5) // f、g 不再发起
     expect(s.data.sites.filter(x => x.lastCheck).length).toBe(5) // 在检的结果保留
     expect(s.progress.done).toBe(5)
     expect(s.checking).toBe(false)
@@ -581,7 +582,7 @@ describe('app store', () => {
     s.data = baseData
     s.checking = true
     await s.checkOne('a')
-    expect(api.checkSite).not.toHaveBeenCalled()
+    expect(api.checkSiteOnce).not.toHaveBeenCalled()
   })
 
   it('checkOne aborts when offline', async () => {
@@ -597,7 +598,7 @@ describe('app store', () => {
   it('checkAll verifies dead sites via webview', async () => {
     const s = useAppStore()
     s.data = baseData // a:ok, b:dead, c:unknown
-    vi.mocked(api.checkSite).mockResolvedValue({ status: 'dead', usedUrl: 'x' })
+    vi.mocked(api.checkSiteOnce).mockResolvedValue({ status: 'dead', usedUrl: 'x' })
     vi.mocked(api.verifySiteWebview).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
     await s.checkAll()
     expect(s.data.sites.every(x => x.status === 'ok')).toBe(true)
@@ -607,7 +608,7 @@ describe('app store', () => {
   it('checkAll does not verify already-ok sites', async () => {
     const s = useAppStore()
     s.data = baseData
-    vi.mocked(api.checkSite).mockImplementation(async (url) =>
+    vi.mocked(api.checkSiteOnce).mockImplementation(async (url) =>
       url.includes('a') ? { status: 'ok', usedUrl: url } : { status: 'dead', usedUrl: url })
     await s.checkAll()
     expect(api.verifySiteWebview).toHaveBeenCalledTimes(2) // 只复核 b、c
@@ -656,9 +657,9 @@ describe('app store', () => {
     s.data = baseData
     s.view = { kind: 'tag', id: '框架' }
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
-    vi.mocked(api.checkSite).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
+    vi.mocked(api.checkSiteOnce).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
     await s.checkByScope('tag')
-    const urls = vi.mocked(api.checkSite).mock.calls.map(c => c[0]).sort()
+    const urls = vi.mocked(api.checkSiteOnce).mock.calls.map(c => c[0]).sort()
     expect(urls).toEqual(['https://a.dev', 'https://b.dev'])
     expect(s.progress.total).toBe(2)
     expect(s.progress.done).toBe(2)
@@ -671,9 +672,9 @@ describe('app store', () => {
     s.selectedIds = ['a']
     s.settings.checkScope = 'selected'
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
-    vi.mocked(api.checkSite).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
+    vi.mocked(api.checkSiteOnce).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
     await s.checkByScope()
-    expect(vi.mocked(api.checkSite).mock.calls.map(c => c[0])).toEqual(['https://a.dev'])
+    expect(vi.mocked(api.checkSiteOnce).mock.calls.map(c => c[0])).toEqual(['https://a.dev'])
   })
 
   it('checkByScope flashes and stops when the scope has no sites', async () => {
@@ -682,7 +683,7 @@ describe('app store', () => {
     s.view = { kind: 'category', id: 'missing' }
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
     await s.checkByScope('category')
-    expect(api.checkSite).not.toHaveBeenCalled()
+    expect(api.checkSiteOnce).not.toHaveBeenCalled()
     expect(s.flashMsg).toContain('没有可检测')
     expect(s.checking).toBe(false)
   })
@@ -693,7 +694,7 @@ describe('app store', () => {
     s.data.sites.forEach(x => x.status = 'unknown')
     vi.mocked(api.checkConnectivity).mockResolvedValue(false)
     await s.checkByScope('all')
-    expect(api.checkSite).not.toHaveBeenCalled()
+    expect(api.checkSiteOnce).not.toHaveBeenCalled()
     expect(s.data.sites.every(x => x.status === 'unknown')).toBe(true)
     expect(s.connectivityError).toBe(true)
   })
@@ -704,14 +705,40 @@ describe('app store', () => {
     s.selectedIds = ['a']
     s.settings.retryCount = 2
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
-    vi.mocked(api.checkSite)
+    vi.mocked(api.checkSiteOnce)
       .mockResolvedValueOnce({ status: 'dead', usedUrl: 'x' })
       .mockResolvedValueOnce({ status: 'dead', usedUrl: 'x' })
       .mockResolvedValueOnce({ status: 'ok', usedUrl: 'x' })
     await s.checkByScope('selected')
-    expect(api.checkSite).toHaveBeenCalledTimes(3)
+    expect(api.checkSiteOnce).toHaveBeenCalledTimes(3)
     expect(api.verifySiteWebview).not.toHaveBeenCalled()
     expect(s.data.sites.find(x => x.id === 'a')!.status).toBe('ok')
+  })
+
+  it('default retryCount=1 gives exactly one extra attempt before webview verification', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.selectedIds = ['a']
+    expect(s.settings.retryCount).toBe(1) // 默认值即「失败后的额外重试次数」
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    vi.mocked(api.checkSiteOnce).mockResolvedValue({ status: 'dead', usedUrl: 'x' })
+    vi.mocked(api.verifySiteWebview).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
+    await s.checkByScope('selected')
+    expect(api.checkSiteOnce).toHaveBeenCalledTimes(2) // 首次 + 1 次额外重试
+    expect(api.verifySiteWebview).toHaveBeenCalledTimes(1)
+  })
+
+  it('retryCount=0 skips extra retries but still verifies dead sites', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.selectedIds = ['a']
+    s.settings.retryCount = 0
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    vi.mocked(api.checkSiteOnce).mockResolvedValue({ status: 'dead', usedUrl: 'x' })
+    vi.mocked(api.verifySiteWebview).mockResolvedValue({ status: 'dead', usedUrl: 'x' })
+    await s.checkByScope('selected')
+    expect(api.checkSiteOnce).toHaveBeenCalledTimes(1)
+    expect(api.verifySiteWebview).toHaveBeenCalledTimes(1)
   })
 
   it('settings.concurrency caps simultaneous checks', async () => {
@@ -729,7 +756,7 @@ describe('app store', () => {
     let active = 0
     let maxActive = 0
     vi.mocked(api.checkConnectivity).mockResolvedValue(true)
-    vi.mocked(api.checkSite).mockImplementation(async () => {
+    vi.mocked(api.checkSiteOnce).mockImplementation(async () => {
       active++
       maxActive = Math.max(maxActive, active)
       await new Promise(r => setTimeout(r, 10))

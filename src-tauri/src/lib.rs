@@ -30,6 +30,7 @@ pub fn run() {
             commands::save_data,
             commands::get_data_file_path,
             commands::check_site_cmd,
+            commands::check_site_once_cmd,
             commands::check_sites_cmd,
             commands::check_connectivity_cmd,
             commands::fetch_site_title_cmd,
