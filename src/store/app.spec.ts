@@ -289,6 +289,77 @@ describe('app store', () => {
     expect(s.lastSelectedId).toBeNull()
   })
 
+  it('replaceDataFromBackup prunes selection and falls back when restored data drops targets', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.selectOne('a')
+    s.toggleSelect('b') // [a, b]，锚点 b
+    s.activeId = 'a'
+    s.lastSelectedId = 'b'
+    s.view = { kind: 'category', id: 'c1' }
+    const restored: AppData = {
+      version: 1,
+      categories: [],
+      sites: [makeSite('x', 'ok', ['新标签'])],
+      recycleBin: [],
+      tags: [],
+    }
+    s.replaceDataFromBackup(restored)
+    expect(s.data.sites.map(x => x.id)).toEqual(['x'])
+    expect(s.selectedIds).toEqual([])
+    expect(s.activeId).toBeNull()
+    expect(s.lastSelectedId).toBeNull()
+    expect(s.view).toEqual({ kind: 'all' })
+    expect(s.data.tags).toEqual(['新标签'])
+  })
+
+  it('replaceDataFromBackup keeps surviving selection and valid views', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.selectOne('a')
+    s.activeId = 'a'
+    s.lastSelectedId = 'a'
+    const restored: AppData = {
+      version: 1,
+      categories: [{ id: 'c1', name: '开发', children: [] }],
+      sites: [makeSite('a', 'ok', ['框架'])],
+      recycleBin: [],
+      tags: ['框架'],
+    }
+    s.view = { kind: 'category', id: 'c1' }
+    s.replaceDataFromBackup(restored)
+    expect(s.selectedIds).toEqual(['a'])
+    expect(s.activeId).toBe('a')
+    expect(s.lastSelectedId).toBe('a')
+    expect(s.view).toEqual({ kind: 'category', id: 'c1' })
+  })
+
+  it('replaceDataFromBackup keeps uncategorized view but falls back a stale tag view', () => {
+    const s = useAppStore()
+    s.data = baseData
+    const restored: AppData = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    s.view = { kind: 'category', id: UNCATEGORIZED_ID }
+    s.replaceDataFromBackup(restored)
+    expect(s.view).toEqual({ kind: 'category', id: UNCATEGORIZED_ID })
+    s.view = { kind: 'tag', id: '框架' }
+    s.replaceDataFromBackup(restored)
+    expect(s.view).toEqual({ kind: 'all' })
+  })
+
+  it('replaceDataFromBackup aborts in-flight check state', () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.checking = true
+    s.cancelled = false
+    s.cancelRequested = true
+    s.progress = { done: 2, total: 5 }
+    s.replaceDataFromBackup(makeData())
+    expect(s.checking).toBe(false)
+    expect(s.cancelled).toBe(true)
+    expect(s.cancelRequested).toBe(false)
+    expect(s.progress).toEqual({ done: 0, total: 0 })
+  })
+
   it('permanentlyDeleteSites removes from recycle bin only', () => {
     const s = useAppStore()
     s.data = baseData

@@ -184,6 +184,8 @@ export const useAppStore = defineStore('app', {
     checking: false,
     cancelled: false,
     cancelRequested: false,
+    /** 检测代次：恢复备份等整体替换数据的操作自增，使在途检测队列失效。 */
+    checkGeneration: 0,
     progress: { done: 0, total: 0 },
     connectivityError: false,
     flashMsg: '',
@@ -335,6 +337,40 @@ export const useAppStore = defineStore('app', {
     },
     async persist() { await api.saveData(this.data) },
     setData(d: AppData) { this.data = d; this.persist() },
+
+    /**
+     * 用备份返回的数据整体替换内存快照，并收敛所有引用旧数据的状态：
+     * - 重算标签（`refreshTags` 内含一次持久化；Rust 已落盘，属幂等重写）；
+     * - 裁剪选择/锚点到仍存在的站点；
+     * - 视图指向已删除的分类/标签时回退「全部」；
+     * - 作废旧检测代次并复位检测状态，避免在途结果写回已消失的站点。
+     */
+    replaceDataFromBackup(restored: AppData) {
+      this.data = restored
+      this.refreshTags()
+
+      const liveIds = new Set(this.data.sites.map(s => s.id))
+      this.selectedIds = this.selectedIds.filter(id => liveIds.has(id))
+      if (this.activeId && !liveIds.has(this.activeId)) this.activeId = null
+      if (this.lastSelectedId && !liveIds.has(this.lastSelectedId)) this.lastSelectedId = null
+
+      if (this.view.kind === 'category') {
+        const knownCategories = new Set([UNCATEGORIZED_ID, ...collectAllIds(this.data.categories)])
+        if (!this.view.id || !knownCategories.has(this.view.id)) this.view = { kind: 'all' }
+      } else if (this.view.kind === 'tag') {
+        if (!this.view.id || !this.data.tags.includes(this.view.id)) this.view = { kind: 'all' }
+      }
+
+      // 数据快照整体换掉后，在检结果无处落地：自增代次让在途 worker 停止，
+      // 立即复位 UI 状态；恢复期间用户可正常发起新检测（新代次不受影响）。
+      if (this.checking) {
+        this.checkGeneration++
+        this.checking = false
+        this.cancelled = true
+        this.progress = { done: 0, total: 0 }
+      }
+      this.cancelRequested = false
+    },
     flash(msg: string, ms: number = FLASH_DURATION_MS) {
       this.flashMsg = msg
       setTimeout(() => { this.flashMsg = '' }, ms)
@@ -808,25 +844,30 @@ export const useAppStore = defineStore('app', {
      * 上限语义：前端 `checkLimits()`（retry 0–5、并发 1–10）与 `check::clamp_params` 一致。
      */
     async checkQueue(sites: Site[]) {
+      // 代次用于让「恢复备份」等整体替换数据的操作能作废旧队列：旧 worker 看到
+      // 代次变化即停止，也不会在 finally 里覆盖新状态或写回旧引用。
+      const gen = ++this.checkGeneration
       this.checking = true
       this.progress = { done: 0, total: sites.length }
       try {
         const { concurrency } = this.checkLimits()
         let idx = 0
         const worker = async () => {
-          while (idx < sites.length && !this.cancelRequested) {
+          while (idx < sites.length && !this.cancelRequested && this.checkGeneration === gen) {
             const s = sites[idx++]
             await this.checkSiteWithVerify(s)
-            this.progress.done++
+            if (this.checkGeneration === gen) this.progress.done++
           }
         }
         const workers = Array.from({ length: Math.min(concurrency, sites.length) }, () => worker())
         await Promise.all(workers)
       } finally {
-        this.cancelled = this.cancelRequested
-        this.checking = false
-        this.cancelRequested = false
-        await this.persist()
+        if (this.checkGeneration === gen) {
+          this.cancelled = this.cancelRequested
+          this.checking = false
+          this.cancelRequested = false
+          await this.persist()
+        }
       }
     },
 

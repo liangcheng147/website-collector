@@ -147,6 +147,15 @@ const MAX_LOCAL_BACKUPS = 10
 const backups = ref<BackupInfo[]>([])
 const backupBusy = ref(false)
 const backupMsg = ref('')
+/** 恢复确认/执行保护：防止重复点击弹多个确认框或并发恢复。 */
+const restoreBusy = ref(false)
+const restoringPath = ref('')
+
+function resetRestoreGuard() {
+  // 恢复仍在执行时（restoringPath 已置位）不解除保护，由 finally 统一复位。
+  if (restoringPath.value) return
+  restoreBusy.value = false
+}
 
 async function refreshBackups() {
   try { backups.value = await api.listBackups() }
@@ -172,19 +181,30 @@ async function makeBackup() {
   finally { backupBusy.value = false }
 }
 function askRestore(b: BackupInfo) {
+  // 确认框打开期间也占用保护位，重复点击不会叠加多个对话框。
+  if (restoreBusy.value) return
+  restoreBusy.value = true
+  restoringPath.value = ''
   dialog.warning({
     title: '恢复备份',
     content: `确定用 ${b.fileName}（${formatBackupTime(b.createdAt)}）覆盖当前数据？恢复前会自动为当前数据创建一份快照。`,
     positiveText: '恢复',
     negativeText: '取消',
     onPositiveClick: async () => {
+      if (restoringPath.value) return false // 已有恢复在途，忽略重复确认
+      restoringPath.value = b.path
       try {
         const restored = await api.restoreBackup(b.path)
-        store.data = restored
+        store.replaceDataFromBackup(restored)
         backupMsg.value = `已恢复备份：${b.fileName}`
         await refreshBackups()
       } catch (e) { backupMsg.value = '恢复失败：' + e }
+      finally { restoreBusy.value = false; restoringPath.value = '' }
     },
+    onNegativeClick: resetRestoreGuard,
+    onMaskClick: resetRestoreGuard,
+    onEsc: resetRestoreGuard,
+    onClose: resetRestoreGuard,
   })
 }
 </script>
@@ -331,6 +351,14 @@ function askRestore(b: BackupInfo) {
             </n-text>
             <div class="backup-actions">
               <n-button size="small" type="primary" :loading="backupBusy" data-testid="btn-create-backup" @click="makeBackup">立即备份</n-button>
+              <n-button
+                size="small"
+                type="primary"
+                :disabled="!backups.length || restoreBusy"
+                :loading="!!backups.length && restoringPath === backups[0].path"
+                data-testid="btn-restore-latest-backup"
+                @click="askRestore(backups[0])"
+              >恢复最近备份</n-button>
               <n-text v-if="backupMsg" class="group-hint" depth="3">{{ backupMsg }}</n-text>
             </div>
             <div v-if="backups.length" class="backup-list" data-testid="backup-list">
@@ -339,7 +367,15 @@ function askRestore(b: BackupInfo) {
                   <span class="backup-name" :title="b.fileName">{{ b.fileName }}</span>
                   <span class="backup-sub">{{ formatBackupTime(b.createdAt) }} · {{ formatSize(b.size) }}</span>
                 </div>
-                <n-button size="tiny" quaternary class="backup-restore" :aria-label="`恢复备份 ${b.fileName}`" @click="askRestore(b)">恢复</n-button>
+                <n-button
+                  size="tiny"
+                  quaternary
+                  class="backup-restore"
+                  :aria-label="`恢复备份 ${b.fileName}`"
+                  :disabled="restoreBusy"
+                  :loading="restoringPath === b.path"
+                  @click="askRestore(b)"
+                >恢复</n-button>
               </div>
             </div>
             <n-text v-else class="group-hint" depth="3">暂无备份。点击「立即备份」创建第一份；恢复前也会自动为当前数据留一份快照。</n-text>

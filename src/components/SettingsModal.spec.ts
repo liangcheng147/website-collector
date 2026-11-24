@@ -20,6 +20,7 @@ const relaunchAppMock = vi.fn()
 const listBackupsMock = vi.fn()
 const createBackupMock = vi.fn()
 const restoreBackupMock = vi.fn()
+const saveDataMock = vi.fn()
 
 vi.mock('../api', () => ({
   getDataFilePath: () => getDataFilePathMock(),
@@ -29,6 +30,7 @@ vi.mock('../api', () => ({
   listBackups: () => listBackupsMock(),
   createBackup: () => createBackupMock(),
   restoreBackup: (...args: unknown[]) => restoreBackupMock(...args),
+  saveData: () => saveDataMock(),
 }))
 vi.mock('../updater', () => ({
   checkForUpdate: () => checkForUpdateMock(),
@@ -68,6 +70,7 @@ describe('SettingsModal', () => {
     listBackupsMock.mockReset().mockResolvedValue([])
     createBackupMock.mockReset().mockResolvedValue(backupInfo('backup-20260101-000000.json'))
     restoreBackupMock.mockReset().mockResolvedValue(seedData([]))
+    saveDataMock.mockReset().mockResolvedValue(undefined)
   })
 
   // useDialog 与 n-modal 都需要 provider；modal 内容 teleport 到 document.body
@@ -421,5 +424,65 @@ describe('SettingsModal', () => {
     expect(createBackupMock).toHaveBeenCalledTimes(1)
     expect(document.body.textContent).toContain('已创建备份')
     expect(listBackupsMock.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('restores the newest backup from the dedicated latest entry after confirmation', async () => {
+    const newest = backupInfo('backup-20260102-030405.json', 2048)
+    const older = backupInfo('backup-20260101-000000.json', 512)
+    listBackupsMock.mockResolvedValue([newest, older])
+    restoreBackupMock.mockResolvedValue(seedData(['restored']))
+    const store = useAppStore()
+    store.data = seedData(['a'])
+    await mountModal()
+    await openTab('settings-tab-storage')
+    ;(document.body.querySelector('[data-testid="btn-restore-latest-backup"]') as HTMLElement).click()
+    await nextTick()
+    const positive = Array.from(document.body.querySelectorAll('.n-dialog button'))
+      .find(el => el.textContent?.trim() === '恢复') as HTMLElement
+    positive.click()
+    await nextTick()
+    await nextTick()
+    expect(restoreBackupMock).toHaveBeenCalledWith(newest.path)
+    expect(store.data.sites.map(s => s.id)).toEqual(['restored'])
+  })
+
+  it('ignores repeated restore clicks while a confirm dialog is open', async () => {
+    const target = backupInfo('backup-20260101-000000.json')
+    listBackupsMock.mockResolvedValue([target])
+    restoreBackupMock.mockResolvedValue(seedData(['restored']))
+    const store = useAppStore()
+    store.data = seedData(['a'])
+    await mountModal()
+    await openTab('settings-tab-storage')
+    const restoreBtn = document.body.querySelector('[aria-label="恢复备份 backup-20260101-000000.json"]') as HTMLElement
+    restoreBtn.click()
+    restoreBtn.click()
+    await nextTick()
+    const positives = Array.from(document.body.querySelectorAll('.n-dialog button'))
+      .filter(el => el.textContent?.trim() === '恢复')
+    expect(positives).toHaveLength(1)
+    ;(positives[0] as HTMLElement).click()
+    await nextTick()
+    await nextTick()
+    expect(restoreBackupMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-arms the restore entry after cancelling the confirmation', async () => {
+    const target = backupInfo('backup-20260101-000000.json')
+    listBackupsMock.mockResolvedValue([target])
+    const store = useAppStore()
+    store.data = seedData(['a'])
+    await mountModal()
+    await openTab('settings-tab-storage')
+    const restoreBtn = document.body.querySelector('[aria-label="恢复备份 backup-20260101-000000.json"]') as HTMLElement
+    restoreBtn.click()
+    await nextTick()
+    expect(restoreBtn.className).toContain('n-button--disabled')
+    const negative = Array.from(document.body.querySelectorAll('.n-dialog button'))
+      .find(el => el.textContent?.includes('取消')) as HTMLElement
+    negative.click()
+    await nextTick()
+    expect(restoreBtn.className).not.toContain('n-button--disabled')
+    expect(restoreBackupMock).not.toHaveBeenCalled()
   })
 })

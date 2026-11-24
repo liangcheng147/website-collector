@@ -188,19 +188,28 @@ fn parse_backup_name(name: &str) -> Option<(i64, u32)> {
 /// 保证按 (时间, 序号) 排序始终与创建顺序一致。
 fn unique_backup_path(dir: &Path) -> PathBuf {
     let head = format!("{}{}", BACKUP_FILE_PREFIX, backup_stem());
-    let mut seq = 0u32;
+    unique_backup_path_for_head(dir, &head)
+}
+
+/// `unique_backup_path` 的核心：按目录内同 head 的最大序号 +1 选择路径。
+/// 拆出 head 参数便于测试用固定时间戳确定性验证序号递增。
+fn unique_backup_path_for_head(dir: &Path, head: &str) -> PathBuf {
+    let mut max_seq: Option<u32> = None;
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
             let os_name = entry.file_name();
             let name = os_name.to_string_lossy();
-            if !name.starts_with(&head) { continue; }
-            if let Some((_, existing)) = parse_backup_name(&name) { seq = seq.max(existing); }
+            if !name.starts_with(head) { continue; }
+            if let Some((_, existing)) = parse_backup_name(&name) {
+                max_seq = Some(max_seq.map_or(existing, |current: u32| current.max(existing)));
+            }
         }
     }
-    if seq == 0 {
-        dir.join(format!("{}{}", head, BACKUP_FILE_SUFFIX))
-    } else {
-        dir.join(format!("{}-{:02}{}", head, seq, BACKUP_FILE_SUFFIX))
+    match max_seq {
+        // 无任何同毫秒文件：使用 base 名。
+        None => dir.join(format!("{}{}", head, BACKUP_FILE_SUFFIX)),
+        // 有命中（含 base，其序号为 0）：取最大值 +1，避免选到已存在路径。
+        Some(seq) => dir.join(format!("{}-{:02}{}", head, seq + 1, BACKUP_FILE_SUFFIX)),
     }
 }
 
@@ -755,6 +764,44 @@ assert_eq!(loaded.sites[0].name, "React");
         let list = list_backups(&d);
         assert_eq!(list.len(), 10, "恢复产生快照后仍受保留上限约束");
         assert!(!list.iter().any(|i| i.file_name == oldest_before), "超限时最旧快照应被删除");
+    }
+
+    #[test]
+    fn backup_path_uses_base_then_increments_same_millisecond() {
+        let d = tmp_dir("bk_path_seq");
+        let head = "backup-20260101-000000-000";
+        let first = unique_backup_path_for_head(&d, head);
+        assert_eq!(first.file_name().unwrap().to_string_lossy().as_ref(), format!("{}.json", head));
+        fs::write(&first, b"{}").unwrap();
+        let second = unique_backup_path_for_head(&d, head);
+        assert_eq!(second.file_name().unwrap().to_string_lossy().as_ref(), format!("{}-01.json", head));
+        assert_ne!(first, second, "同毫秒第二份必须换名而非覆盖");
+        fs::write(&second, b"{}").unwrap();
+        let third = unique_backup_path_for_head(&d, head);
+        assert_eq!(third.file_name().unwrap().to_string_lossy().as_ref(), format!("{}-02.json", head));
+    }
+
+    #[test]
+    fn backup_path_after_base_and_first_suffix_returns_second() {
+        let d = tmp_dir("bk_path_preset");
+        let head = "backup-20260101-000000-000";
+        fs::write(d.join(format!("{}.json", head)), b"{}").unwrap();
+        fs::write(d.join(format!("{}-01.json", head)), b"{}").unwrap();
+        let next = unique_backup_path_for_head(&d, head);
+        assert_eq!(next.file_name().unwrap().to_string_lossy().as_ref(), format!("{}-02.json", head));
+    }
+
+    #[test]
+    fn backup_path_does_not_reuse_deleted_middle_sequence() {
+        let d = tmp_dir("bk_path_gap");
+        let head = "backup-20260101-000000-000";
+        for seq in 1..=3u32 {
+            fs::write(d.join(format!("{}-{:02}.json", head, seq)), b"{}").unwrap();
+        }
+        fs::remove_file(d.join(format!("{}-02.json", head))).unwrap();
+        // 目录内最大序号为 3，下一份取 4，不回填已删除的 2。
+        let next = unique_backup_path_for_head(&d, head);
+        assert_eq!(next.file_name().unwrap().to_string_lossy().as_ref(), format!("{}-04.json", head));
     }
 
     #[test]
