@@ -72,11 +72,11 @@ src-tauri/            # Rust 后端
 
 ## 发布流程
 
-推送版本标签（如 `v0.1.0`）会自动触发 [GitHub Actions](.github/workflows/release.yml) 在云端构建安装包并创建 Release：
+推送版本标签（如 `v0.4.0`）会自动触发 [GitHub Actions](.github/workflows/release.yml) 在云端构建安装包并创建 Release：
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
 ## 许可证
