@@ -699,6 +699,21 @@ describe('app store', () => {
     ).toEqual([])
   })
 
+  it('resolveScopeIds tag scope ORs multiple fallback tags（多选并集）', () => {
+    const data = makeData()
+    expect(
+      resolveScopeIds(data.sites, data.categories, { kind: 'all' }, [], 'tag', ['框架', '工具']),
+    ).toEqual(['a', 'b', 'c'])
+    // 旧单标签 fallback 路径不回归
+    expect(
+      resolveScopeIds(data.sites, data.categories, { kind: 'all' }, [], 'tag', ['框架']),
+    ).toEqual(['a', 'b'])
+    // 当前 tag 视图优先于 fallback 多选
+    expect(
+      resolveScopeIds(data.sites, data.categories, { kind: 'tag', id: '工具' }, [], 'tag', ['框架']),
+    ).toEqual(['c'])
+  })
+
   it('resolveScopeIds selected scope keeps chosen ids in data order', () => {
     expect(
       resolveScopeIds(baseData.sites, baseData.categories, { kind: 'all' }, ['c', 'a'], 'selected'),
@@ -717,6 +732,19 @@ describe('app store', () => {
     expect(s.progress.total).toBe(2)
     expect(s.progress.done).toBe(2)
     expect(s.checking).toBe(false)
+  })
+
+  it('checkByScope tag scope unions multi-tag filter when view is not a tag', async () => {
+    const s = useAppStore()
+    s.data = baseData
+    s.view = { kind: 'all' }
+    s.setTagFilter(['框架', '工具']) // selectedTag 只同步首个（兼容别名），filters.tags 才是多选真源
+    vi.mocked(api.checkConnectivity).mockResolvedValue(true)
+    vi.mocked(api.checkSiteOnce).mockResolvedValue({ status: 'ok', usedUrl: 'x' })
+    await s.checkByScope('tag')
+    const urls = vi.mocked(api.checkSiteOnce).mock.calls.map(c => c[0]).sort()
+    expect(urls).toEqual(['https://a.dev', 'https://b.dev', 'https://c.dev'])
+    expect(s.progress.total).toBe(3)
   })
 
   it('checkByScope defaults to settings.checkScope', async () => {
@@ -1132,6 +1160,14 @@ describe('组合筛选', () => {
     expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'b', 'd'])
   })
 
+  it('分类筛选包含子树：c1 结果同时含直属站点与子分类 c2 下站点', () => {
+    const s = useAppStore()
+    s.data = filterData() // a→c2（c1 子分类）、b→c1 直属、c 未分类、d→c3
+    s.view = { kind: 'all' }
+    s.filters.categoryId = 'c1'
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'b'])
+  })
+
   it('时间筛选：最近 7 天 / 30 天 / 从未检查', () => {
     const s = useAppStore()
     s.data = filterData()
@@ -1211,6 +1247,22 @@ describe('组合筛选', () => {
     s2.deleteSavedFilter(s2.savedFilters[0].id)
     expect(s2.savedFilters).toHaveLength(0)
     expect(JSON.parse(localStorage.getItem('site-collector-saved-filters')!)).toHaveLength(0)
+  })
+
+  it('应用已保存筛选时剔除已删除的分类/标签引用', () => {
+    const s = useAppStore()
+    s.data = filterData()
+    s.savedFilters = [{
+      id: 'sf1',
+      name: '旧筛选',
+      filters: { categoryId: 'c_missing', tags: ['框架', '标签已删'], status: 'ok', timeRange: 'all' },
+    }]
+    s.applySavedFilter('sf1')
+    expect(s.filters.categoryId).toBeNull()
+    expect(s.filters.tags).toEqual(['框架'])
+    expect(s.selectedTag).toBe('框架')
+    // c1 失效置空后按剩余维度过滤：框架 + ok → a、d（b 为 dead）
+    expect(s.filteredSites.map(x => x.id).sort()).toEqual(['a', 'd'])
   })
 
   it('空名称不保存且返回 false', () => {

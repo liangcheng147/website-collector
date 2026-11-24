@@ -139,7 +139,8 @@ function collectCategoryIds(cats: Category[], rootId: string): string[] {  const
 
 /**
  * 按检查范围解析目标站点 id（纯函数）。
- * category/tag 依赖当前视图；无对应视图时返回空列表，避免误检全部。
+ * category 依赖当前视图；tag 取当前 tag 视图或 fallbackTags（多选 OR 并集）；
+ * 两者皆无时返回空列表，避免误检全部。
  */
 export function resolveScopeIds(
   sites: Site[],
@@ -147,7 +148,7 @@ export function resolveScopeIds(
   view: View,
   selectedIds: string[],
   scope: CheckScope,
-  fallbackTag: string | null = null,
+  fallbackTags: string[] = [],
 ): string[] {
   const all = sites.map(s => s.id)
   if (scope === 'all') return all
@@ -161,10 +162,11 @@ export function resolveScopeIds(
     const ids = new Set(collectCategoryIds(categories, view.id))
     return sites.filter(s => s.categoryId && ids.has(s.categoryId)).map(s => s.id)
   }
-  // tag
-  const tagId = view.kind === 'tag' && view.id ? view.id : fallbackTag
-  if (!tagId) return []
-  return sites.filter(s => s.tags.includes(tagId)).map(s => s.id)
+  // tag：当前 tag 视图优先；否则用多选筛选标签（OR 并集），兼容旧的单标签 fallback
+  const tagIds = view.kind === 'tag' && view.id ? [view.id] : [...fallbackTags]
+  if (!tagIds.length) return []
+  const tagSet = new Set(tagIds)
+  return sites.filter(s => s.tags.some(t => tagSet.has(t))).map(s => s.id)
 }
 
 export const useAppStore = defineStore('app', {
@@ -759,11 +761,24 @@ export const useAppStore = defineStore('app', {
       this.persistSavedFilters()
       return true
     },
+    /**
+     * 应用已保存筛选。旧数据里可能残留已被删除的分类/标签，应用时直接剔除失效引用，
+     * 否则该维度会永久过滤掉全部结果（仅在有站点数据时清理，避免启动早期误清）。
+     */
     applySavedFilter(id: string) {
       const found = this.savedFilters.find(f => f.id === id)
       if (!found) return
-      this.filters = cloneFilters(found.filters)
-      this.selectedTag = found.filters.tags[0] ?? null
+      const filters = cloneFilters(found.filters)
+      if (this.data.sites.length) {
+        const knownCategories = new Set(collectAllIds(this.data.categories))
+        if (filters.categoryId && filters.categoryId !== UNCATEGORIZED_ID && !knownCategories.has(filters.categoryId)) {
+          filters.categoryId = null
+        }
+        const knownTags = new Set(this.data.tags)
+        filters.tags = filters.tags.filter(t => knownTags.has(t))
+      }
+      this.filters = filters
+      this.selectedTag = filters.tags[0] ?? null
     },
     deleteSavedFilter(id: string) {
       this.savedFilters = this.savedFilters.filter(f => f.id !== id)
@@ -836,7 +851,7 @@ export const useAppStore = defineStore('app', {
         this.view,
         this.selectedIds,
         targetScope,
-        this.selectedTag,
+        this.filters.tags.length ? this.filters.tags : (this.selectedTag ? [this.selectedTag] : []),
       )
       const sites = ids
         .map(id => this.data.sites.find(s => s.id === id))

@@ -107,12 +107,12 @@ function saveCurrentFilter() {
           <b>组合筛选</b>
           <n-button quaternary size="tiny" data-testid="filter-reset" @click="store.resetFilters()">重置</n-button>
         </div>
-        <label class="filter-label">分类</label>
-        <n-select v-model:value="categoryFilter" data-testid="filter-category" size="small" :options="categoryFilterOptions" />
-        <label class="filter-label">状态</label>
-        <n-select v-model:value="statusFilter" data-testid="filter-status" size="small" :options="statusOptions" />
-        <label class="filter-label">时间</label>
-        <n-select v-model:value="timeFilter" data-testid="filter-time" size="small" :options="timeOptions" />
+        <label class="filter-label" id="filter-label-category">分类</label>
+        <n-select v-model:value="categoryFilter" data-testid="filter-category" size="small" :options="categoryFilterOptions" aria-labelledby="filter-label-category" />
+        <label class="filter-label" id="filter-label-status">状态</label>
+        <n-select v-model:value="statusFilter" data-testid="filter-status" size="small" :options="statusOptions" aria-labelledby="filter-label-status" />
+        <label class="filter-label" id="filter-label-time">时间</label>
+        <n-select v-model:value="timeFilter" data-testid="filter-time" size="small" :options="timeOptions" aria-labelledby="filter-label-time" />
         <div class="filter-save">
           <n-input
             v-model:value="newFilterName"
