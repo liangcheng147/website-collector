@@ -75,6 +75,16 @@ describe('App 全局命令面板快捷键', () => {
     expect(document.body.querySelector('[data-testid="command-palette"]')).toBeTruthy()
   })
 
+  it('焦点在输入框内时 Ctrl+K 仍打开命令面板', async () => {
+    await mountApp()
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+    await openPalette()
+    expect(document.body.querySelector('[data-testid="command-palette"]')).toBeTruthy()
+    input.remove()
+  })
+
   it('通过面板执行「添加站点」会打开添加弹窗并关闭面板', async () => {
     await mountApp()
     await openPalette()

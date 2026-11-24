@@ -75,8 +75,15 @@ function close() {
 /**
  * 面板内的键盘交互挂在 document 上：n-modal teleport 后焦点可能在搜索框/命令按钮间移动，
  * 统一在文档层接管 ↑/↓/Enter/Esc，并阻止冒泡，避免触发 App 既有 Escape 分支。
+ *
+ * - IME 组合态（中/日/韩输入法）整体让位：此时 Enter 是候选词确认、方向键是光标移动，
+ *   面板不得拦截，否则会破坏正常输入。
+ * - ↑/↓ 导航按命令面板惯例保留在面板级，但仅适用于单行搜索框；带 Alt/Ctrl/Meta 的组合键
+ *   交回浏览器/输入框，不做全局劫持。
  */
 function onDocKeydown(e: KeyboardEvent) {
+  if (e.isComposing || e.keyCode === 229) return
+  if (e.altKey || e.ctrlKey || e.metaKey) return
   if (e.key === 'Escape') {
     e.preventDefault()
     e.stopPropagation()
@@ -99,8 +106,8 @@ onMounted(async () => {
   await nextTick()
   // 打开即聚焦搜索框；focus-trap 的自动聚焦在部分环境下会落到哨兵节点，这里显式聚焦
   searchRef.value?.focus()
+  document.addEventListener('keydown', onDocKeydown)
 })
-onMounted(() => document.addEventListener('keydown', onDocKeydown))
 onUnmounted(() => document.removeEventListener('keydown', onDocKeydown))
 </script>
 
@@ -110,6 +117,7 @@ onUnmounted(() => document.removeEventListener('keydown', onDocKeydown))
     preset="card"
     to="body"
     class="command-palette-modal"
+    :style="{ width: 'min(560px, 92%)' }"
     :mask-closable="true"
     :close-on-esc="false"
     :trap-focus="true"
@@ -144,6 +152,7 @@ onUnmounted(() => document.removeEventListener('keydown', onDocKeydown))
           :data-command="cmd.id"
           @click="execute(cmd)"
           @mouseenter="activeIndex = i"
+          @focus="activeIndex = i"
         >
           <component :is="cmd.icon" :size="15" :stroke-width="1.8" class="cmd-icon" />
           <span class="cmd-name">{{ cmd.name }}</span>
@@ -160,7 +169,7 @@ onUnmounted(() => document.removeEventListener('keydown', onDocKeydown))
 </template>
 
 <style scoped>
-.command-palette-modal { width: min(560px, 92%); }
+.command-palette-modal { /* 宽度由模板 :style 动态绑定，避免 teleport 后 scoped 选择器失效 */ }
 .palette { display: flex; flex-direction: column; gap: 10px; }
 .palette-head { display: flex; flex-direction: column; gap: 6px; }
 .keys-hint { font-size: 12px; color: var(--text-2); }

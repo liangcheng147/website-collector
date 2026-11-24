@@ -126,4 +126,56 @@ describe('CommandPalette', () => {
     await nextTick()
     expect(row.classList.contains('active')).toBe(true)
   })
+
+  it('输入法组合态（isComposing）下 Enter 不执行、不关闭且不阻止默认', async () => {
+    const w = await mountedPalette()
+    const evt = new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true })
+    document.dispatchEvent(evt)
+    await nextTick()
+    expect(w.findComponent(CommandPalette).emitted('close')).toBeFalsy()
+    expect(evt.defaultPrevented).toBe(false)
+  })
+
+  it('输入法组合态（keyCode 229）下 ArrowDown 不移动高亮且不阻止默认', async () => {
+    await mountedPalette()
+    await typeQuery('视图')
+    expect(rows()[0].classList.contains('active')).toBe(true)
+    const evt = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
+    Object.defineProperty(evt, 'keyCode', { value: 229 })
+    document.dispatchEvent(evt)
+    await nextTick()
+    expect(rows()[0].classList.contains('active')).toBe(true)
+    expect(rows()[1].classList.contains('active')).toBe(false)
+    expect(evt.defaultPrevented).toBe(false)
+  })
+
+  it('带 Ctrl/Alt/Meta 的组合键不被面板接管', async () => {
+    const w = await mountedPalette()
+    await typeQuery('视图')
+    const down = new KeyboardEvent('keydown', { key: 'ArrowDown', ctrlKey: true, bubbles: true, cancelable: true })
+    document.dispatchEvent(down)
+    await nextTick()
+    expect(rows()[0].classList.contains('active')).toBe(true)
+    expect(down.defaultPrevented).toBe(false)
+
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true })
+    document.dispatchEvent(enter)
+    await nextTick()
+    expect(w.findComponent(CommandPalette).emitted('close')).toBeFalsy()
+    expect(enter.defaultPrevented).toBe(false)
+
+    const up = new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true, cancelable: true })
+    document.dispatchEvent(up)
+    await nextTick()
+    expect(rows()[0].classList.contains('active')).toBe(true)
+    expect(up.defaultPrevented).toBe(false)
+  })
+
+  it('Tab 聚焦命令按钮时同步高亮', async () => {
+    await mountedPalette()
+    const row = rows()[1]
+    row.focus()
+    await nextTick()
+    expect(row.classList.contains('active')).toBe(true)
+  })
 })
