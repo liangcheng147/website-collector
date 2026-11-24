@@ -89,7 +89,22 @@ async function doRelaunch() { await updater.relaunchApp() }
 async function openDir() {
   try { await api.openDataDir(); msg.value = '已打开数据目录' } catch (e) { msg.value = '打开失败：' + e }
 }
+const APP_NAME = 'SiteCollector'
 const REPO_URL = 'https://github.com/liangcheng147/website-collector'
+const ISSUES_URL = `${REPO_URL}/issues`
+const RELEASES_URL = `${REPO_URL}/releases`
+function openExternal(url: string) { void api.openLink(url) }
+const copyHint = ref('')
+async function copyDiagnostics() {
+  const text = `${APP_NAME} v${appVersion.value}\nUser-Agent: ${userAgent}`
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
+    await navigator.clipboard.writeText(text)
+    copyHint.value = '已复制诊断信息'
+  } catch {
+    copyHint.value = '复制失败，请手动复制'
+  }
+}
 </script>
 
 <template>
@@ -178,9 +193,14 @@ const REPO_URL = 'https://github.com/liangcheng147/website-collector'
         <n-space vertical :size="16" class="settings-pane">
           <div class="settings-group">
             <n-text class="group-title" depth="1">应用信息</n-text>
-            <div class="app-head">SiteCollector <span class="app-version">v{{ appVersion }}</span></div>
+            <div class="app-head">
+              <span class="app-name">{{ APP_NAME }}</span> <span class="app-version">v{{ appVersion }}</span>
+            </div>
+            <n-text class="group-hint" depth="3">本地优先的网站收藏与可用性检测桌面应用</n-text>
             <div class="link-row">
-              <n-button size="small" quaternary @click="api.openLink(REPO_URL)">GitHub 仓库</n-button>
+              <n-button size="small" quaternary @click="openExternal(REPO_URL)">GitHub 仓库</n-button>
+              <n-button size="small" quaternary @click="openExternal(ISSUES_URL)">问题反馈</n-button>
+              <n-button size="small" quaternary @click="openExternal(RELEASES_URL)">发布页</n-button>
             </div>
             <n-text class="group-hint" depth="3">MIT License · Copyright (c) 2026 fan-root</n-text>
           </div>
@@ -213,7 +233,12 @@ const REPO_URL = 'https://github.com/liangcheng147/website-collector'
           </div>
           <div class="settings-group">
             <n-text class="group-title" depth="1">诊断信息</n-text>
-            <n-text class="group-hint" depth="3">{{ userAgent }}</n-text>
+            <n-text class="diag-label" depth="3">User Agent</n-text>
+            <n-text class="group-hint diag-value" depth="3">{{ userAgent }}</n-text>
+            <div class="diag-actions">
+              <n-button size="small" secondary @click="copyDiagnostics">复制诊断信息</n-button>
+              <n-text v-if="copyHint" class="group-hint" depth="3">{{ copyHint }}</n-text>
+            </div>
           </div>
         </n-space>
       </n-tab-pane>
@@ -257,6 +282,9 @@ const REPO_URL = 'https://github.com/liangcheng147/website-collector'
 .switch-row span { cursor: pointer; }
 .pre-wrap { white-space: pre-wrap; }
 .app-head { font-size: 16px; font-weight: 700; }
-.app-version { color: var(--primary); margin-left: 6px; }
+.app-version { color: var(--primary); margin-left: 6px; font-weight: 600; }
 .link-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.diag-label { display: block; font-size: 12px; }
+.diag-value { display: block; word-break: break-all; font-family: var(--mono); font-size: 12px; }
+.diag-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 </style>

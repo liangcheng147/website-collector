@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
@@ -9,6 +9,7 @@ import SettingsModal from './SettingsModal.vue'
 
 const getDataFilePathMock = vi.fn()
 const openDataDirMock = vi.fn()
+const openLinkMock = vi.fn()
 const getVersionMock = vi.fn()
 const checkForUpdateMock = vi.fn()
 const downloadAndInstallMock = vi.fn()
@@ -17,7 +18,7 @@ const relaunchAppMock = vi.fn()
 vi.mock('../api', () => ({
   getDataFilePath: () => getDataFilePathMock(),
   openDataDir: () => openDataDirMock(),
-  openLink: () => Promise.resolve(),
+  openLink: (...args: unknown[]) => openLinkMock(...args),
 }))
 vi.mock('../updater', () => ({
   checkForUpdate: () => checkForUpdateMock(),
@@ -165,6 +166,74 @@ describe('SettingsModal', () => {
     expect(document.body.textContent).toContain('MIT License')
     expect(document.body.textContent).toContain('Copyright (c) 2026 fan-root')
     expect(document.body.textContent).not.toContain('作者 bjb')
+  })
+
+  it('shows the app summary, project links, license and dynamic version in the about section', async () => {
+    await mountAndOpenAbout()
+    expect(document.body.textContent).toContain('本地优先的网站收藏与可用性检测桌面应用')
+    expect(document.body.textContent).toContain('问题反馈')
+    expect(document.body.textContent).toContain('发布页')
+    expect(document.body.textContent).toContain('MIT License · Copyright (c) 2026 fan-root')
+    expect(document.body.textContent).not.toContain('作者 bjb')
+    expect(getVersionMock).toHaveBeenCalled()
+    expect(document.body.textContent).toContain('v0.2.1')
+  })
+
+  it('lays out the about section as app info, update and diagnostics groups', async () => {
+    await mountAndOpenAbout()
+    const titles = Array.from(document.body.querySelectorAll('.settings-pane .group-title'))
+      .map(el => el.textContent?.trim())
+    expect(titles).toEqual(['应用信息', '更新', '诊断信息'])
+    expect(document.body.textContent).toContain('User Agent')
+  })
+
+  it('opens the feedback and release pages from the about links', async () => {
+    await mountAndOpenAbout()
+    const buttons = Array.from(document.body.querySelectorAll('button'))
+    ;(buttons.find(el => el.textContent?.trim() === '问题反馈') as HTMLElement).click()
+    ;(buttons.find(el => el.textContent?.trim() === '发布页') as HTMLElement).click()
+    await nextTick()
+    expect(openLinkMock).toHaveBeenCalledWith('https://github.com/liangcheng147/website-collector/issues')
+    expect(openLinkMock).toHaveBeenCalledWith('https://github.com/liangcheng147/website-collector/releases')
+  })
+
+  function stubClipboard(writeText: (text: string) => Promise<void>) {
+    Object.defineProperty(window.navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+  }
+
+  afterEach(() => {
+    delete (window.navigator as unknown as Record<string, unknown>).clipboard
+  })
+
+  it('copies the app identity, version and user agent as diagnostic info', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    stubClipboard(writeText)
+    await mountAndOpenAbout()
+    ;(Array.from(document.body.querySelectorAll('button'))
+      .find(el => el.textContent?.trim() === '复制诊断信息') as HTMLElement).click()
+    await nextTick()
+    await nextTick()
+    expect(writeText).toHaveBeenCalledTimes(1)
+    const text = writeText.mock.calls[0][0] as string
+    expect(text).toContain('SiteCollector')
+    expect(text).toContain('v0.2.1')
+    expect(text).toContain(navigator.userAgent)
+    expect(document.body.textContent).toContain('已复制诊断信息')
+  })
+
+  it('shows a fallback hint when copying diagnostics fails', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'))
+    stubClipboard(writeText)
+    await mountAndOpenAbout()
+    ;(Array.from(document.body.querySelectorAll('button'))
+      .find(el => el.textContent?.trim() === '复制诊断信息') as HTMLElement).click()
+    await nextTick()
+    await nextTick()
+    expect(document.body.textContent).toContain('复制失败，请手动复制')
+    expect(document.body.textContent).not.toContain('已复制诊断信息')
   })
 
   it('does not depend on the legacy .modal-content layout', async () => {
