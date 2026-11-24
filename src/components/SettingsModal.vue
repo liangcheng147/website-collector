@@ -160,8 +160,10 @@ const REPO_URL = 'https://github.com/liangcheng147/website-collector'
         <n-space vertical :size="16" class="settings-pane">
           <div class="settings-group">
             <n-text class="group-title" depth="1">数据文件</n-text>
-            <n-input :value="filePath" readonly />
-            <n-button @click="openDir">打开数据目录</n-button>
+            <div class="path-row">
+              <n-input :value="filePath" readonly />
+              <n-button @click="openDir">打开数据目录</n-button>
+            </div>
           </div>
           <n-text class="group-hint" depth="3">数据固定存储在软件目录下 <code>./data/</code>，与软件一起，便携易备份。若安装目录无写入权限，自动回退到系统用户目录。</n-text>
           <n-alert v-if="store.location.isFallback" type="warning" :bordered="false">
@@ -228,6 +230,9 @@ const REPO_URL = 'https://github.com/liangcheng147/website-collector'
 .settings-pane { width: 100%; }
 .settings-group { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .settings-group > .n-input { width: 100%; }
+.path-row { display: flex; gap: 8px; align-items: center; width: 100%; }
+.path-row .n-input { flex: 1; min-width: 0; width: auto; }
+.path-row .n-button { flex: none; }
 .group-title { font-size: 12px; font-weight: 600; }
 .group-hint { display: block; }
 .group-hint code {

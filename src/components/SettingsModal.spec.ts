@@ -150,6 +150,11 @@ describe('SettingsModal', () => {
     expect(readonly!.closest('.n-input')).not.toBeNull()
     expect((readonly as HTMLInputElement).value).toBe('C:/data/data.json')
     expect(document.body.querySelector('.palette-swatch')).toBeNull()
+    // 设计 §4.2：路径输入框与“打开数据目录”同一行
+    const pathRow = document.body.querySelector('.path-row')
+    expect(pathRow).not.toBeNull()
+    expect(pathRow!.querySelector('.n-input')).not.toBeNull()
+    expect(pathRow!.querySelector('button')?.textContent?.trim()).toBe('打开数据目录')
   })
 
   it('renders about controls as naive-ui and uses the LICENSE copyright', async () => {
