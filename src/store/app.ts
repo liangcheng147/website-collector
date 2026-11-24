@@ -774,6 +774,8 @@ export const useAppStore = defineStore('app', {
       this.filters = cloneFilters(DEFAULT_FILTERS)
       this.selectedTag = null
     },
+    /** 切换主视图（命令面板用）：只改 view，不动关键词/筛选/排序。 */
+    setView(view: View) { this.view = view },
 
     loadSavedFilters() {
       try {

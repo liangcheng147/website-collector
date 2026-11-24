@@ -16,7 +16,8 @@ import PickCategoryModal from './components/PickCategoryModal.vue'
 import AddTagsModal from './components/AddTagsModal.vue'
 import DeadCleanupModal from './components/DeadCleanupModal.vue'
 import ManageView from './components/ManageView.vue'
-import type { Site } from './types'
+import CommandPalette from './components/CommandPalette.vue'
+import type { Site, View } from './types'
 import { checkForUpdate } from './updater'
 
 const store = useAppStore()
@@ -30,29 +31,44 @@ const pickIds = ref<string[]>([])
 const tagIds = ref<string[]>([])
 const deadCleanup = ref(false)
 const manage = ref(false)
+const paletteOpen = ref(false)
 function openAdd() {
   editing.value = undefined
   modalDefaultCategoryId.value = store.view.kind === 'category' && store.view.id && store.view.id !== UNCATEGORIZED_ID ? store.view.id : null
   modal.value = 'add'
 }
 function openEdit(site?: Site) { if (!site) return; editing.value = site; modal.value = 'add' }
+function onPaletteView(view: View) {
+  manage.value = false
+  store.setView(view)
+}
+/** 面板打开时 Esc 只由面板自己关闭，避免顺带清空后台弹窗/选择状态。 */
 function onKey(e: KeyboardEvent) {
-  if (e.key !== 'Escape') return
+  if (e.key !== 'Escape' || paletteOpen.value) return
   modal.value = ''
   pickIds.value = []
   tagIds.value = []
   deadCleanup.value = false
   store.clearSelection()
 }
+function onGlobalKey(e: KeyboardEvent) {
+  // Ctrl+K / Cmd+K 全局可用：焦点在输入框内也照常打开（浏览器默认行为被拦下）
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    e.preventDefault()
+    paletteOpen.value = !paletteOpen.value
+    return
+  }
+  onKey(e)
+}
 onMounted(async () => {
-  document.addEventListener('keydown', onKey)
+  document.addEventListener('keydown', onGlobalKey)
   await store.init()
   if (store.settings.autoCheckUpdate) {
     const res = await checkForUpdate()
     if (res.ok && res.update) store.flash(`发现新版本 v${res.update.version}，请到设置 → 关于中更新`, 6000)
   }
 })
-onUnmounted(() => document.removeEventListener('keydown', onKey))
+onUnmounted(() => document.removeEventListener('keydown', onGlobalKey))
 </script>
 
 <template>
@@ -88,6 +104,17 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
           <PickCategoryModal v-if="pickIds.length" :site-ids="pickIds" @close="pickIds = []" />
           <AddTagsModal v-if="tagIds.length" :site-ids="tagIds" @close="tagIds = []" />
           <DeadCleanupModal v-if="deadCleanup" @close="deadCleanup = false" />
+          <CommandPalette
+            v-if="paletteOpen"
+            @close="paletteOpen = false"
+            @add="openAdd"
+            @import-export="modal = 'import'"
+            @check-all="store.checkAll"
+            @settings="modal = 'settings'"
+            @manage="manage = true"
+            @cleanup="deadCleanup = true"
+            @view="onPaletteView"
+          />
         </div>
       </n-message-provider>
     </n-dialog-provider>
