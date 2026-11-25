@@ -169,13 +169,13 @@ html.win-maximized .app { border-radius:0; }
 .modal-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
 .modal-content .help { border-left:1px dashed var(--border-2); padding-left:14px; }
 .modal-content .help code { display:block; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 10px; margin:6px 0; font-size:12px; font-family:var(--mono); color:var(--text); }
-.url-row { display: flex; gap: 6px; align-items: center; }
-.url-row input { flex: 1; }
+.url-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.favicon-preview { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; }
 
 @keyframes rowIn { from { opacity:0; } to { opacity:1; } }
 .sidebar, .content { animation:rowIn .2s ease both; }
 
-.table-wrap { position:relative; overflow-x:auto; }
+.table-wrap { position:relative; }
 
 /* ---- 暗色主题：颜色全部由 applyShellVars 写入，这里只保留原生控件/滚动条需要的 color-scheme ---- */
 html[data-theme="dark"] { color-scheme: dark; }

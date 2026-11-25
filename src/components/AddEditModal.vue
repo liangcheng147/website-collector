@@ -5,6 +5,7 @@ import { useAppStore } from '../store/app'
 import type { Site } from '../types'
 import TagInput from './TagInput.vue'
 import AddCategoryModal from './AddCategoryModal.vue'
+import SiteFavicon from './SiteFavicon.vue'
 import * as api from '../api'
 const store = useAppStore()
 const props = defineProps<{ editing?: Site | null; defaultCategoryId?: string | null }>()
@@ -169,16 +170,19 @@ async function save() {
             <n-input v-model:value="name" data-testid="input-name" placeholder="网站名称" />
           </n-form-item>
           <n-form-item label="链接" required>
-            <div class="url-row">
-              <n-input v-model:value="url" data-testid="input-url" placeholder="https://..." @blur="onUrlBlur" />
-              <n-button size="small" data-testid="btn-fetch-title" :disabled="fetchingTitle" @click="fetchTitle">
-                {{ fetchingTitle ? '...' : '获取名称' }}
-              </n-button>
-              <n-button size="small" data-testid="btn-fetch-favicon" :disabled="fetchingFavicon" @click="() => fetchFavicon()">
-                {{ fetchingFavicon ? '...' : '获取图标' }}
-              </n-button>
-            </div>
+            <n-input v-model:value="url" data-testid="input-url" placeholder="https://..." @blur="onUrlBlur" />
           </n-form-item>
+          <div class="url-actions">
+            <n-button size="small" data-testid="btn-fetch-title" :disabled="fetchingTitle" @click="fetchTitle">
+              {{ fetchingTitle ? '...' : '获取名称' }}
+            </n-button>
+            <n-button size="small" data-testid="btn-fetch-favicon" :disabled="fetchingFavicon" @click="() => fetchFavicon()">
+              {{ fetchingFavicon ? '...' : '获取图标' }}
+            </n-button>
+            <span class="favicon-preview" data-testid="favicon-preview">
+              <SiteFavicon :path="faviconPath" :size="28" />
+            </span>
+          </div>
           <n-form-item>
             <n-text v-if="titleError" type="error">{{ titleError }}</n-text>
           </n-form-item>

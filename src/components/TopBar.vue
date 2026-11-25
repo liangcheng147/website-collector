@@ -7,17 +7,21 @@ import { useAppStore, UNCATEGORIZED_ID } from '../store/app'
 import type { CheckScope, FilterStatus, FilterTimeRange } from '../types'
 
 const store = useAppStore()
-const emit = defineEmits(['check-all', 'cancel-check', 'add', 'import-export', 'settings', 'manage', 'check-scope'])
+const emit = defineEmits(['cancel-check', 'add', 'import-export', 'settings', 'manage', 'check-scope'])
 
 const scopeOptions = [
-  { label: '检测范围：全部', value: 'all' },
-  { label: '检测范围：当前分类', value: 'category' },
-  { label: '检测范围：当前标签', value: 'tag' },
-  { label: '检测范围：所选', value: 'selected' },
+  { label: '全部', value: 'all' },
+  { label: '当前分类', value: 'category' },
+  { label: '当前标签', value: 'tag' },
+  { label: '所选', value: 'selected' },
 ]
-function onScopeChange(v: string | number | null) {
+function setCheckScope(v: string | number | null) {
   if (v === '' || v === null || v === undefined) return
-  emit('check-scope', String(v) as CheckScope)
+  void store.updateSettings({ checkScope: String(v) as CheckScope })
+}
+function runCheck() {
+  if (store.checking) { emit('cancel-check'); return }
+  emit('check-scope', store.settings.checkScope)
 }
 
 const q = ref(store.search)
@@ -135,16 +139,17 @@ function saveCurrentFilter() {
     <n-select
       class="topbar-select"
       data-testid="check-scope"
-      :value="null"
+      :value="store.settings.checkScope"
       :options="scopeOptions"
       :disabled="store.checking"
-      @update:value="onScopeChange"
+      aria-label="检测范围"
+      @update:value="setCheckScope"
     />
     <n-button
       :type="store.checking ? 'error' : 'default'"
       data-testid="btn-check-all"
-      @click="store.checking ? emit('cancel-check') : $emit('check-all')"
-    ><Square :size="14" /> {{ store.checking ? '取消检测' : '检测全部' }}</n-button>
+      @click="runCheck"
+    ><Square :size="14" /> {{ store.checking ? '取消检测' : '检测' }}</n-button>
     <n-button type="primary" data-testid="btn-add" @click="$emit('add')"><Plus :size="14" /> 添加</n-button>
     <n-button quaternary data-testid="btn-manage" @click="emit('manage')"><LayoutGrid :size="14" /> 管理</n-button>
     <n-button quaternary data-testid="btn-import-export" @click="emit('import-export')">导入/导出</n-button>

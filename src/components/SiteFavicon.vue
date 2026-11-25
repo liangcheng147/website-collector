@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { faviconDataUrl } from '../composables/useFavicon'
 
-const props = defineProps<{ path?: string | null }>()
+const props = withDefaults(defineProps<{ path?: string | null; size?: number }>(), { path: null, size: 18 })
 const src = ref<string | null>(null)
 
 watch(
@@ -17,14 +17,12 @@ watch(
 </script>
 
 <template>
-  <img v-if="src" class="site-favicon" :src="src" alt="" data-testid="site-favicon" />
-  <span v-else class="site-favicon site-favicon-placeholder" data-testid="site-favicon-placeholder" aria-hidden="true"></span>
+  <img v-if="src" class="site-favicon" :style="{ width: props.size + 'px', height: props.size + 'px' }" :src="src" alt="" data-testid="site-favicon" />
+  <span v-else class="site-favicon site-favicon-placeholder" :style="{ width: props.size + 'px', height: props.size + 'px' }" data-testid="site-favicon-placeholder" aria-hidden="true"></span>
 </template>
 
 <style scoped>
 .site-favicon {
-  width: 18px;
-  height: 18px;
   border-radius: var(--radius-sm);
   object-fit: contain;
   flex: none;

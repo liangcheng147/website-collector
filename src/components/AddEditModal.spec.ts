@@ -6,14 +6,16 @@ import { useAppStore } from '../store/app'
 import AddEditModal from './AddEditModal.vue'
 import { mount, flushPromises } from '@vue/test-utils'
 
-const { fetchSiteTitleMock, fetchFaviconMock, saveDataMock } = vi.hoisted(() => ({
+const { fetchSiteTitleMock, fetchFaviconMock, readFaviconMock, saveDataMock } = vi.hoisted(() => ({
   fetchSiteTitleMock: vi.fn(),
   fetchFaviconMock: vi.fn(),
+  readFaviconMock: vi.fn(),
   saveDataMock: vi.fn(),
 }))
 vi.mock('../api', () => ({
   fetchSiteTitle: fetchSiteTitleMock,
   fetchFavicon: fetchFaviconMock,
+  readFavicon: readFaviconMock,
   saveData: saveDataMock,
 }))
 
@@ -25,6 +27,7 @@ describe('AddEditModal', () => {
     document.body.innerHTML = ''
     fetchSiteTitleMock.mockReset().mockResolvedValue('Fetched Title')
     fetchFaviconMock.mockReset().mockResolvedValue({ faviconPath: 'C:/data/favicons/abc.png' })
+    readFaviconMock.mockReset().mockResolvedValue('data:image/png;base64,AAAA')
     saveDataMock.mockReset().mockResolvedValue(undefined)
   })
 
@@ -202,6 +205,26 @@ describe('AddEditModal', () => {
     expect(btn).not.toBeNull()
     expect(btn.classList.contains('n-button')).toBe(true)
     expect(btn.textContent).toContain('获取图标')
+  })
+
+  it('shows the fetched favicon preview in the add modal', async () => {
+    const store = useAppStore()
+    store.data = { version: 1, categories: [], sites: [], recycleBin: [], tags: [] }
+    mount(AddEditModal)
+    await nextTick()
+    const inputs = textInputs()
+    ;(inputs[0] as HTMLInputElement).value = 'Test Site'
+    inputs[0].dispatchEvent(new Event('input'))
+    ;(inputs[1] as HTMLInputElement).value = 'https://test.dev'
+    inputs[1].dispatchEvent(new Event('input'))
+    await nextTick()
+    ;(document.body.querySelector('[data-testid="btn-fetch-favicon"]') as HTMLElement).click()
+    await flushPromises()
+    const preview = document.body.querySelector('[data-testid="favicon-preview"]') as HTMLElement
+    expect(preview).not.toBeNull()
+    const img = preview.querySelector('[data-testid="site-favicon"]') as HTMLImageElement | null
+    expect(img).not.toBeNull()
+    expect(img!.src).toContain('data:image/png;base64,AAAA')
   })
 
   it('fetching favicon updates the saved site faviconPath', async () => {

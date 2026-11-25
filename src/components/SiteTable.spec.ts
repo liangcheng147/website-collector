@@ -99,7 +99,7 @@ describe('SiteTable', () => {
     expect(img.exists()).toBe(true)
     expect((img.element as HTMLImageElement).src).toContain('data:image/png;base64,AAAA')
   })
-  it('无选中时批量操作禁用，选中后启用', async () => {
+  it('未选中时不显示批量操作栏，选中后出现并启用', async () => {
     const store = useAppStore()
     store.view = { kind: 'all' }
     store.data.sites = [
@@ -108,12 +108,11 @@ describe('SiteTable', () => {
     ] as unknown as Site[]
     store.data.categories = []
     const w = mount(SiteTable)
+    expect(w.find('.batchbar').exists()).toBe(false)
+    await w.findAll('.n-checkbox')[1].trigger('click')
+    expect(w.find('.batchbar').exists()).toBe(true)
     const findBtn = (text: string) =>
       w.findAll('.batchbar button').find(b => b.text().includes(text))!
-    for (const label of ['检测所选', '移动分类', '添加标签', '删除所选']) {
-      expect(findBtn(label).classes()).toContain('n-button--disabled')
-    }
-    await w.findAll('.n-checkbox')[1].trigger('click')
     for (const label of ['检测所选', '移动分类', '添加标签', '删除所选']) {
       expect(findBtn(label).classes()).not.toContain('n-button--disabled')
     }

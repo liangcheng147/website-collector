@@ -84,16 +84,18 @@ function onRowDragOver(e: DragEvent) {
 </script>
 
 <template>
-  <div v-if="store.filteredSites.length || hasSelection" class="batchbar sticky-bar">
-    <b>已选 {{ store.selectedIds.length }} 项</b>
-    <template v-if="store.checking">
-      <n-button size="small" type="error" @click="store.cancelCheck()"><Square :size="14" /> 取消检测</n-button>
-    </template>
-    <template v-else>
-      <n-button size="small" :disabled="!hasSelection" @click="emit('check-site', [...store.selectedIds])"><Square :size="14" /> 检测所选</n-button>
-      <n-button size="small" :disabled="!hasSelection" @click="emit('move', [...store.selectedIds])">移动分类…</n-button>
-      <n-button size="small" :disabled="!hasSelection" @click="emit('tag', [...store.selectedIds])">添加标签…</n-button>
-      <n-button size="small" type="error" :disabled="!hasSelection" @click="store.deleteSites([...store.selectedIds])">删除所选</n-button>
+  <div v-if="hasSelection || store.view.kind === 'dead'" class="batchbar sticky-bar">
+    <template v-if="hasSelection">
+      <b>已选 {{ store.selectedIds.length }} 项</b>
+      <template v-if="store.checking">
+        <n-button size="small" type="error" @click="store.cancelCheck()"><Square :size="14" /> 取消检测</n-button>
+      </template>
+      <template v-else>
+        <n-button size="small" @click="emit('check-site', [...store.selectedIds])"><Square :size="14" /> 检测所选</n-button>
+        <n-button size="small" @click="emit('move', [...store.selectedIds])">移动分类…</n-button>
+        <n-button size="small" @click="emit('tag', [...store.selectedIds])">添加标签…</n-button>
+        <n-button size="small" type="error" @click="store.deleteSites([...store.selectedIds])">删除所选</n-button>
+      </template>
     </template>
     <n-button
       v-if="store.view.kind === 'dead'"
@@ -101,7 +103,7 @@ function onRowDragOver(e: DragEvent) {
       :disabled="store.checking || !store.deadCount"
       @click="emit('cleanup')"
     >清理失效…</n-button>
-    <n-button size="small" class="batch-cancel" :disabled="!hasSelection" @click="store.clearSelection()"><X :size="14" /> 取消选择</n-button>
+    <n-button v-if="hasSelection" size="small" class="batch-cancel" @click="store.clearSelection()"><X :size="14" /> 取消选择</n-button>
   </div>
   <div class="table-wrap">
     <table class="site-table">
