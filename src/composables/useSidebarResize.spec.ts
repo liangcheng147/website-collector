@@ -14,15 +14,16 @@ import {
 } from './useSidebarResize'
 
 const Harness = defineComponent({
-  setup() {
-    return useSidebarResize()
+  props: { scale: { type: Number, default: 1 } },
+  setup(props) {
+    return useSidebarResize(() => props.scale)
   },
   template: '<div />',
 })
 
-function pointer(type: string, clientX: number, button = 0): PointerEvent {
+function pointer(type: string, clientX: number, button = 0, buttons = 1): PointerEvent {
   // happy-dom 的 PointerEvent 构造支持不完整，用 MouseEvent 提供 clientX/button 后断言类型
-  return new MouseEvent(type, { bubbles: true, clientX, button }) as unknown as PointerEvent
+  return new MouseEvent(type, { bubbles: true, clientX, button, buttons }) as unknown as PointerEvent
 }
 
 describe('useSidebarResize 纯函数', () => {
@@ -86,6 +87,45 @@ describe('useSidebarResize 交互', () => {
     w.vm.onDoubleClick()
     expect(w.vm.width).toBe(SIDEBAR_DEFAULT_WIDTH)
     expect(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)).toBe('170')
+    w.unmount()
+  })
+
+  it('按 scale 折算指针位移（zoom 放大时不过冲）', async () => {
+    const w = mount(Harness, { props: { scale: 2 } })
+    w.vm.onPointerDown(pointer('pointerdown', 170))
+    document.dispatchEvent(pointer('pointermove', 350))
+    await nextTick()
+    expect(w.vm.width).toBe(260) // 170 + (350-170)/2
+    document.dispatchEvent(pointer('pointerup', 350))
+    w.unmount()
+  })
+
+  it('按键松开后继续移动不再跟随（指针可能在窗口外松开）', async () => {
+    const w = mount(Harness)
+    w.vm.onPointerDown(pointer('pointerdown', 170))
+    document.dispatchEvent(pointer('pointermove', 260))
+    await nextTick()
+    expect(w.vm.width).toBe(260)
+    document.dispatchEvent(pointer('pointermove', 400, 0, 0))
+    await nextTick()
+    expect(w.vm.width).toBe(260)
+    expect(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)).toBe('260')
+    document.dispatchEvent(pointer('pointermove', 500, 0, 0))
+    await nextTick()
+    expect(w.vm.width).toBe(260)
+    w.unmount()
+  })
+
+  it('重复 pointerup 后监听器已移除，不再跟随移动', async () => {
+    const w = mount(Harness)
+    w.vm.onPointerDown(pointer('pointerdown', 170))
+    document.dispatchEvent(pointer('pointermove', 200))
+    document.dispatchEvent(pointer('pointerup', 200))
+    document.dispatchEvent(pointer('pointerup', 200))
+    document.dispatchEvent(pointer('pointermove', 400))
+    await nextTick()
+    expect(w.vm.width).toBe(200)
+    expect(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)).toBe('200')
     w.unmount()
   })
 

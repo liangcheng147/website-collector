@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import App from './App.vue'
+import { useAppStore } from './store/app'
 import {
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
@@ -132,7 +133,7 @@ function bodyEl() {
   return document.querySelector('.body') as HTMLElement
 }
 function pointer(type: string, clientX: number) {
-  return new MouseEvent(type, { bubbles: true, clientX, button: 0 })
+  return new MouseEvent(type, { bubbles: true, clientX, button: 0, buttons: 1 })
 }
 
 // mountApp 不挂到 document，document.querySelector 查不到 App 自身 DOM；本组测试需要真实命中拖拽手柄。
@@ -212,5 +213,17 @@ describe('App 侧栏宽度拖动', () => {
     localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, '240')
     await mountAttached()
     expect(bodyEl().style.gridTemplateColumns).toBe('240px 1fr')
+  })
+
+  it('按 zoom 折算拖动距离（150% 缩放下不过冲）', async () => {
+    const store = useAppStore()
+    await mountAttached()
+    // App 挂载时 store 会用 getSettings 结果覆盖 settings，所以挂载后再改 zoom。
+    store.settings.zoom = 150
+    resizer().dispatchEvent(pointer('pointerdown', 170))
+    document.dispatchEvent(pointer('pointermove', 260))
+    await nextTick()
+    expect(bodyEl().style.gridTemplateColumns).toBe('230px 1fr') // 170 + 90 / 1.5
+    document.dispatchEvent(pointer('pointerup', 260))
   })
 })

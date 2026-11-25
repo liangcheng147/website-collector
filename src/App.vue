@@ -43,7 +43,7 @@ const {
   onPointerDown: onSidebarPointerDown,
   onDoubleClick: onSidebarDoubleClick,
   onKeydown: onSidebarKeydown,
-} = useSidebarResize()
+} = useSidebarResize(() => store.settings.zoom / 100)
 function openAdd() {
   editing.value = undefined
   modalDefaultCategoryId.value = store.view.kind === 'category' && store.view.id && store.view.id !== UNCATEGORIZED_ID ? store.view.id : null

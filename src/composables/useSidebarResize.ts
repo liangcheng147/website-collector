@@ -45,7 +45,7 @@ export function writeSidebarWidth(width: number, storage: Storage | null = getSt
  * 侧栏宽度拖动：pointer 拖动实时更新，pointerup 持久化；
  * 双击复位；←/→ 步进，Home 复位。
  */
-export function useSidebarResize() {
+export function useSidebarResize(getScale: () => number = () => 1) {
   const width = ref(readSidebarWidth())
   const dragging = ref(false)
   let startX = 0
@@ -56,7 +56,11 @@ export function useSidebarResize() {
   }
 
   function onPointerMove(e: PointerEvent) {
-    width.value = clampSidebarWidth(startWidth + (e.clientX - startX))
+    // 指针在窗口外松开时浏览器不会派发 pointerup；按键已松说明拖动结束。
+    if (e.buttons === 0) { stopDrag(); return }
+    // clientX 是屏幕坐标，而外壳有 transform: scale(zoom/100)，需折算回本地坐标。
+    const scale = Math.max(getScale(), 0.01)
+    width.value = clampSidebarWidth(startWidth + (e.clientX - startX) / scale)
   }
 
   function stopDrag() {
@@ -81,6 +85,11 @@ export function useSidebarResize() {
     document.addEventListener('pointercancel', stopDrag)
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
+    // 捕获指针：拖出窗口也能收到 pointerup/pointercancel，避免卡在拖动状态。
+    const el = e.currentTarget as HTMLElement | null
+    if (el && typeof el.setPointerCapture === 'function') {
+      try { el.setPointerCapture(e.pointerId) } catch { /* 部分环境不支持 */ }
+    }
   }
 
   function onDoubleClick() {
