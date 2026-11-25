@@ -19,6 +19,11 @@ import ManageView from './components/ManageView.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import type { Site, View } from './types'
 import { checkForUpdate } from './updater'
+import {
+  useSidebarResize,
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+} from './composables/useSidebarResize'
 
 const store = useAppStore()
 // 与 store.applyAppearance 读同一个 resolveTheme，保证 data-theme 与 Naive 主题一致
@@ -32,6 +37,13 @@ const tagIds = ref<string[]>([])
 const deadCleanup = ref(false)
 const manage = ref(false)
 const paletteOpen = ref(false)
+const {
+  width: sidebarWidth,
+  dragging: sidebarDragging,
+  onPointerDown: onSidebarPointerDown,
+  onDoubleClick: onSidebarDoubleClick,
+  onKeydown: onSidebarKeydown,
+} = useSidebarResize()
 function openAdd() {
   editing.value = undefined
   modalDefaultCategoryId.value = store.view.kind === 'category' && store.view.id && store.view.id !== UNCATEGORIZED_ID ? store.view.id : null
@@ -86,8 +98,8 @@ onUnmounted(() => document.removeEventListener('keydown', onGlobalKey))
       <n-message-provider>
         <div class="app">
           <TitleBar />
-          <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @check-all="store.checkAll" @cancel-check="store.cancelCheck" @check-scope="(scope) => store.checkByScope(scope)" @manage="manage = true" />
-          <div class="body">
+          <TopBar @add="openAdd" @import-export="modal = 'import'" @settings="modal = 'settings'" @cancel-check="store.cancelCheck" @check-scope="(scope) => store.checkByScope(scope)" @manage="manage = true" />
+          <div class="body" :style="{ gridTemplateColumns: sidebarWidth + 'px 1fr' }">
             <ManageView v-if="manage" @back="manage = false" @dead-cleanup="deadCleanup = true" />
             <template v-else>
               <Sidebar />
@@ -95,6 +107,22 @@ onUnmounted(() => document.removeEventListener('keydown', onGlobalKey))
                 <RecycleView v-if="store.view.kind === 'recycle'" />
                 <SiteTable v-else @edit="openEdit" @check-site="(ids: string[]) => ids.length === 1 ? store.checkOne(ids[0]) : store.checkSelected()" @move="pickIds = $event" @tag="tagIds = $event" @cleanup="deadCleanup = true" />
               </main>
+              <div
+                class="sidebar-resizer"
+                :class="{ dragging: sidebarDragging }"
+                data-testid="sidebar-resizer"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="调整侧栏宽度"
+                :aria-valuemin="SIDEBAR_MIN_WIDTH"
+                :aria-valuemax="SIDEBAR_MAX_WIDTH"
+                :aria-valuenow="sidebarWidth"
+                tabindex="0"
+                :style="{ left: sidebarWidth + 'px' }"
+                @pointerdown="onSidebarPointerDown"
+                @dblclick="onSidebarDoubleClick"
+                @keydown="onSidebarKeydown"
+              />
             </template>
           </div>
           <StatusBar />
@@ -122,7 +150,22 @@ onUnmounted(() => document.removeEventListener('keydown', onGlobalKey))
 </template>
 
 <style scoped>
-.body { flex: 1; min-height: 0; display: grid; grid-template-columns: 170px 1fr; }
+.body { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: 170px 1fr; }
 .body > * { min-height: 0; }
-.content { overflow-y: auto; overflow-x: hidden; padding: 12px; background: var(--bg); }
+.content { overflow: auto; padding: 12px; background: var(--bg); }
+
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  transform: translateX(-3px);
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+  z-index: 5;
+}
+.sidebar-resizer:hover,
+.sidebar-resizer.dragging { background: var(--primary); }
+.sidebar-resizer:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 </style>

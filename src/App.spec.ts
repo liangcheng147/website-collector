@@ -4,6 +4,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { nextTick } from 'vue'
 import App from './App.vue'
+import {
+  SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_WIDTH_STORAGE_KEY,
+} from './composables/useSidebarResize'
 
 vi.mock('./api', () => ({
   loadData: vi.fn().mockResolvedValue({ version: 1, categories: [], sites: [], recycleBin: [], tags: [] }),
@@ -116,5 +122,95 @@ describe('App 全局命令面板快捷键', () => {
     await nextTick()
     expect(document.body.querySelector('[data-testid="command-palette"]')).toBeNull()
     expect(document.body.querySelector('[data-testid="modal-add-edit"]')).toBeTruthy()
+  })
+})
+
+function resizer() {
+  return document.querySelector('[data-testid="sidebar-resizer"]') as HTMLElement
+}
+function bodyEl() {
+  return document.querySelector('.body') as HTMLElement
+}
+function pointer(type: string, clientX: number) {
+  return new MouseEvent(type, { bubbles: true, clientX, button: 0 })
+}
+
+// mountApp 不挂到 document，document.querySelector 查不到 App 自身 DOM；本组测试需要真实命中拖拽手柄。
+async function mountAttached() {
+  const w = mount(App, { global: { stubs }, attachTo: document.body })
+  await flushPromises()
+  await nextTick()
+  return w
+}
+
+describe('App 侧栏宽度拖动', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    document.body.innerHTML = ''
+    localStorage.clear()
+  })
+
+  it('默认渲染 170px 与可访问的分割线', async () => {
+    await mountAttached()
+    expect(bodyEl().style.gridTemplateColumns).toBe('170px 1fr')
+    const handle = resizer()
+    expect(handle).not.toBeNull()
+    expect(handle.getAttribute('role')).toBe('separator')
+    expect(handle.getAttribute('aria-orientation')).toBe('vertical')
+    expect(handle.getAttribute('aria-valuemin')).toBe('160')
+    expect(handle.getAttribute('aria-valuemax')).toBe('360')
+    expect(handle.getAttribute('aria-valuenow')).toBe('170')
+    expect(handle.getAttribute('tabindex')).toBe('0')
+  })
+
+  it('拖动更新列宽，松手写入 localStorage', async () => {
+    await mountAttached()
+    resizer().dispatchEvent(pointer('pointerdown', 170))
+    document.dispatchEvent(pointer('pointermove', 260))
+    await nextTick()
+    expect(bodyEl().style.gridTemplateColumns).toBe('260px 1fr')
+    expect(resizer().getAttribute('aria-valuenow')).toBe('260')
+    document.dispatchEvent(pointer('pointerup', 260))
+    expect(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)).toBe('260')
+  })
+
+  it('拖动越界被限制在 160–360', async () => {
+    await mountAttached()
+    resizer().dispatchEvent(pointer('pointerdown', 170))
+    document.dispatchEvent(pointer('pointermove', 5000))
+    await nextTick()
+    expect(bodyEl().style.gridTemplateColumns).toBe(`${SIDEBAR_MAX_WIDTH}px 1fr`)
+    document.dispatchEvent(pointer('pointermove', -5000))
+    await nextTick()
+    expect(bodyEl().style.gridTemplateColumns).toBe(`${SIDEBAR_MIN_WIDTH}px 1fr`)
+    document.dispatchEvent(pointer('pointerup', 0))
+  })
+
+  it('双击复位为默认宽度', async () => {
+    await mountAttached()
+    resizer().dispatchEvent(pointer('pointerdown', 170))
+    document.dispatchEvent(pointer('pointermove', 300))
+    document.dispatchEvent(pointer('pointerup', 300))
+    await nextTick()
+    resizer().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    await nextTick()
+    expect(bodyEl().style.gridTemplateColumns).toBe(`${SIDEBAR_DEFAULT_WIDTH}px 1fr`)
+    expect(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)).toBe('170')
+  })
+
+  it('键盘 → 加宽、Home 复位', async () => {
+    await mountAttached()
+    resizer().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    await nextTick()
+    expect(bodyEl().style.gridTemplateColumns).toBe('180px 1fr')
+    resizer().dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }))
+    await nextTick()
+    expect(bodyEl().style.gridTemplateColumns).toBe('170px 1fr')
+  })
+
+  it('挂载时恢复持久化宽度', async () => {
+    localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, '240')
+    await mountAttached()
+    expect(bodyEl().style.gridTemplateColumns).toBe('240px 1fr')
   })
 })
